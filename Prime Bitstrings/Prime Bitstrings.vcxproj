@@ -93,6 +93,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClInclude Include="misof-primes\FJ64_16k.h" />
+    <ClInclude Include="misof-primes\FJ64_262k.h" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="math.hpp" />

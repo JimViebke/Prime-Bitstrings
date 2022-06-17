@@ -32,6 +32,12 @@
     <ClInclude Include="mpirxx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="misof-primes\FJ64_16k.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="misof-primes\FJ64_262k.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="benchmarking.txt">
