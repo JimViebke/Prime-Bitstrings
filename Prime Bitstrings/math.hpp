@@ -4,6 +4,7 @@
 
 #include "mpirxx.h"
 
+// BPSW fails on p11 (a prime)
 namespace bpsw_1_native
 {
 	int pow(int pow_a, unsigned int pow_b, int pow_c) {
@@ -52,17 +53,17 @@ namespace gmp_random
 	gmp_randclass r{ gmp_randinit_mt };
 }
 
-bool is_prime(const mpz_class& p, const size_t div = 0)
+bool mpir_is_prime(const mpz_class& p, const size_t div = 0)
 {
 	return mpz_likely_prime_p(p.get_mpz_t(), gmp_random::r.get_randstate_t(), div);
 }
 
-bool is_probable_prime(const mpz_class& p, const int prob, const size_t div)
+bool mpir_is_probable_prime(const mpz_class& p, const int prob, const size_t div)
 {
 	return mpz_probable_prime_p(p.get_mpz_t(), gmp_random::r.get_randstate_t(), prob, div);
 }
 
-bool is_prime(const size_t n)
+bool brute_force_is_prime(const size_t n)
 {
 	const size_t sqrt_n = size_t(sqrt(n));
 
@@ -143,7 +144,7 @@ std::vector<size_t> generate_small_primes()
 	std::vector<size_t> primes;
 
 	for (size_t i = 2; i < small_primes_cap; ++i)
-		if (is_prime(i))
+		if (mpir_is_prime(i))
 			primes.push_back(i);
 
 	return primes;
@@ -178,12 +179,13 @@ static const std::vector<uint16_t> gcd_1155 = build_gcd_1155_lookup();
 
 
 
+// BPSW fails on p11 (a prime)
 void compare_implementations()
 {
-	// size_t num = 282607273285049;
-	size_t num = 113;
+	size_t num = 282607273285049; // p11
+	// size_t num = 113;
 	std::cout << "Naive + native implementation:\n";
-	std::cout << num << " is " << (is_prime(num) ? "prime" : "not prime") << std::endl;
+	std::cout << num << " is " << (mpir_is_prime(num) ? "prime" : "not prime") << std::endl;
 
 	std::cout << "BPSW + native implementation:\n";
 	std::cout << num << " is " << (bpsw_1_native::prime((int)num, 50) ? "prime" : "not prime") << std::endl;
@@ -211,31 +213,32 @@ void test_binary_to_decimal()
 	}
 }
 
+// This shouldn't work - converting large primes between bases should be larger than a size_t
 void find_p2_8()
 {
 	auto start = current_time_in_ms();
 
 	for (size_t binary = 3; ; binary += 2)
 	{
-		if (!is_prime(binary)) continue;
+		if (!mpir_is_prime(binary)) continue;
 
 		const size_t b3 = binary_to_base(binary, 3);
-		if (!is_prime(b3)) continue;
+		if (!mpir_is_prime(b3)) continue;
 
 		const size_t b4 = binary_to_base(binary, 4);
-		if (!is_prime(b4)) continue;
+		if (!mpir_is_prime(b4)) continue;
 
 		const size_t b5 = binary_to_base(binary, 5);
-		if (!is_prime(b5)) continue;
+		if (!mpir_is_prime(b5)) continue;
 
 		const size_t b6 = binary_to_base(binary, 6);
-		if (!is_prime(b6)) continue;
+		if (!mpir_is_prime(b6)) continue;
 
 		const size_t b7 = binary_to_base(binary, 7);
-		if (!is_prime(b7)) continue;
+		if (!mpir_is_prime(b7)) continue;
 
 		const size_t b8 = binary_to_base(binary, 8);
-		if (!is_prime(b8)) continue;
+		if (!mpir_is_prime(b8)) continue;
 
 		const size_t b10 = binary_to_base(binary, 10);
 
@@ -245,7 +248,8 @@ void find_p2_8()
 			b4 << ", " <<
 			b5 << ", " <<
 			b6 << ", " <<
-			b7 << ")\n";
+			b7 << ", " <<
+			b8 << ")\n";
 		break;
 	}
 

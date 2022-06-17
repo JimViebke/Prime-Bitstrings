@@ -7,6 +7,7 @@
 #include <numeric>
 #include <fstream>
 #include <sstream>
+#include <charconv>
 
 #include "utility.hpp"
 #include "math.hpp"
@@ -51,7 +52,7 @@ void partial_sieve(const size_t& start, std::vector<uint8_t>& sieve)
 	}
 }
 
-void find_big_int_primes()
+void find_multibase_primes()
 {
 	gmp_random::r.seed(rand());
 
@@ -96,20 +97,23 @@ void find_big_int_primes()
 			if (gcd_1155[abs(pca - pcb)] != 1) continue;
 
 			// Instead of "discard if gcd( ... ) != 1", you can "discard the candidate if sa is not a prime greater than 12." 
-			// These are effectively performance-indentical. Both involve some_lookup[ abs(pca - pcb) ].
+			// These are effectively performance-indentical, as both involve some_lookup[ abs(pca - pcb) ].
 
 			// Bail if n is not prime in this base (base 2)
-			if (!is_prime(number, small_primes_cap)) continue; // can we do this natively without calling the lib?
+			if (!mpir_is_prime(number, small_primes_cap)) continue; // can we do this natively without calling the lib?
+			// mpir_is_prime(number, small_primes_cap); // ~20 s
+			// misof_16k::is_prime(number); // ~50 s
+			// misof_262k::is_prime_2_64(number); // ~24 s
 
 			// convert uint64_t to char array of ['0', '1'...] for mpz_class
-			char bin_str[64 + 2];
-			mpz_class bin{ number };
-			mpz_get_str(&bin_str[0], 2, bin.get_mpz_t());
+			char bin_str[64 + 1];
+			auto result = std::to_chars(&bin_str[0], &bin_str[64], number, 2);
+			*result.ptr = '\0';
 
 			for (int base = 3; ; ++base)
 			{
 				const auto number_to_base = mpz_class{ bin_str, base };
-				if (!is_prime(number_to_base, small_primes_cap))
+				if (!mpir_is_prime(number_to_base, small_primes_cap))
 				{
 					// We just failed on "base", so "base > n" only logs
 					// results that reached equal to n or higher
@@ -129,5 +133,7 @@ void find_big_int_primes()
 
 int main()
 {
-	find_big_int_primes();
+	find_multibase_primes();
+
+	// find_p2_8();
 }
