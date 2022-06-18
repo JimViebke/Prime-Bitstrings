@@ -40,7 +40,7 @@ void partial_sieve(const size_t& start, std::vector<uint8_t>& sieve)
 	for (const size_t p : small_primes_lookup)
 	{
 		// only mark off the small primes not already here
-		if (p <= 17) continue;
+		if (p <= 13) continue;
 
 		// Find out how far past we are from the previous multiple of p.
 		// ie 3 == 10 % 7
@@ -59,9 +59,9 @@ void partial_sieve(const size_t& start, std::vector<uint8_t>& sieve)
 
 const std::vector<uint8_t> generate_static_sieve()
 {
-	const std::vector<size_t> sieve_primes = { 3, 5, 7, 11, 13, 17 };
+	const std::vector<size_t> sieve_primes = { 3, 5, 7, 11, 13 };
 
-	std::vector<uint8_t> sieve({ 3 * 5 * 7 * 11 * 13 * 17 }, true);
+	std::vector<uint8_t> sieve({ 3 * 5 * 7 * 11 * 13 }, true);
 
 	// for each prime, mark off all multiples
 	for (const size_t p : sieve_primes)
