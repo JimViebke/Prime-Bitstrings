@@ -139,7 +139,7 @@ void find_multibase_primes()
 			for (int base = 3; ; ++base)
 			{
 				const auto number_to_base = mpz_class{ bin_str, base };
-				if (!mpir_is_prime(number_to_base, small_primes_cap))
+				if (!mpir_is_prime(number_to_base))
 				{
 					// We just failed on "base", so "base > n" only logs
 					// results that reached equal to n or higher
