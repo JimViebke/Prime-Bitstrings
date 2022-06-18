@@ -3,17 +3,20 @@ Notes for benchmarking
 
 Benchmark: performing full 2->n tests from p11 to p11 + 100 million.
 
-Calculate change [b]efore and [a]fter: b = ( +  + ), a = ( +  + ), (a - b) / b * 100
+Calculate change [b]efore and [a]fter: b = (), a = (), (a-b)/b*100
 
 30899/31213/31276 ms : Basic implementation
 16690/16602/16832 ms : Added sieve in size 1,000,000 (~46% faster)
  7045/ 6964/ 7003 ms : Check for prime-numbered popcounts of candidate p2 before doing prime checks. (~58% faster)
- 4850/ 4860/ 4834 ms : Check if gcd(abs(popcount(odd bits) - popcount(even bits)), 1155) equals one before doing prime checks. (~30% faster)
+ 4850/ 4860/ 4834 ms : Bail if gcd(abs(#odd bits - #even bits), 1155) != 1 (~30% faster)
 === change benchmark from p11 + 100 million to p11 + 500 million) ===
 22163/22106/22096 ms : Re-running previous implementation with larger benchmark
 21862/21851/21819 ms : Only convert base 2 value to char array once (~1% faster)
 20847/21207/21080 ms : Change toolset to VS2022 and C++20 (~3% faster)
 20418/20573/21179 ms : Convert to base 2 allocation-free (~1.5% faster)
+20059/19817/19721 ms : Use a static sieve for primes up to 17, then sieve up to 997 (~4% faster)
+14296/14398/14492 ms : Only track odd numbers in sieves (~28% faster)
+14152/13995/13988 ms : Fix bug - only provide div to MPIR for base 2 (~2% faster)
 
 ideas:
 - play around with "probable prime" - maybe failing in a higher base is okay?
@@ -21,3 +24,4 @@ ideas:
 - use hardware popcount (GCD test takes ~0.5% execution time)
 
 2022 Jun 17 - The hash-optimized 64-bit primality tests from misor were both slower than MPIR
+2022 Jun 18 - Using static sieve up to 17 saved 4% instead of 5% (we still have to sieve up to 997).
