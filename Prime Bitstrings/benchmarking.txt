@@ -16,12 +16,16 @@ Calculate change [b]efore and [a]fter: b = (), a = (), (a-b)/b*100
 20418/20573/21179 ms : Convert to base 2 allocation-free (~1.5% faster)
 20059/19817/19721 ms : Use a static sieve for primes up to 17, then sieve up to 997 (~4% faster)
 14296/14398/14492 ms : Only track odd numbers in sieves (~28% faster)
-14152/13995/13988 ms : Fix bug - only provide div to MPIR for base 2 (~2% faster)
+14152/13995/13988 ms : Bugfix: only provide div to MPIR for base 2 (~2% faster)
+13778/13940/13639 ms : Only static sieve up to 13 (~2% faster)
+13079/13055/13160 ms : Only use one mpz_class instance (~5% faster)
 
 ideas:
-- play around with "probable prime" - maybe failing in a higher base is okay?
-- consider reusing some mpz_class instances
-- use hardware popcount (GCD test takes ~0.5% execution time)
+- Let the full sieve be larger than (ie, a multiple of) the static sieve
+- Use vector<bool> (1/8 the memory, but with an instruction overhead)
+- Experiment with "probable prime" - maybe failing in a higher base is okay?
+- Use hardware popcount (GCD test takes ~0.5% execution time)
+- Allocate both sieves once (outside of the loops)
 
 2022 Jun 17 - The hash-optimized 64-bit primality tests from misor were both slower than MPIR
 2022 Jun 18 - Using static sieve up to 17 saved 4% instead of 5% (we still have to sieve up to 997).
