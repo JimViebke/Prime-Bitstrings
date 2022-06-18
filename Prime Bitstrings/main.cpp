@@ -87,6 +87,8 @@ void find_multibase_primes()
 	1000000101110111001011011000101000111000010001111 - a p8
 	*/
 	size_t number = 0b1000000010000011110100010001000101001010110111001;
+	static mpz_class mpz_prime; // it's a surprise tool that will help us later
+	mpz_prime = 0ull;
 
 	const size_t stopping_point = number + 500'000'000;
 	const std::vector<uint8_t> static_sieve = generate_static_sieve();
@@ -126,25 +128,24 @@ void find_multibase_primes()
 			// These are effectively performance-indentical, as both are some_lookup[abs(pca - pcb)]
 
 			// Bail if n is not prime in base 2
-			if (!mpir_is_prime(number, small_primes_cap)) continue; // can we do this natively, ie, without calling the lib?
+			mpz_prime = number;
+			if (!mpir_is_prime(mpz_prime, small_primes_cap)) continue; // can we do this natively, ie, without calling the lib?
 			// misof_16k::is_prime(number); // ~2.5x slower
 			// misof_262k::is_prime_2_64(number); // ~1.25x slower
 
-			// convert uint64_t to char array of ['0', '1'...] for mpz_class
+			// convert uint64_t to char array of ['0', '1'...] for MPIR
 			char bin_str[64 + 1];
 			auto result = std::to_chars(&bin_str[0], &bin_str[64], number, 2);
 			*result.ptr = '\0';
 
 			for (int base = 3; ; ++base)
 			{
-				const auto number_to_base = mpz_class{ bin_str, base };
-				if (!mpir_is_prime(number_to_base))
+				mpz_prime.set_str(bin_str, base);
+				if (!mpir_is_prime(mpz_prime))
 				{
-					// We just failed on "base", so "base > n" only logs
-					// results that reached equal to n or higher
 					if (base > 8)
 					{
-						log_result(number, base - 1);
+						log_result(number, base - 1); // prime up to base - 1, not base
 					}
 
 					break;
