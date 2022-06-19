@@ -35,7 +35,7 @@ void log_result(const mpz_class& n, size_t up_to_base)
 	ofs << ss.str();
 }
 
-void partial_sieve(const size_t& start, std::vector<uint8_t>& sieve)
+void partial_sieve(const size_t start, std::vector<uint8_t>& sieve)
 {
 	for (const size_t p : small_primes_lookup)
 	{

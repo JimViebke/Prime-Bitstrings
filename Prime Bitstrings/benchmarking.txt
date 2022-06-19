@@ -26,6 +26,9 @@ ideas:
 - Experiment with "probable prime" - maybe failing in a higher base is okay?
 - Use hardware popcount (GCD test takes ~0.5% execution time)
 - Allocate both sieves once (outside of the loops)
+- Use the FLINT implementation of BPSW
+- Compile against MPIR directly (src or lib)
+- Compare sieving with wheel factorization 
 
 2022 Jun 17 - The hash-optimized 64-bit primality tests from misor were both slower than MPIR
 2022 Jun 18 - Using static sieve up to 17 saved 4% instead of 5% (we still have to sieve up to 997).
