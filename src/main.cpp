@@ -10,6 +10,8 @@
 #include <charconv>
 #include <bitset>
 
+#include "pk_prime.hpp"
+
 #include "utility.hpp"
 #include "math.hpp"
 
@@ -102,6 +104,7 @@ void find_multibase_primes()
 	1000000101000010110111001101110110110000101010011 - a p9
 	1000000101000100101111101000110001001111110101001 - a p9
 	1000000101110111001011011000101000111000010001111 - a p8
+	1000000110101000000110000011010001000110011101011 - a p8
 	*/
 	size_t number = 0b1000000010000011110100010001000101001010110111001;
 	static mpz_class mpz_prime; // it's a surprise tool that will help us later
@@ -146,9 +149,11 @@ void find_multibase_primes()
 
 			// Bail if n is not prime in base 2
 			mpz_prime = number;
-			if (!mpir_is_prime(mpz_prime, small_primes_cap)) continue; // can we do this natively, ie, without calling the lib?
+			if (!mpir_is_prime(mpz_prime, small_primes_cap)) continue;
 			// misof_16k::is_prime(number); // ~2.5x slower
 			// misof_262k::is_prime_2_64(number); // ~1.25x slower
+			// if (!pk::is_prime(number)) continue; // ~6300x slower (??)
+			// if (!pk::fast_is_prime(number)) continue; // still extremely slow
 
 			// convert uint64_t to char array of ['0', '1'...] for MPIR
 			char bin_str[64 + 1];

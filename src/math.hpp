@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 #include "mpirxx.h"
+#include "pk_prime.hpp"
 
 namespace bpsw_1_native
 {
@@ -136,7 +137,7 @@ constexpr uint64_t tiny_primes_lookup()
 	return lookup;
 }
 
-constexpr size_t small_primes_cap = 1000;
+constexpr size_t small_primes_cap = 1621 + 1; // 1000;
 
 std::vector<size_t> generate_small_primes()
 {
@@ -324,4 +325,17 @@ void mpir_testing_2()
 	}
 
 	std::cout << "Found in " << current_time_in_ms() - start << " ms\n";
+}
+
+void pk_testing()
+{
+	// print n largest primes, counting down from 2^64
+	for (size_t i = -1, n = 0; n < 1000; i--)
+	{
+		if (pk::is_prime(i))
+		{
+			n++;
+			std::cout << i << '\n';
+		}
+	}
 }
