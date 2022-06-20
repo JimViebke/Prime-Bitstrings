@@ -4,7 +4,6 @@
 
 #include "mpirxx.h"
 
-// BPSW fails on p11 (a prime)
 namespace bpsw_1_native
 {
 	int pow(int pow_a, unsigned int pow_b, int pow_c) {

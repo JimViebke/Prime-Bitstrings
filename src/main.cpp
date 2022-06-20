@@ -31,8 +31,12 @@ void log_result(const mpz_class& n, size_t up_to_base)
 
 	std::cout << ss.str();
 
-	std::ofstream ofs("../results.txt", std::ofstream::app);
-	ofs << ss.str();
+	// Only log large primes to file
+	if (up_to_base >= 8)
+	{
+		std::ofstream ofs("results.txt", std::ofstream::app);
+		ofs << ss.str();
+	}
 }
 
 void partial_sieve(const size_t start, std::vector<uint8_t>& sieve)
@@ -69,6 +73,19 @@ const std::vector<uint8_t> generate_static_sieve()
 			sieve[i] = false;
 
 	return sieve;
+}
+
+void calculate_static_sieve_sizes()
+{
+	size_t sieve_size = 1;
+	for (auto p : small_primes_lookup)
+	{
+		if (p == 2) continue;
+		sieve_size *= p;
+		std::cout << "Static sieve size would be size " << sieve_size << " using product of primes up to " << p << '\n';
+		if (sieve_size > 1'000'000'000) return;
+	}
+	std::cout << "(no suitable sieve size found)\n";
 }
 
 void find_multibase_primes()
@@ -155,19 +172,6 @@ void find_multibase_primes()
 	}
 
 	std::cout << "Finished. " << current_time_in_ms() - start << " ms elapsed\n";
-}
-
-void generate_permanent_sieve_sizes()
-{
-	size_t sieve_size = 1;
-	for (auto p : small_primes_lookup)
-	{
-		if (p == 2) continue;
-		sieve_size *= p;
-		std::cout << "Static sieve size would be size " << sieve_size << " using product of primes up to " << p << '\n';
-		if (sieve_size > 1'000'000'000) return;
-	}
-	std::cout << "(no suitable sieve size found)\n";
 }
 
 
