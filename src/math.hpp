@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <nmmintrin.h>
 
 #include "mpirxx.h"
 #include "pk_prime.hpp"
@@ -103,14 +104,16 @@ mpz_class bin_to_base(const mpz_class& binary, const int base)
 
 inline uint64_t pop_count(uint64_t n)
 {
-	n -= ((n >> 1) & 0x5555555555555555ull);
-	n = (n & 0x3333333333333333ull) + (n >> 2 & 0x3333333333333333ull);
-	return ((n + (n >> 4)) & 0xf0f0f0f0f0f0f0full) * 0x101010101010101ull >> 56;
+	return _mm_popcnt_u64(n);
+
+	//n -= ((n >> 1) & 0x5555555555555555ull);
+	//n = (n & 0x3333333333333333ull) + (n >> 2 & 0x3333333333333333ull);
+	//return ((n + (n >> 4)) & 0xf0f0f0f0f0f0f0full) * 0x101010101010101ull >> 56;
 }
 
 // Generate a 64 bit lookup, where the prime-numbered bits are set high
 // 2 | 3 | 5 | 7 | 11 | 13 | 17 | 19 | 23 | 29 | 31 | 37 | 41 | 43 | 47 | 53 | 59 | 61
-constexpr uint64_t tiny_primes_lookup()
+constexpr uint64_t build_tiny_primes_lookup()
 {
 	uint64_t lookup = 0;
 
@@ -137,13 +140,13 @@ constexpr uint64_t tiny_primes_lookup()
 	return lookup;
 }
 
-constexpr size_t small_primes_cap = 1621 + 1; // 1000;
+constexpr size_t small_primes_cap = 1621; // 1000
 
 std::vector<size_t> generate_small_primes()
 {
 	std::vector<size_t> primes;
 
-	for (size_t i = 2; i < small_primes_cap; ++i)
+	for (size_t i = 2; i <= small_primes_cap; ++i)
 		if (mpir_is_prime(i))
 			primes.push_back(i);
 
@@ -152,26 +155,25 @@ std::vector<size_t> generate_small_primes()
 
 static const std::vector<size_t> small_primes_lookup = generate_small_primes();
 
-uint16_t gcd(uint16_t a, uint16_t b)
+constexpr uint16_t gcd(uint16_t a, uint16_t b)
 {
 	if (b == 0)
 		return a;
 	return gcd(b, a % b);
 }
 
-std::vector<uint16_t> build_gcd_1155_lookup()
+constexpr size_t build_gcd_1155_lookup()
 {
-	std::vector<uint16_t> gcds;
+	size_t lookup = 0;
 
-	for (uint16_t i = 0; i <= 1155; ++i)
+	// set bit i high if and only if the GCD of (i, 1155) is 1
+	for (uint16_t i = 0; i < 32; ++i)
 	{
-		gcds.push_back(gcd(i, 1155));
+		lookup |= (gcd(i, 1155) == 1ull) << i;
 	}
 
-	return gcds;
+	return lookup;
 }
-
-static const std::vector<uint16_t> gcd_1155 = build_gcd_1155_lookup();
 
 
 
@@ -179,10 +181,9 @@ static const std::vector<uint16_t> gcd_1155 = build_gcd_1155_lookup();
 
 
 
-// BPSW fails on p11 (a prime)
 void compare_implementations()
 {
-	size_t num = 282607273285049; // p11
+	size_t num = 282607273285049; // p11 - too large for 32-bit BPSW
 	// size_t num = 113;
 	std::cout << "Naive + native implementation:\n";
 	std::cout << num << " is " << (mpir_is_prime(num) ? "prime" : "not prime") << std::endl;

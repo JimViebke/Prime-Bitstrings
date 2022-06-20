@@ -112,6 +112,7 @@ void find_multibase_primes()
 
 	const size_t stopping_point = number + 500'000'000;
 	const std::vector<uint8_t> static_sieve = generate_static_sieve();
+	std::vector<uint8_t> sieve;
 	/* The number must start on an odd multiple of the sieve size.
 	 * To round N to the nearest odd multiple of K:
 	 * n -= k;
@@ -121,13 +122,16 @@ void find_multibase_primes()
 	number -= number % (2 * static_sieve.size());
 	number += static_sieve.size();
 
+	constexpr size_t tiny_primes_lookup = build_tiny_primes_lookup();
+	constexpr size_t gcd_1155_lookup = build_gcd_1155_lookup();
+
 	// Don't start the clock until here
 	auto start = current_time_in_ms();
 
 	for (; number < stopping_point; )
 	{
 		// perform additional sieving on the static sieve
-		std::vector<uint8_t> sieve = static_sieve;
+		sieve = static_sieve;
 		partial_sieve(number, sieve);
 
 		for (size_t i = 0; i < static_sieve.size(); ++i, number += 2)
@@ -136,16 +140,14 @@ void find_multibase_primes()
 			if (!sieve[i]) continue;
 
 			// Bail if n does not have a prime number of bits set.
-			if ((tiny_primes_lookup() & (1ull << pop_count(number))) == 0) continue;
+			if ((tiny_primes_lookup & (1ull << pop_count(number))) == 0) continue;
 			// We could use a 64-byte lookup instead of 64-bit lookup:
 			// if (!tiny_primes[pop_count(number)]) continue;
 
 			// Bail if gcd(abs(# of even bits - # of odd bits), 1155) is not equal to one.
 			const int pca = (int)pop_count(number & 0xAAAAAAAAAAAAAAAA);
 			const int pcb = (int)pop_count(number & 0x5555555555555555);
-			if (gcd_1155[abs(pca - pcb)] != 1) continue;
-			// Instead of "discard if gcd( ... ) != 1", you can "discard the candidate if sa is not a prime greater than 12."
-			// These are effectively performance-indentical, as both are some_lookup[abs(pca - pcb)]
+			if ((gcd_1155_lookup & (1ull << abs(pca - pcb))) == 0) continue;
 
 			// Bail if n is not prime in base 2
 			mpz_prime = number;
