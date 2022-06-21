@@ -1,0 +1,38 @@
+- A multibase prime + 2 is composite in all prime numbered bases.
+
+xxxxx11
+xxxxx01
+
+p + b^n == p??
+
+
+b2: p + 2^2 could be prime
+
+b3: p + 3^2 never prime
+
+p + 9 ? no
+
+
+1101 = prime in base 2
+
+N^3 + b^2 + .. + 1*2^0
+N^3 + b^2 + .. + 1*3^0
+
+64 + 16 + 0 + 1
+
+
+1 + b1*N^1 + b2*N^2 + b3*N^3 + b4*N^4
+
+                        + N <-- odd increase in b3, composite. Therefore, if number ends in 01, add >=4
+                  + N^2 - N
+            + N^3 - N^2 - N <-- odd increase in b3, composite. If number ends in 0111, add >=4
+      + N^4 - N^3 - N^2 - N
++ N^5 - N^4 - N^3 - N^2 - N <-- odd increase in b3, composite. If number ends in 011111, add >=4
+
+81 - 27 - 9 - 3
+
+in base 2: +N^2 - N = 	+2
+in base 3:  		  	+6
+		4:				+12
+		5:				+20
+		6: 				+30

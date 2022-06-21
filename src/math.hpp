@@ -12,7 +12,8 @@
 
 namespace bpsw_1_native
 {
-	int pow(int pow_a, unsigned int pow_b, int pow_c) {
+	int pow(int pow_a, unsigned int pow_b, int pow_c)
+	{
 		int result = 1;
 		pow_a = pow_a % pow_c;
 		while (pow_b > 0) {
@@ -23,7 +24,8 @@ namespace bpsw_1_native
 		}
 		return result;
 	}
-	bool MiillerTest(int MT_dt, int MT_num) {
+	bool MiillerTest(int MT_dt, int MT_num)
+	{
 		int MT_a = 2 + rand() % (MT_num - 4);
 		int MT_x = pow(MT_a, MT_dt, MT_num);
 		if (MT_x == 1 || MT_x == MT_num - 1)
@@ -38,7 +40,8 @@ namespace bpsw_1_native
 		}
 		return false;
 	}
-	bool prime(int P_N, int P_K) {
+	bool prime(int P_N, int P_K)
+	{
 		if (P_N <= 1 || P_N == 4)
 			return false;
 		if (P_N <= 3)
@@ -343,4 +346,50 @@ void pk_testing()
 			std::cout << i << '\n';
 		}
 	}
+}
+
+void multibase_gap_tests()
+{
+	const size_t p11 = 0b1000000010000011110100010001000101001010110111001; // large starting point
+
+	size_t previous_p4 = 0;
+	size_t found = 0;
+	
+	mpz_class b3;
+
+	for (size_t b2 = p11; found < 100; b2 += 2)
+	{
+		char bin_str[64 + 1];
+		auto result = std::to_chars(&bin_str[0], &bin_str[64], b2, 2);
+		*result.ptr = '\0';
+
+		b3.set_str(bin_str, 3);
+		// b4.set_str(bin_str, 4);
+		// b5.set_str(bin_str, 5);
+
+		if (mpir_is_prime(b2) && mpir_is_prime(b3)) // && mpir_is_prime(b4) && mpir_is_prime(b5))
+		{
+			std::cout << std::bitset<32>(b2) << '\t' << b2;
+
+			if (previous_p4 != 0)
+			{
+				std::cout << "\t+" << b2 - previous_p4;
+				++found;
+			}
+			previous_p4 = b2;
+
+			std::cout << '\n';
+		}
+
+		continue;
+
+		for (int i = 2; i < 10; ++i)
+		{
+			size_t v = binary_to_base(b2, i);
+			std::cout << '\t' << v << (mpir_is_prime(v) ? '\'' : ' ');
+		}
+
+		std::cout << '\n';
+	}
+
 }
