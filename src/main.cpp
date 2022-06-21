@@ -150,12 +150,15 @@ void find_multibase_primes()
 			if ((gcd_1155_lookup & (1ull << abs(pca - pcb))) == 0) continue;
 
 			// Bail if n is not prime in base 2
-			mpz_prime = number;
-			if (!mpir_is_prime(mpz_prime, small_primes_cap)) continue;
+			// mpz_prime = number;
+			if (!franken::mpir_is_likely_prime_BPSW(number)) continue;
 			// misof_16k::is_prime(number); // ~2.5x slower
 			// misof_262k::is_prime_2_64(number); // ~1.25x slower
 			// if (!pk::is_prime(number)) continue; // ~6300x slower (??)
 			// if (!pk::fast_is_prime(number)) continue; // still extremely slow
+			// if (!franken::n_is_pseudoprime_fermat(number, 2)) continue; // 2x slower
+			// if (!franken::n_is_pseudoprime_fibonacci(number)) continue; // remarkably only a bit slower :P
+			// if (!franken::n_is_pseudoprime_lucas(number)) continue;
 
 			// convert uint64_t to char array of ['0', '1'...] for MPIR
 			char bin_str[64 + 1];

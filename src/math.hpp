@@ -1,10 +1,14 @@
 #pragma once
 
+#include "mpirxx.h"
+#include "pk_prime.hpp"
+
 #include <stdint.h>
 #include <nmmintrin.h>
 
-#include "mpirxx.h"
-#include "pk_prime.hpp"
+#pragma warning(push, 0)
+#include "franken_fermat.hpp"
+#pragma warning(pop)
 
 namespace bpsw_1_native
 {

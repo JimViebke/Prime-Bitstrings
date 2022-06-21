@@ -57,7 +57,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <SDLCheck>true</SDLCheck>
+      <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions);_WIN64;GMP_LIMB_BITS=64</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -78,7 +78,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
+      <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions);_WIN64;GMP_LIMB_BITS=64</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -161,6 +161,7 @@
     <ClInclude Include="lib\mpir\msvc\vs17\lib_mpir_gc\x64\Release\longlong.h" />
     <ClInclude Include="lib\mpir\msvc\vs17\lib_mpir_gc\x64\Release\mpir.h" />
     <ClInclude Include="lib\mpir\msvc\vs17\lib_mpir_gc\x64\Release\mpirxx.h" />
+    <ClInclude Include="src\franken_fermat.hpp" />
     <ClInclude Include="src\pk_prime.hpp" />
     <ClInclude Include="src\math.hpp" />
     <ClInclude Include="src\utility.hpp" />
