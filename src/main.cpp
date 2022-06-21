@@ -165,19 +165,52 @@ void find_multibase_primes()
 			auto result = std::to_chars(&bin_str[0], &bin_str[64], number, 2);
 			*result.ptr = '\0';
 
-			for (int base = 3; ; ++base)
-			{
-				mpz_prime.set_str(bin_str, base);
-				if (!mpir_is_prime(mpz_prime))
-				{
-					if (base > 8)
-					{
-						log_result(number, base - 1); // prime up to base - 1, not base
-					}
+			//for (int base = 3; ; ++base)
+			//{
+			//	mpz_prime.set_str(bin_str, base);
+			//	if (!mpir_is_prime(mpz_prime))
+			//	{
+			//		if (base > 8)
+			//		{
+			//			log_result(number, base - 1); // prime up to base - 1, not base
+			//		}
 
-					break;
-				}
-			}
+			//		break;
+			//	}
+			//}
+
+			mpz_prime.set_str(bin_str, 3);
+			if (!mpir_is_prime(mpz_prime)) continue;
+
+			mpz_prime.set_str(bin_str, 4);
+			if (!mpir_is_prime(mpz_prime)) continue;
+
+			mpz_prime.set_str(bin_str, 5);
+			if (!mpir_is_prime(mpz_prime)) continue;
+
+			mpz_prime.set_str(bin_str, 6);
+			if (!mpir_is_prime(mpz_prime)) continue;
+
+			mpz_prime.set_str(bin_str, 7);
+			if (!mpir_is_prime(mpz_prime)) continue;
+
+			mpz_prime.set_str(bin_str, 8);
+			if (!mpir_is_prime(mpz_prime)) continue;
+
+			mpz_prime.set_str(bin_str, 9);
+			if (!mpir_is_prime(mpz_prime)) { log_result(number, 8); continue; }
+
+			mpz_prime.set_str(bin_str, 10);
+			if (!mpir_is_prime(mpz_prime)) { log_result(number, 9); continue; }
+
+			mpz_prime.set_str(bin_str, 11);
+			if (!mpir_is_prime(mpz_prime)) { log_result(number, 10); continue; }
+
+			mpz_prime.set_str(bin_str, 12);
+			if (!mpir_is_prime(mpz_prime)) { log_result(number, 11); continue; }
+
+			mpz_prime.set_str(bin_str, 13);
+			if (!mpir_is_prime(mpz_prime)) { log_result(number, 12); continue; }
 		}
 	}
 
