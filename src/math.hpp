@@ -10,6 +10,10 @@
 #include "franken_fermat.hpp"
 #pragma warning(pop)
 
+constexpr size_t small_primes_cap = 1621; // 1000
+
+static const std::vector<size_t> small_primes_lookup = build_small_primes_lookup();
+
 namespace bpsw_1_native
 {
 	int pow(int pow_a, unsigned int pow_b, int pow_c)
@@ -118,10 +122,11 @@ inline uint64_t pop_count(uint64_t n)
 	//return ((n + (n >> 4)) & 0xf0f0f0f0f0f0f0full) * 0x101010101010101ull >> 56;
 }
 
-// Generate a 64 bit lookup, where the prime-numbered bits are set high
-// 2 | 3 | 5 | 7 | 11 | 13 | 17 | 19 | 23 | 29 | 31 | 37 | 41 | 43 | 47 | 53 | 59 | 61
 constexpr uint64_t build_tiny_primes_lookup()
 {
+	// Generate a 64 bit lookup, where the prime-numbered bits are set high
+	// 2 | 3 | 5 | 7 | 11 | 13 | 17 | 19 | 23 | 29 | 31 | 37 | 41 | 43 | 47 | 53 | 59 | 61
+
 	uint64_t lookup = 0;
 
 	// We don't care about tiny pNs, therefore leave out the smallest of the primes.
@@ -147,9 +152,7 @@ constexpr uint64_t build_tiny_primes_lookup()
 	return lookup;
 }
 
-constexpr size_t small_primes_cap = 1621; // 1000
-
-std::vector<size_t> generate_small_primes()
+std::vector<size_t> build_small_primes_lookup()
 {
 	std::vector<size_t> primes;
 
@@ -159,8 +162,6 @@ std::vector<size_t> generate_small_primes()
 
 	return primes;
 }
-
-static const std::vector<size_t> small_primes_lookup = generate_small_primes();
 
 constexpr uint16_t gcd(uint16_t a, uint16_t b)
 {
@@ -354,7 +355,7 @@ void multibase_gap_tests()
 
 	size_t previous_p4 = 0;
 	size_t found = 0;
-	
+
 	mpz_class b3;
 
 	for (size_t b2 = p11; found < 100; b2 += 2)

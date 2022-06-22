@@ -27,6 +27,8 @@ Boston, MA 02110-1301, USA.
 #include "gmp-impl.h"
 #include "longlong.h"
 
+std::vector<size_t> build_small_primes_lookup();
+
 namespace franken
 {
 
@@ -88,7 +90,7 @@ namespace franken
 			sq = (res + 1) * (res + 1);
 			res = res + ((sq <= r2) && !((sq ^ r2) & GMP_LIMB_HIGHBIT));
 			return res;
-	}
+		}
 #else
 
 		double x, z;
@@ -131,7 +133,7 @@ namespace franken
 			return res;
 		}
 #endif
-}
+	}
 
 	static
 		double n_precompute_inverse(mp_limb_t n)
@@ -885,19 +887,20 @@ namespace franken
 
 #endif /* GMP_LIMB_BITS */
 
-	/*
-	   Could have another parameter to specify what "likely" means
-	   i.e. for factoring, for RSA or to state that we have already done
-	   trial div
-	*/
-
-	/*
-	   could call it mpz_likely_composite_p then when true return more info,
-	   i.e. a factor
-	*/
 	int
 		mpz_likely_prime_p(mpz_srcptr N, gmp_randstate_t STATE, mpir_ui td)
 	{
+		/*
+		   Could have another parameter to specify what "likely" means
+		   i.e. for factoring, for RSA or to state that we have already done
+		   trial div
+		*/
+
+		/*
+		   could call it mpz_likely_composite_p then when true return more info,
+		   i.e. a factor
+		*/
+
 		int d, t, r;
 		unsigned long tdlim, i;
 		mpz_t base, nm1, x, e, n;
@@ -1012,6 +1015,15 @@ namespace franken
 		return r;
 	}
 
+	size_t trial_division(mpz_srcptr N, size_t stop)
+	{
+		static const auto primes = build_small_primes_lookup();
+
+		for (size_t i = 1; i < primes.size() && primes[i] < stop; ++i)
+			if (mpz_divisible_ui_p(N, primes[i]))
+				return i;
+		return 0;
+	}
 }
 
 #ifdef COUNT_LEADING_ZEROS_NEED_CLZ_TAB

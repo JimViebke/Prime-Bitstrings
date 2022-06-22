@@ -105,6 +105,7 @@ void find_multibase_primes()
 	1000000101000100101111101000110001001111110101001 - a p9
 	1000000101110111001011011000101000111000010001111 - a p8
 	1000000110101000000110000011010001000110011101011 - a p8
+	1000001000100000111000011100111101010110110001111 - a p8
 	*/
 	size_t number = 0b1000000010000011110100010001000101001010110111001;
 	static mpz_class mpz_prime; // it's a surprise tool that will help us later
@@ -141,8 +142,6 @@ void find_multibase_primes()
 
 			// Bail if n does not have a prime number of bits set.
 			if ((tiny_primes_lookup & (1ull << pop_count(number))) == 0) continue;
-			// We could use a 64-byte lookup instead of 64-bit lookup:
-			// if (!tiny_primes[pop_count(number)]) continue;
 
 			// Bail if gcd(abs(# of even bits - # of odd bits), 1155) is not equal to one.
 			const int pca = (int)pop_count(number & 0xAAAAAAAAAAAAAAAA);
@@ -150,34 +149,29 @@ void find_multibase_primes()
 			if ((gcd_1155_lookup & (1ull << abs(pca - pcb))) == 0) continue;
 
 			// Bail if n is not prime in base 2
-			// mpz_prime = number;
 			if (!franken::mpir_is_likely_prime_BPSW(number)) continue;
-			// misof_16k::is_prime(number); // ~2.5x slower
-			// misof_262k::is_prime_2_64(number); // ~1.25x slower
-			// if (!pk::is_prime(number)) continue; // ~6300x slower (??)
-			// if (!pk::fast_is_prime(number)) continue; // still extremely slow
-			// if (!franken::n_is_pseudoprime_fermat(number, 2)) continue; // 2x slower
-			// if (!franken::n_is_pseudoprime_fibonacci(number)) continue; // remarkably only a bit slower :P
-			// if (!franken::n_is_pseudoprime_lucas(number)) continue;
 
 			// convert uint64_t to char array of ['0', '1'...] for MPIR
 			char bin_str[64 + 1];
 			auto result = std::to_chars(&bin_str[0], &bin_str[64], number, 2);
 			*result.ptr = '\0';
 
-			//for (int base = 3; ; ++base)
-			//{
-			//	mpz_prime.set_str(bin_str, base);
-			//	if (!mpir_is_prime(mpz_prime))
-			//	{
-			//		if (base > 8)
-			//		{
-			//			log_result(number, base - 1); // prime up to base - 1, not base
-			//		}
+			// Do cheap(er) trial division tests
 
-			//		break;
-			//	}
-			//}
+			mpz_prime.set_str(bin_str, 3);
+			if (franken::trial_division(mpz_prime.get_mpz_t(), 1000) != 0) continue;
+			mpz_prime.set_str(bin_str, 4);
+			if (franken::trial_division(mpz_prime.get_mpz_t(), 1000) != 0) continue;
+			mpz_prime.set_str(bin_str, 5);
+			if (franken::trial_division(mpz_prime.get_mpz_t(), 1000) != 0) continue;
+			mpz_prime.set_str(bin_str, 6);
+			if (franken::trial_division(mpz_prime.get_mpz_t(), 1000) != 0) continue;
+			mpz_prime.set_str(bin_str, 7);
+			if (franken::trial_division(mpz_prime.get_mpz_t(), 1000) != 0) continue;
+			mpz_prime.set_str(bin_str, 8);
+			if (franken::trial_division(mpz_prime.get_mpz_t(), 1000) != 0) continue;
+
+			// Do primality tests
 
 			mpz_prime.set_str(bin_str, 3);
 			if (!mpir_is_prime(mpz_prime)) continue;

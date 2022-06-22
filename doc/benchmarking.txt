@@ -23,12 +23,12 @@ Calculate change [b]efore and [a]fter: b = (), a = (), (a-b)/b*100
 12718/12550/12543 ms : Extend sieve from 997 to 1621 (~3% faster)
 12345/12491/12347 ms : Use hardware popcount (~1.5% faster)
 12326/12321/12348 ms : Change GCD lookup from vector to word (<1% faster)
+ 6173/ 6046/ 6035 ms : Div test bases 3-8 before primality testing >b2 (~50% faster)
 
 ideas:
 - Let the full sieve be larger than (ie, a multiple of) the static sieve
 - Use vector<bool> (1/8 the memory, but with an instruction overhead)
-- Use the FLINT implementation of BPSW (MPIR uses this already, especially under 2^64)
-- Compare sieving with wheel factorization 
+- Compare sieving with wheel factorization
 
 2022 Jun 17 - The hash-optimized 64-bit primality tests from misor were both slower than MPIR
 2022 Jun 18 - Using static sieve up to 17 saved 4% instead of 5% (we still have to sieve up to 997).
@@ -37,7 +37,14 @@ ideas:
             - MPIR already uses a native 64-bit solution whenever an mpz fits in one word
 			- "likely prime" is much cheaper than "probable prime"
 
-
-
+SPRP comparisons:
+if (!franken::mpir_is_likely_prime_BPSW(number)) continue; // baseline
+misof_16k::is_prime(number); // ~2.5x slower
+misof_262k::is_prime_2_64(number); // ~1.25x slower
+if (!pk::is_prime(number)) continue; // ~6300x slower (??)
+if (!pk::fast_is_prime(number)) continue; // still extremely slow
+if (!franken::n_is_pseudoprime_fermat(number, 2)) continue; // 2x slower
+if (!franken::n_is_pseudoprime_fibonacci(number)) continue; // remarkably only a bit slower :P
+if (!franken::n_is_pseudoprime_lucas(number)) continue; // ??
 
 
