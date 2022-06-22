@@ -111,6 +111,8 @@ void find_multibase_primes()
 	static mpz_class mpz_prime; // it's a surprise tool that will help us later
 	mpz_prime = 0ull;
 
+	mpz_class b3{ 0 }, b4{ 0 }, b5{ 0 }, b6{ 0 }, b7{ 0 }, b8{ 0 }, b9{ 0 }, b10{ 0 };
+
 	const size_t stopping_point = number + 500'000'000;
 	const std::vector<uint8_t> static_sieve = generate_static_sieve();
 	std::vector<uint8_t> sieve;
@@ -158,18 +160,67 @@ void find_multibase_primes()
 
 			// Do cheap(er) trial division tests
 
-			mpz_prime.set_str(bin_str, 3);
-			if (franken::trial_division(mpz_prime.get_mpz_t(), 1000) != 0) continue;
-			mpz_prime.set_str(bin_str, 4);
-			if (franken::trial_division(mpz_prime.get_mpz_t(), 1000) != 0) continue;
-			mpz_prime.set_str(bin_str, 5);
-			if (franken::trial_division(mpz_prime.get_mpz_t(), 1000) != 0) continue;
-			mpz_prime.set_str(bin_str, 6);
-			if (franken::trial_division(mpz_prime.get_mpz_t(), 1000) != 0) continue;
-			mpz_prime.set_str(bin_str, 7);
-			if (franken::trial_division(mpz_prime.get_mpz_t(), 1000) != 0) continue;
-			mpz_prime.set_str(bin_str, 8);
-			if (franken::trial_division(mpz_prime.get_mpz_t(), 1000) != 0) continue;
+			//mpz_prime.set_str(bin_str, 3);
+			//if (franken::trial_division(mpz_prime.get_mpz_t(), 100) != 0) continue;
+			//mpz_prime.set_str(bin_str, 4);
+			//if (franken::trial_division(mpz_prime.get_mpz_t(), 100) != 0) continue;
+			//mpz_prime.set_str(bin_str, 5);
+			//if (franken::trial_division(mpz_prime.get_mpz_t(), 150) != 0) continue;
+			//mpz_prime.set_str(bin_str, 6);
+			//if (franken::trial_division(mpz_prime.get_mpz_t(), 150) != 0) continue;
+			//mpz_prime.set_str(bin_str, 7);
+			//if (franken::trial_division(mpz_prime.get_mpz_t(), 150) != 0) continue;
+			//mpz_prime.set_str(bin_str, 8);
+			//if (franken::trial_division(mpz_prime.get_mpz_t(), 150) != 0) continue;
+			//mpz_prime.set_str(bin_str, 9);
+			//if (franken::trial_division(mpz_prime.get_mpz_t(), 150) != 0) continue;
+			//mpz_prime.set_str(bin_str, 10);
+			//if (franken::trial_division(mpz_prime.get_mpz_t(), 150) != 0) continue;
+			//mpz_prime.set_str(bin_str, 11);
+			//if (franken::trial_division(mpz_prime.get_mpz_t(), 150) != 0) continue;
+
+			b3.set_str(bin_str, 3);
+			//b4.set_str(bin_str, 4);
+			//b5.set_str(bin_str, 5);
+			//b6.set_str(bin_str, 6);
+			//b7.set_str(bin_str, 7);
+			//b8.set_str(bin_str, 8);
+			//b9.set_str(bin_str, 9);
+			//b10.set_str(bin_str, 10);
+
+			const size_t step = 20; // 20/40 or 18/36 both give t=4.9s
+			for (size_t j = 0; j < step * 2; j += step)
+			{
+				for (size_t k = j; k < j + step; ++k)
+					if (mpz_divisible_ui_p(b3.get_mpz_t(), small_primes_lookup[k])) { goto done; }
+				if (j == 0) b4.set_str(bin_str, 4);
+				for (size_t k = j; k < j + step; ++k)
+					if (mpz_divisible_ui_p(b4.get_mpz_t(), small_primes_lookup[k])) { goto done; }
+				if (j == 0) b5.set_str(bin_str, 5);
+				for (size_t k = j; k < j + step; ++k)
+					if (mpz_divisible_ui_p(b5.get_mpz_t(), small_primes_lookup[k])) { goto done; }
+				if (j == 0) b6.set_str(bin_str, 6);
+				for (size_t k = j; k < j + step; ++k)
+					if (mpz_divisible_ui_p(b6.get_mpz_t(), small_primes_lookup[k])) { goto done; }
+				if (j == 0) b7.set_str(bin_str, 7);
+				for (size_t k = j; k < j + step; ++k)
+					if (mpz_divisible_ui_p(b7.get_mpz_t(), small_primes_lookup[k])) { goto done; }
+				if (j == 0) b8.set_str(bin_str, 8);
+				for (size_t k = j; k < j + step; ++k)
+					if (mpz_divisible_ui_p(b8.get_mpz_t(), small_primes_lookup[k])) { goto done; }
+				if (j == 0) b9.set_str(bin_str, 9);
+				for (size_t k = j; k < j + step; ++k)
+					if (mpz_divisible_ui_p(b9.get_mpz_t(), small_primes_lookup[k])) { goto done; }
+				if (j == 0) b10.set_str(bin_str, 10);
+				for (size_t k = j; k < j + step; ++k)
+					if (mpz_divisible_ui_p(b10.get_mpz_t(), small_primes_lookup[k])) { goto done; }
+			}
+
+			if (false)
+			{
+			done:
+				continue;
+			}
 
 			// Do primality tests
 
