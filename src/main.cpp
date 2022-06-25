@@ -150,9 +150,6 @@ void find_multibase_primes()
 			const int pcb = (int)pop_count(number & 0x5555555555555555);
 			if ((gcd_1155_lookup & (1ull << abs(pca - pcb))) == 0) continue;
 
-			// Bail if n is not prime in base 2
-			if (!franken::mpir_is_likely_prime_BPSW(number)) continue;
-
 			// convert uint64_t to char array of ['0', '1'...] for MPIR
 			char bin_str[64 + 1];
 			auto result = std::to_chars(&bin_str[0], &bin_str[64], number, 2);
@@ -160,33 +157,7 @@ void find_multibase_primes()
 
 			// Do cheap(er) trial division tests
 
-			//mpz_prime.set_str(bin_str, 3);
-			//if (franken::trial_division(mpz_prime.get_mpz_t(), 100) != 0) continue;
-			//mpz_prime.set_str(bin_str, 4);
-			//if (franken::trial_division(mpz_prime.get_mpz_t(), 100) != 0) continue;
-			//mpz_prime.set_str(bin_str, 5);
-			//if (franken::trial_division(mpz_prime.get_mpz_t(), 150) != 0) continue;
-			//mpz_prime.set_str(bin_str, 6);
-			//if (franken::trial_division(mpz_prime.get_mpz_t(), 150) != 0) continue;
-			//mpz_prime.set_str(bin_str, 7);
-			//if (franken::trial_division(mpz_prime.get_mpz_t(), 150) != 0) continue;
-			//mpz_prime.set_str(bin_str, 8);
-			//if (franken::trial_division(mpz_prime.get_mpz_t(), 150) != 0) continue;
-			//mpz_prime.set_str(bin_str, 9);
-			//if (franken::trial_division(mpz_prime.get_mpz_t(), 150) != 0) continue;
-			//mpz_prime.set_str(bin_str, 10);
-			//if (franken::trial_division(mpz_prime.get_mpz_t(), 150) != 0) continue;
-			//mpz_prime.set_str(bin_str, 11);
-			//if (franken::trial_division(mpz_prime.get_mpz_t(), 150) != 0) continue;
-
 			b3.set_str(bin_str, 3);
-			//b4.set_str(bin_str, 4);
-			//b5.set_str(bin_str, 5);
-			//b6.set_str(bin_str, 6);
-			//b7.set_str(bin_str, 7);
-			//b8.set_str(bin_str, 8);
-			//b9.set_str(bin_str, 9);
-			//b10.set_str(bin_str, 10);
 
 			const size_t step = 20; // 20/40 or 18/36 both give t=4.9s
 			for (size_t j = 0; j < step * 2; j += step)
@@ -208,6 +179,9 @@ void find_multibase_primes()
 				if (j == 0) b8.set_str(bin_str, 8);
 				for (size_t k = j; k < j + step; ++k)
 					if (mpz_divisible_ui_p(b8.get_mpz_t(), small_primes_lookup[k])) { goto done; }
+
+				continue; // don't filter >b8
+
 				if (j == 0) b9.set_str(bin_str, 9);
 				for (size_t k = j; k < j + step; ++k)
 					if (mpz_divisible_ui_p(b9.get_mpz_t(), small_primes_lookup[k])) { goto done; }
@@ -221,6 +195,9 @@ void find_multibase_primes()
 			done:
 				continue;
 			}
+
+			// Bail if n is not prime in base 2
+			if (!franken::mpir_is_likely_prime_BPSW(number)) continue;
 
 			// Do primality tests
 

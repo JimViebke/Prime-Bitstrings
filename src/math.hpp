@@ -392,5 +392,4 @@ void multibase_gap_tests()
 
 		std::cout << '\n';
 	}
-
 }
