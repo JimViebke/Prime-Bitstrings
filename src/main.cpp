@@ -14,6 +14,7 @@
 
 #include "utility.hpp"
 #include "math.hpp"
+#include "multibase_div_tests.hpp"
 
 void log_time()
 {
@@ -103,15 +104,12 @@ void find_multibase_primes()
 	1000000101000001101101010011100101101110001100111 - a p9
 	1000000101000010110111001101110110110000101010011 - a p9
 	1000000101000100101111101000110001001111110101001 - a p9
-	1000000101110111001011011000101000111000010001111 - a p8
-	1000000110101000000110000011010001000110011101011 - a p8
-	1000001000100000111000011100111101010110110001111 - a p8
+	1000001101100110101110010111111111001111010001011 - a p8
+	1000010000010110011000010000011010101110110100001 - a p8
 	*/
 	size_t number = 0b1000000010000011110100010001000101001010110111001;
-	static mpz_class mpz_prime; // it's a surprise tool that will help us later
-	mpz_prime = 0ull;
-
-	mpz_class b3{ 0 }, b4{ 0 }, b5{ 0 }, b6{ 0 }, b7{ 0 }, b8{ 0 }, b9{ 0 }, b10{ 0 };
+	mpz_class mpz_prime = 0ull; // it's a surprise tool that will help us later
+	// mpz_class b3{ 0 }, b4{ 0 }, b5{ 0 }, b6{ 0 }, b7{ 0 }, b8{ 0 }, b9{ 0 }, b10{ 0 };
 
 	const size_t stopping_point = number + 500'000'000;
 	const std::vector<uint8_t> static_sieve = generate_static_sieve();
@@ -128,8 +126,13 @@ void find_multibase_primes()
 	constexpr size_t tiny_primes_lookup = build_tiny_primes_lookup();
 	constexpr size_t gcd_1155_lookup = build_gcd_1155_lookup();
 
+	// Dimensions are [base 3..n][primes][residues]
+	const std::vector<std::vector<std::vector<uint8_t>>> remainders = generate_remainders_for_bases(12, 40);
+	// Dimensions are [base 3..n][bitmasks for p]
+	const std::vector<std::vector<size_t>> bitmasks = generate_mod_remainder_bitmasks(remainders);
+
 	// Don't start the clock until here
-	auto start = current_time_in_ms();
+	const auto start = current_time_in_ms();
 
 	for (; number < stopping_point; )
 	{
@@ -150,44 +153,28 @@ void find_multibase_primes()
 			const int pcb = (int)pop_count(number & 0x5555555555555555);
 			if ((gcd_1155_lookup & (1ull << abs(pca - pcb))) == 0) continue;
 
-			// convert uint64_t to char array of ['0', '1'...] for MPIR
-			char bin_str[64 + 1];
-			auto result = std::to_chars(&bin_str[0], &bin_str[64], number, 2);
-			*result.ptr = '\0';
-
 			// Do cheap(er) trial division tests
 
-			b3.set_str(bin_str, 3);
-
-			const size_t step = 20; // 20/40 or 18/36 both give t=4.9s
+			const size_t step = 20; // 20*2 or 18*2 give best performance so far
 			for (size_t j = 0; j < step * 2; j += step)
 			{
-				for (size_t k = j; k < j + step; ++k)
-					if (mpz_divisible_ui_p(b3.get_mpz_t(), small_primes_lookup[k])) { goto done; }
-				if (j == 0) b4.set_str(bin_str, 4);
-				for (size_t k = j; k < j + step; ++k)
-					if (mpz_divisible_ui_p(b4.get_mpz_t(), small_primes_lookup[k])) { goto done; }
-				if (j == 0) b5.set_str(bin_str, 5);
-				for (size_t k = j; k < j + step; ++k)
-					if (mpz_divisible_ui_p(b5.get_mpz_t(), small_primes_lookup[k])) { goto done; }
-				if (j == 0) b6.set_str(bin_str, 6);
-				for (size_t k = j; k < j + step; ++k)
-					if (mpz_divisible_ui_p(b6.get_mpz_t(), small_primes_lookup[k])) { goto done; }
-				if (j == 0) b7.set_str(bin_str, 7);
-				for (size_t k = j; k < j + step; ++k)
-					if (mpz_divisible_ui_p(b7.get_mpz_t(), small_primes_lookup[k])) { goto done; }
-				if (j == 0) b8.set_str(bin_str, 8);
-				for (size_t k = j; k < j + step; ++k)
-					if (mpz_divisible_ui_p(b8.get_mpz_t(), small_primes_lookup[k])) { goto done; }
+				// for each base 3..8
+				for (size_t base = 3; base <= 8; ++base)
+				{
+					// for each small prime
+					for (size_t k = j; k < j + step; ++k)
+					{
+						// mask against bitmask[base][k] to collect residues in each set of positions
+						size_t residues = 0;
+						for (size_t l = 0; l < remainders[base][k].size(); ++l)
+						{
+							residues += pop_count(number & (bitmasks[base][k] << l)) * remainders[base][k][l];
+						}
 
-				continue; // don't filter >b8
-
-				if (j == 0) b9.set_str(bin_str, 9);
-				for (size_t k = j; k < j + step; ++k)
-					if (mpz_divisible_ui_p(b9.get_mpz_t(), small_primes_lookup[k])) { goto done; }
-				if (j == 0) b10.set_str(bin_str, 10);
-				for (size_t k = j; k < j + step; ++k)
-					if (mpz_divisible_ui_p(b10.get_mpz_t(), small_primes_lookup[k])) { goto done; }
+						// see if the sum of residues is evenly divisible by a given prime
+						if (residues % small_primes_lookup[k] == 0) { goto done; }
+					}
+				}
 			}
 
 			if (false)
@@ -196,10 +183,14 @@ void find_multibase_primes()
 				continue;
 			}
 
-			// Bail if n is not prime in base 2
+			// Do full primality tests, bail when n is not prime
+
 			if (!franken::mpir_is_likely_prime_BPSW(number)) continue;
 
-			// Do primality tests
+			// convert uint64_t to char array of ['0', '1'...] for MPIR
+			char bin_str[64 + 1];
+			auto result = std::to_chars(&bin_str[0], &bin_str[64], number, 2);
+			*result.ptr = '\0';
 
 			mpz_prime.set_str(bin_str, 3);
 			if (!mpir_is_prime(mpz_prime)) continue;

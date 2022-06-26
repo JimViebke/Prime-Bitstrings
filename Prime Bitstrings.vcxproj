@@ -162,6 +162,7 @@
     <ClInclude Include="lib\mpir\msvc\vs17\lib_mpir_gc\x64\Release\mpir.h" />
     <ClInclude Include="lib\mpir\msvc\vs17\lib_mpir_gc\x64\Release\mpirxx.h" />
     <ClInclude Include="src\franken_fermat.hpp" />
+    <ClInclude Include="src\multibase_div_tests.hpp" />
     <ClInclude Include="src\pk_prime.hpp" />
     <ClInclude Include="src\math.hpp" />
     <ClInclude Include="src\utility.hpp" />

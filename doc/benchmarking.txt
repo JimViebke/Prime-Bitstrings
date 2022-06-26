@@ -24,12 +24,16 @@ Calculate change [b]efore and [a]fter: b = (), a = (), (a-b)/b*100
 12345/12491/12347 ms : Use hardware popcount (~1.5% faster)
 12326/12321/12348 ms : Change GCD lookup from vector to word (<1% faster)
  4924/ 4985/ 4938 ms : Div test bases 3-8 before any primality testing (~60% faster)
+ 4233/ 4313/ 4226 ms : Perform div tests without converting from base 2 (~14% faster)
+
+
 
 ideas:
 - Let the full sieve be larger than (ie, a multiple of) the static sieve
 - Use vector<bool> (1/8 the memory, but with an instruction overhead)
 - Compare sieving with wheel factorization
 - Don't redo div tests during primality tests
+- Replace mod testing with a lookup table
 
 2022 Jun 17 - The hash-optimized 64-bit primality tests from misor were both slower than MPIR
 2022 Jun 18 - Using static sieve up to 17 saved 4% instead of 5% (we still have to sieve up to 997).
