@@ -12,7 +12,7 @@
 
 constexpr size_t small_primes_cap = 1621; // 1000
 
-static const std::vector<size_t> small_primes_lookup = build_small_primes_lookup();
+const std::vector<size_t> small_primes_lookup = build_small_primes_lookup();
 
 namespace bpsw_1_native
 {

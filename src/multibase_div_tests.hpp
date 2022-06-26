@@ -59,8 +59,7 @@ std::vector<std::vector<std::vector<uint8_t>>> generate_remainders_for_bases(
 	return remainders;
 }
 
-// Dimensions are [base 3..n][bitmasks for p]
-// This will correctly handle the dummy elements 0..2
+// Dimensions are [base 3..n][bitmasks for p], with blank elements for 0..2
 std::vector<std::vector<size_t>> generate_mod_remainder_bitmasks(const std::vector<std::vector<std::vector<uint8_t>>>& remainders)
 {
 	std::vector<std::vector<size_t>> bitmasks;
@@ -86,4 +85,44 @@ std::vector<std::vector<size_t>> generate_mod_remainder_bitmasks(const std::vect
 	}
 
 	return bitmasks;
+}
+
+namespace detail
+{
+	// Replaces "n % prime[k] == 0" with "lookup[n] & (1 << k)"
+	std::vector<size_t> build_divides_evenly_lookup()
+	{
+		// Given a % b, a must be smaller than (the largest prime <64) * (the largest remainder)
+
+		// find the largest remainder
+		size_t largest_remainder = 0;
+		const auto remainders = generate_remainders_for_bases(12, 40);
+		for (const auto& a : remainders)
+			for (const auto& b : a)
+				for (const auto& c : b)
+					if (c > largest_remainder)
+						largest_remainder = c;
+
+		std::vector<size_t> lookup;
+		lookup.reserve(largest_remainder * 61);
+
+		for (size_t i = 0; i < largest_remainder * 61; ++i)
+		{
+			size_t entry = 0;
+			for (size_t p = 0; p < 64; ++p)
+			{
+				entry |= (size_t((i % small_primes_lookup[p]) == 0) << p);
+			}
+
+			lookup.push_back(entry);
+		}
+
+		return lookup;
+	}
+	const std::vector<size_t> divides_evenly_lookup = build_divides_evenly_lookup();
+}
+
+inline bool divides_evenly(const size_t n, const size_t prime_index)
+{
+	return (detail::divides_evenly_lookup[n] & (1ull << prime_index)) != 0;
 }

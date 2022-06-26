@@ -109,9 +109,8 @@ void find_multibase_primes()
 	*/
 	size_t number = 0b1000000010000011110100010001000101001010110111001;
 	mpz_class mpz_prime = 0ull; // it's a surprise tool that will help us later
-	// mpz_class b3{ 0 }, b4{ 0 }, b5{ 0 }, b6{ 0 }, b7{ 0 }, b8{ 0 }, b9{ 0 }, b10{ 0 };
 
-	const size_t stopping_point = number + 500'000'000;
+	const size_t stopping_point = number + 5'000'000'000;
 	const std::vector<uint8_t> static_sieve = generate_static_sieve();
 	std::vector<uint8_t> sieve;
 	/* The number must start on an odd multiple of the sieve size.
@@ -172,7 +171,7 @@ void find_multibase_primes()
 						}
 
 						// see if the sum of residues is evenly divisible by a given prime
-						if (residues % small_primes_lookup[k] == 0) { goto done; }
+						if (divides_evenly(residues, k)) { goto done; }
 					}
 				}
 			}
