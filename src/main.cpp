@@ -15,6 +15,7 @@
 #include "utility.hpp"
 #include "math.hpp"
 #include "multibase_div_tests.hpp"
+#include "config.hpp"
 
 void log_time()
 {
@@ -35,7 +36,7 @@ void log_result(const mpz_class& n, size_t up_to_base)
 	std::cout << ss.str();
 
 	// Only log large primes to file
-	if (up_to_base >= 8)
+	if (up_to_base >= mbp::smallest_base_to_log)
 	{
 		std::ofstream ofs("results.txt", std::ofstream::app);
 		ofs << ss.str();
@@ -47,7 +48,7 @@ void partial_sieve(const size_t start, std::vector<uint8_t>& sieve)
 	for (const size_t p : small_primes_lookup)
 	{
 		// only mark off the small primes not already here
-		if (p <= 13) continue;
+		if (p <= mbp::static_sieve_primes.back()) continue;
 
 		// Find out how far past we are from the previous multiple of p.
 		// ie 3 == 10 % 7
@@ -66,13 +67,11 @@ void partial_sieve(const size_t start, std::vector<uint8_t>& sieve)
 
 const std::vector<uint8_t> generate_static_sieve()
 {
-	const std::vector<size_t> sieve_primes = { 3, 5, 7, 11, 13 };
-
-	std::vector<uint8_t> sieve({ 3 * 5 * 7 * 11 * 13 }, true);
+	std::vector<uint8_t> sieve(mbp::static_sieve_size, true);
 
 	// for each prime, mark off all multiples
-	for (const size_t p : sieve_primes)
-		for (size_t i = p; i < sieve.size(); i += p)
+	for (const auto p : mbp::static_sieve_primes)
+		for (auto i = p; i < sieve.size(); i += p)
 			sieve[i] = false;
 
 	return sieve;
@@ -93,29 +92,17 @@ void calculate_static_sieve_sizes()
 
 void find_multibase_primes()
 {
+	using namespace mbp;
+
 	gmp_random::r.seed(rand());
 
-	/*
-	Checkpoints to copy/paste as the starting point:
-	10011110011011110110110011 - p9
-	1000000010000011110100010001000101001010110111001 - p11
-	1000000011110100000000010000000101100110001111111 - a p9
-	1000000100010101001111100110110101001001100011101 - a p9
-	1000000101000001101101010011100101101110001100111 - a p9
-	1000000101000010110111001101110110110000101010011 - a p9
-	1000000101000100101111101000110001001111110101001 - a p9
-	1000001101100110101110010111111111001111010001011 - a p8
-	1000010000010110011000010000011010101110110100001 - a p8
-	1000010000100110000000011111000100100001110011101 - a p8
-	*/
-	size_t number = 0b1000000010000011110100010001000101001010110111001;
-	mpz_class mpz_prime = 0ull; // it's a surprise tool that will help us later
+	size_t number = mbp::starting_point;
+	mpz_class mpz_number = 0ull; // it's a surprise tool that will help us later
 
-	const size_t stopping_point = number + 5'000'000'000;
 	const std::vector<uint8_t> static_sieve = generate_static_sieve();
 	std::vector<uint8_t> sieve;
-	/* The number must start on an odd multiple of the sieve size.
-	 * To round N to the nearest odd multiple of K:
+
+	/* The number must start on an odd multiple of the sieve size. To round N to the nearest odd multiple of K:
 	 * n -= k;
 	 * n -= n % 2k;
 	 * n += k; */
@@ -127,20 +114,21 @@ void find_multibase_primes()
 	constexpr size_t gcd_1155_lookup = build_gcd_1155_lookup();
 
 	// Dimensions are [base 3..n][primes][residues]
-	const std::vector<std::vector<std::vector<uint8_t>>> remainders = generate_remainders_for_bases(12, 40);
+	const std::vector<std::vector<std::vector<uint8_t>>> remainders = generate_remainders_for_bases();
 	// Dimensions are [base 3..n][bitmasks for p]
 	const std::vector<std::vector<size_t>> bitmasks = generate_mod_remainder_bitmasks(remainders);
 
 	// Don't start the clock until here
 	const auto start = current_time_in_ms();
 
-	for (; number < stopping_point; )
+	// Condition optimizes out when not benchmarking
+	while (mbp::benchmark_mode ? number < stopping_point : true)
 	{
 		// perform additional sieving on the static sieve
 		sieve = static_sieve;
 		partial_sieve(number, sieve);
 
-		for (size_t i = 0; i < static_sieve.size(); ++i, number += 2)
+		for (size_t i = 0; i < mbp::static_sieve_size; ++i, number += 2)
 		{
 			// Bail if this number is already known to have a prime factor < 1000
 			if (!sieve[i]) continue;
@@ -155,14 +143,14 @@ void find_multibase_primes()
 
 			// Do cheap(er) trial division tests
 
-			const size_t step = 20; // 20*2 or 18*2 give best performance so far
-			for (size_t j = 0; j < step * 2; j += step)
+
+			for (size_t j = 0; j < div_test::n_of_primes; j += div_test::primes_per_round)
 			{
 				// for each base 3..8
-				for (size_t base = 3; base <= 8; ++base)
+				for (size_t base = 3; base <= div_test::up_to_base; ++base)
 				{
 					// for each small prime
-					for (size_t k = j; k < j + step; ++k)
+					for (size_t k = j; k < j + div_test::primes_per_round; ++k)
 					{
 						// mask against bitmask[base][k] to collect residues in each set of positions
 						size_t residues = 0;
@@ -192,38 +180,38 @@ void find_multibase_primes()
 			auto result = std::to_chars(&bin_str[0], &bin_str[64], number, 2);
 			*result.ptr = '\0';
 
-			mpz_prime.set_str(bin_str, 3);
-			if (!mpir_is_prime(mpz_prime)) continue;
+			mpz_number.set_str(bin_str, 3);
+			if (!mpir_is_prime(mpz_number)) continue;
 
-			mpz_prime.set_str(bin_str, 4);
-			if (!mpir_is_prime(mpz_prime)) continue;
+			mpz_number.set_str(bin_str, 4);
+			if (!mpir_is_prime(mpz_number)) continue;
 
-			mpz_prime.set_str(bin_str, 5);
-			if (!mpir_is_prime(mpz_prime)) continue;
+			mpz_number.set_str(bin_str, 5);
+			if (!mpir_is_prime(mpz_number)) continue;
 
-			mpz_prime.set_str(bin_str, 6);
-			if (!mpir_is_prime(mpz_prime)) continue;
+			mpz_number.set_str(bin_str, 6);
+			if (!mpir_is_prime(mpz_number)) continue;
 
-			mpz_prime.set_str(bin_str, 7);
-			if (!mpir_is_prime(mpz_prime)) continue;
+			mpz_number.set_str(bin_str, 7);
+			if (!mpir_is_prime(mpz_number)) continue;
 
-			mpz_prime.set_str(bin_str, 8);
-			if (!mpir_is_prime(mpz_prime)) continue;
+			mpz_number.set_str(bin_str, 8);
+			if (!mpir_is_prime(mpz_number)) continue;
 
-			mpz_prime.set_str(bin_str, 9);
-			if (!mpir_is_prime(mpz_prime)) { log_result(number, 8); continue; }
+			mpz_number.set_str(bin_str, 9);
+			if (!mpir_is_prime(mpz_number)) { log_result(number, 8); continue; }
 
-			mpz_prime.set_str(bin_str, 10);
-			if (!mpir_is_prime(mpz_prime)) { log_result(number, 9); continue; }
+			mpz_number.set_str(bin_str, 10);
+			if (!mpir_is_prime(mpz_number)) { log_result(number, 9); continue; }
 
-			mpz_prime.set_str(bin_str, 11);
-			if (!mpir_is_prime(mpz_prime)) { log_result(number, 10); continue; }
+			mpz_number.set_str(bin_str, 11);
+			if (!mpir_is_prime(mpz_number)) { log_result(number, 10); continue; }
 
-			mpz_prime.set_str(bin_str, 12);
-			if (!mpir_is_prime(mpz_prime)) { log_result(number, 11); continue; }
+			mpz_number.set_str(bin_str, 12);
+			if (!mpir_is_prime(mpz_number)) { log_result(number, 11); continue; }
 
-			mpz_prime.set_str(bin_str, 13);
-			if (!mpir_is_prime(mpz_prime)) { log_result(number, 12); continue; }
+			mpz_number.set_str(bin_str, 13);
+			if (!mpir_is_prime(mpz_number)) { log_result(number, 12); continue; }
 		}
 	}
 

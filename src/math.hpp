@@ -6,11 +6,11 @@
 #include <stdint.h>
 #include <nmmintrin.h>
 
+#include "config.hpp"
+
 #pragma warning(push, 0)
 #include "franken_fermat.hpp"
 #pragma warning(pop)
-
-constexpr size_t small_primes_cap = 1621; // 1000
 
 const std::vector<size_t> small_primes_lookup = build_small_primes_lookup();
 
@@ -75,13 +75,14 @@ bool mpir_is_probable_prime(const mpz_class& p, const int prob, const size_t div
 	return mpz_probable_prime_p(p.get_mpz_t(), gmp_random::r.get_randstate_t(), prob, div);
 }
 
-bool brute_force_is_prime(const size_t n)
+constexpr bool brute_force_is_prime(const size_t n)
 {
-	const size_t sqrt_n = size_t(sqrt(n));
+	if (n % 2 == 0) return false;
 
-	for (size_t i = 2; i <= sqrt_n; ++i)
+	const size_t sqrt_n = size_t(sqrt(n));
+	for (size_t i = 3; i <= sqrt_n; i += 2)
 	{
-		if (n / i * i == n) return false;
+		if (n % i == 0) return false;
 	}
 
 	return true;
@@ -152,18 +153,18 @@ constexpr uint64_t build_tiny_primes_lookup()
 	return lookup;
 }
 
-std::vector<size_t> build_small_primes_lookup()
+const std::vector<size_t> build_small_primes_lookup()
 {
 	std::vector<size_t> primes;
 
-	for (size_t i = 2; i <= small_primes_cap; ++i)
+	for (size_t i = 2; i <= mbp::sieve_primes_cap; ++i)
 		if (mpir_is_prime(i))
 			primes.push_back(i);
 
 	return primes;
 }
 
-constexpr uint16_t gcd(uint16_t a, uint16_t b)
+constexpr size_t gcd(size_t a, size_t b)
 {
 	if (b == 0)
 		return a;
@@ -175,9 +176,9 @@ constexpr size_t build_gcd_1155_lookup()
 	size_t lookup = 0;
 
 	// set bit i high if and only if the GCD of (i, 1155) is 1
-	for (uint16_t i = 0; i < 32; ++i)
+	for (size_t i = 0; i < 32; ++i)
 	{
-		lookup |= (gcd(i, 1155) == 1ull) << i;
+		lookup |= size_t(gcd(i, 1155u) == 1ull) << i;
 	}
 
 	return lookup;

@@ -18,7 +18,7 @@ Then, cheaply determine if this sum is divisible by p. This determines if the bi
 namespace detail
 {
 	// For numbers in base b, dimensions are [primes][residues]
-	std::vector<std::vector<uint8_t>> generate_remainders_for_base(const size_t base, const size_t n_of_primes)
+	const std::vector<std::vector<uint8_t>> generate_remainders_for_base(const size_t base, const size_t n_of_primes)
 	{
 		std::vector<std::vector<uint8_t>> remainders;
 
@@ -42,25 +42,23 @@ namespace detail
 }
 
 // dimensions are [base 3..n][primes][residues]
-std::vector<std::vector<std::vector<uint8_t>>> generate_remainders_for_bases(
-	const size_t stop_base,
-	const size_t n_of_primes)
+const std::vector<std::vector<std::vector<uint8_t>>> generate_remainders_for_bases()
 {
 	std::vector<std::vector<std::vector<uint8_t>>> remainders;
 	remainders.push_back(decltype(remainders)::value_type()); // Dummy values for base 0
 	remainders.push_back(decltype(remainders)::value_type()); // b1
 	remainders.push_back(decltype(remainders)::value_type()); // b2
 
-	for (size_t base = 3; base <= stop_base; ++base)
+	for (size_t base = 3; base <= mbp::div_test::up_to_base; ++base)
 	{
-		remainders.push_back(detail::generate_remainders_for_base(base, n_of_primes));
+		remainders.push_back(detail::generate_remainders_for_base(base, mbp::div_test::n_of_primes));
 	}
 
 	return remainders;
 }
 
 // Dimensions are [base 3..n][bitmasks for p], with blank elements for 0..2
-std::vector<std::vector<size_t>> generate_mod_remainder_bitmasks(const std::vector<std::vector<std::vector<uint8_t>>>& remainders)
+const std::vector<std::vector<size_t>> generate_mod_remainder_bitmasks(const std::vector<std::vector<std::vector<uint8_t>>>& remainders)
 {
 	std::vector<std::vector<size_t>> bitmasks;
 
@@ -90,13 +88,13 @@ std::vector<std::vector<size_t>> generate_mod_remainder_bitmasks(const std::vect
 namespace detail
 {
 	// Replaces "n % prime[k] == 0" with "lookup[n] & (1 << k)"
-	std::vector<size_t> build_divides_evenly_lookup()
+	const std::vector<size_t> build_divides_evenly_lookup()
 	{
 		// Given a % b, a must be smaller than (the largest prime <64) * (the largest remainder)
 
 		// find the largest remainder
 		size_t largest_remainder = 0;
-		const auto remainders = generate_remainders_for_bases(12, 40);
+		const auto remainders = generate_remainders_for_bases();
 		for (const auto& a : remainders)
 			for (const auto& b : a)
 				for (const auto& c : b)
@@ -104,7 +102,7 @@ namespace detail
 						largest_remainder = c;
 
 		std::vector<size_t> lookup;
-		lookup.reserve(largest_remainder * 61);
+		lookup.reserve(largest_remainder * 61); // 61 is the smallest prime <= 64
 
 		for (size_t i = 0; i < largest_remainder * 61; ++i)
 		{
@@ -119,6 +117,7 @@ namespace detail
 
 		return lookup;
 	}
+
 	const std::vector<size_t> divides_evenly_lookup = build_divides_evenly_lookup();
 }
 

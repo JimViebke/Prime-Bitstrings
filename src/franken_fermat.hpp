@@ -27,7 +27,7 @@ Boston, MA 02110-1301, USA.
 #include "gmp-impl.h"
 #include "longlong.h"
 
-std::vector<size_t> build_small_primes_lookup();
+const std::vector<size_t> build_small_primes_lookup();
 
 namespace franken
 {
@@ -1013,16 +1013,6 @@ namespace franken
 		mpz_clear(x);
 
 		return r;
-	}
-
-	size_t trial_division(mpz_srcptr N, size_t stop)
-	{
-		static const auto primes = build_small_primes_lookup();
-
-		for (size_t i = 1; i < primes.size() && primes[i] < stop; ++i)
-			if (mpz_divisible_ui_p(N, primes[i]))
-				return i;
-		return 0;
 	}
 }
 
