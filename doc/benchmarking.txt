@@ -35,7 +35,6 @@ ideas:
 - Compare sieving with wheel factorization
 - Don't redo div tests during primality tests
 
-2022 Jun 17 - The hash-optimized 64-bit primality tests from misor were both slower than MPIR
 2022 Jun 18 - Using static sieve up to 17 saved 4% instead of 5% (we still have to sieve up to 997).
             - Rebuilt MPIR on C++20, got a small performance boost. Previous builds seemed correct.
 2022 Jun 20 - If MPIR is ignoring "div", that absolutely should not have affected performance

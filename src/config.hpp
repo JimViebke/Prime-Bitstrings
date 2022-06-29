@@ -18,15 +18,15 @@ namespace mbp
 	1000010000010110011000010000011010101110110100001 - a p8
 	1000010000100110000000011111000100100001110011101 - a p8
 	1000010100100001100110111110000101010011001100111 - a p8
+	1000011010100011010110010011101011010011010000011 - a p8
 	*/
 
 	const size_t p11 = 0b1000000010000011110100010001000101001010110111001;
-	const size_t largest_known_mpb = 0b1000010100100001100110111110000101010011001100111;
 
-	const bool benchmark_mode = true;
-
-	const size_t starting_point = benchmark_mode ? p11 : largest_known_mpb;
-	const size_t stopping_point = starting_point + 5'000'000'000;
+	const bool benchmark_mode = false;
+	const size_t bm_start = p11;
+	const size_t bm_size = 5'000'000'000;
+	const size_t bm_stop = bm_start + bm_size;
 
 	// The size of the static sieve is the product of these numbers. Exercise caution.
 	constexpr std::array static_sieve_primes{ 3, 5, 7, 11, 13 };
@@ -46,4 +46,6 @@ namespace mbp
 	const size_t smallest_base_to_log = 8;
 
 	const size_t sieve_primes_cap = 1621; // previously 1000
+
+	const char results_path[] = "results.txt";
 }

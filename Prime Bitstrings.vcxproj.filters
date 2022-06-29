@@ -230,6 +230,9 @@
     <ClInclude Include="src\config.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\sandbox.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="results.txt">

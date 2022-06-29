@@ -166,6 +166,7 @@
     <ClInclude Include="src\multibase_div_tests.hpp" />
     <ClInclude Include="src\pk_prime.hpp" />
     <ClInclude Include="src\math.hpp" />
+    <ClInclude Include="src\sandbox.hpp" />
     <ClInclude Include="src\utility.hpp" />
   </ItemGroup>
   <ItemGroup>

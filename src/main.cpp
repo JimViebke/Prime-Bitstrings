@@ -22,8 +22,7 @@ void log_time()
 	time_t timestamp = time(0);
 	tm now;
 	localtime_s(&now, &timestamp);
-	std::cout << std::setfill('0');
-	std::cout << std::setw(2) << ((now.tm_hour % 12 == 0) ? 12 : now.tm_hour % 12) << ':' << std::setw(2) << now.tm_min << '\t';
+	std::cout << std::setfill('0') << std::setw(2) << ((now.tm_hour % 12 == 0) ? 12 : now.tm_hour % 12) << ':' << std::setw(2) << now.tm_min << '\t';
 }
 
 void log_result(const mpz_class& n, size_t up_to_base)
@@ -38,9 +37,48 @@ void log_result(const mpz_class& n, size_t up_to_base)
 	// Only log large primes to file
 	if (up_to_base >= mbp::smallest_base_to_log)
 	{
-		std::ofstream ofs("results.txt", std::ofstream::app);
+		std::ofstream ofs(mbp::results_path, std::ofstream::app);
 		ofs << ss.str();
 	}
+}
+
+size_t load_from_results()
+{
+	// Load the largest (not necessarily last) number from the "results" log.
+
+	std::ifstream ifs(mbp::results_path);
+	size_t number = 0;
+
+	std::string str;
+	while (std::getline(ifs, str))
+	{
+		if (str.empty()) continue;
+
+		const auto start = str.find('(');
+		const auto end = str.find(')');
+
+		if (start == std::string::npos ||
+			end == std::string::npos ||
+			start > end) continue;
+
+		str = str.substr(start + 1, (end - start) - 1);
+
+		size_t v = 0;
+		auto r = std::from_chars(str.c_str(), str.c_str() + str.size(), v);
+
+		if (r.ec != std::errc())
+		{
+			std::cout << "Read bad value: " << v << ", error: " << size_t(r.ec) << std::endl;
+			continue;
+		}
+
+		if (v > number)
+			number = v;
+	}
+
+	std::cout << "Loaded starting point from " << mbp::results_path << ": " << number << std::endl;
+
+	return number;
 }
 
 void partial_sieve(const size_t start, std::vector<uint8_t>& sieve)
@@ -77,17 +115,34 @@ const std::vector<uint8_t> generate_static_sieve()
 	return sieve;
 }
 
-void calculate_static_sieve_sizes()
+inline bool has_small_divisor(const size_t number,
+							  const std::vector<std::vector<std::vector<uint8_t>>>& remainders,
+							  const std::vector<std::vector<size_t>>& bitmasks)
 {
-	size_t sieve_size = 1;
-	for (auto p : small_primes_lookup)
+	using namespace mbp;
+
+	for (size_t j = 0; j < div_test::n_of_primes; j += div_test::primes_per_round)
 	{
-		if (p == 2) continue;
-		sieve_size *= p;
-		std::cout << "Static sieve size would be size " << sieve_size << " using product of primes up to " << p << '\n';
-		if (sieve_size > 1'000'000'000) return;
+		// for each base 3..8
+		for (size_t base = 3; base <= div_test::up_to_base; ++base)
+		{
+			// for each small prime
+			for (size_t k = j; k < j + div_test::primes_per_round; ++k)
+			{
+				// mask against bitmask[base][k] to collect residues in each set of positions
+				size_t residues = 0;
+				for (size_t l = 0; l < remainders[base][k].size(); ++l)
+				{
+					residues += pop_count(number & (bitmasks[base][k] << l)) * remainders[base][k][l];
+				}
+
+				// see if the sum of residues is evenly divisible by a given prime
+				if (divides_evenly(residues, k)) return true;
+			}
+		}
 	}
-	std::cout << "(no suitable sieve size found)\n";
+
+	return false;
 }
 
 void find_multibase_primes()
@@ -96,7 +151,7 @@ void find_multibase_primes()
 
 	gmp_random::r.seed(rand());
 
-	size_t number = mbp::starting_point;
+	size_t number = mbp::benchmark_mode ? mbp::bm_start : load_from_results();
 	mpz_class mpz_number = 0ull; // it's a surprise tool that will help us later
 
 	const std::vector<uint8_t> static_sieve = generate_static_sieve();
@@ -122,7 +177,7 @@ void find_multibase_primes()
 	const auto start = current_time_in_ms();
 
 	// Condition optimizes out when not benchmarking
-	while (mbp::benchmark_mode ? number < stopping_point : true)
+	while (mbp::benchmark_mode ? number < bm_stop : true)
 	{
 		// perform additional sieving on the static sieve
 		sieve = static_sieve;
@@ -141,38 +196,12 @@ void find_multibase_primes()
 			const int pcb = (int)pop_count(number & 0x5555555555555555);
 			if ((gcd_1155_lookup & (1ull << abs(pca - pcb))) == 0) continue;
 
-			// Do cheap(er) trial division tests
+			// Run cheap trial division tests across multiple bases
+			if (has_small_divisor(number, remainders, bitmasks)) continue;
 
 
-			for (size_t j = 0; j < div_test::n_of_primes; j += div_test::primes_per_round)
-			{
-				// for each base 3..8
-				for (size_t base = 3; base <= div_test::up_to_base; ++base)
-				{
-					// for each small prime
-					for (size_t k = j; k < j + div_test::primes_per_round; ++k)
-					{
-						// mask against bitmask[base][k] to collect residues in each set of positions
-						size_t residues = 0;
-						for (size_t l = 0; l < remainders[base][k].size(); ++l)
-						{
-							residues += pop_count(number & (bitmasks[base][k] << l)) * remainders[base][k][l];
-						}
 
-						// see if the sum of residues is evenly divisible by a given prime
-						if (divides_evenly(residues, k)) { goto done; }
-					}
-				}
-			}
-
-			if (false)
-			{
-			done:
-				continue;
-			}
-
-			// Do full primality tests, bail when n is not prime
-
+			// Do full primality tests, starting with base 2
 			if (!franken::mpir_is_likely_prime_BPSW(number)) continue;
 
 			// convert uint64_t to char array of ['0', '1'...] for MPIR
