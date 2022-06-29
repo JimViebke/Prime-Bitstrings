@@ -103,11 +103,11 @@ namespace franken
 		mp_limb_t bits64 = (r & GMP_LIMB_HIGHBIT);
 		mp_limb_t r2;
 		/* algorithm can't handle 64 bits */
-		if (bits64)
-		{
-			r2 = r;
-			r >>= 2;
-		}
+		// if (bits64)
+		// {
+		r2 = r;
+		r >>= 2;
+		// }
 
 		temp.f = (double)r;
 		temp.l = (CNST_LIMB(0xbfcdd90a00000000) - temp.l) >> 1; /* estimate of 1/sqrt(y) */
@@ -593,7 +593,7 @@ namespace franken
 	static
 		n_pair_t fchain_precomp(mp_limb_t m, mp_limb_t n, double npre)
 	{
-		n_pair_t current, old;
+		n_pair_t current{}, old;
 		int length;
 		mp_limb_t power, xy, xx, yy;
 
@@ -630,7 +630,7 @@ namespace franken
 	static
 		n_pair_t fchain2_preinv(mp_limb_t m, mp_limb_t n, mp_limb_t ninv)
 	{
-		n_pair_t current, old;
+		n_pair_t current{}, old;
 		int length;
 		mp_limb_t power, xy, xx, yy;
 
@@ -699,7 +699,7 @@ namespace franken
 	static
 		n_pair_t lchain_precomp(mp_limb_t m, mp_limb_t a, mp_limb_t n, double npre)
 	{
-		n_pair_t current, old;
+		n_pair_t current{}, old;
 		int length, i;
 		mp_limb_t power, xy, xx, yy;
 
@@ -736,7 +736,7 @@ namespace franken
 	static
 		n_pair_t lchain2_preinv(mp_limb_t m, mp_limb_t a, mp_limb_t n, mp_limb_t ninv)
 	{
-		n_pair_t current, old;
+		n_pair_t current{}, old;
 		int length, i;
 		mp_limb_t power, xy, xx, yy;
 
@@ -902,7 +902,7 @@ namespace franken
 		*/
 
 		int d, t, r;
-		unsigned long tdlim, i;
+		unsigned long long tdlim, i;
 		mpz_t base, nm1, x, e, n;
 
 		ALLOC(n) = ALLOC(N);
