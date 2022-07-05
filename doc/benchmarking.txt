@@ -28,6 +28,10 @@ Calculate change [b]efore and [a]fter: b = (), a = (), (a-b)/b*100
 === change benchmark from p11 + 500 million to p11 + 5 billion ===
 47091 ms : (no changes)
 37193 ms : Use lookup table for div tests instead of modulo (~21% faster)
+34075 ms : Iterate primes before bases in div tests; start from 3 instead of 2 (~8% faster)
+33287 ms : Div test with 20 primes instead of 40 (~2% faster)
+
+
 
 
 ideas:

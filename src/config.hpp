@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <array>
+#include <numeric>
 
 namespace mbp
 {
@@ -35,15 +36,10 @@ namespace mbp
 
 	namespace div_test // trial division tests
 	{
-		// 2*20 or 2*18 give best performance so far
-		const size_t rounds = 2;
-		const size_t primes_per_round = 20;
-		const size_t n_of_primes = rounds * primes_per_round;
+		const size_t n_of_primes = 20;
 
 		const size_t up_to_base = 8;
 	}
-
-	const size_t smallest_base_to_log = 8;
 
 	const size_t sieve_primes_cap = 1621; // previously 1000
 

@@ -241,5 +241,6 @@
     <Text Include="doc\benchmarking.txt">
       <Filter>Resource Files</Filter>
     </Text>
+    <Text Include="doc\old benchmark notes.txt" />
   </ItemGroup>
 </Project>

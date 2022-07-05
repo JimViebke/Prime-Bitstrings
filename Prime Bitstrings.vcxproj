@@ -171,6 +171,7 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="doc\benchmarking.txt" />
+    <Text Include="doc\old benchmark notes.txt" />
     <Text Include="results.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
