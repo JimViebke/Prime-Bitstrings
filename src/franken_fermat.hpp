@@ -23,9 +23,11 @@ to the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
 Boston, MA 02110-1301, USA.
 */
 
+#pragma warning(push, 0)
 #include "mpir.h"
 #include "gmp-impl.h"
 #include "longlong.h"
+#pragma warning(pop)
 
 const std::vector<size_t> build_small_primes_lookup();
 

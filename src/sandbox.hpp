@@ -4,7 +4,9 @@
 #include <vector>
 #include <bitset>
 
+#pragma warning(push, 0)
 #include "mpirxx.h"
+#pragma warning(pop)
 
 #include "math.hpp"
 #include "utility.hpp"

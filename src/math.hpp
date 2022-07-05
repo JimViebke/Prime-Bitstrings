@@ -1,13 +1,13 @@
 #pragma once
 
+#pragma warning(push, 0)
 #include "mpirxx.h"
-//#include "pk_prime.hpp"
+#pragma warning(pop)
 
 #include <stdint.h>
 #include <nmmintrin.h>
 
 #include "config.hpp"
-
 #pragma warning(push, 0)
 #include "franken_fermat.hpp"
 #pragma warning(pop)
@@ -67,12 +67,12 @@ namespace gmp_random
 
 bool mpir_is_prime(const mpz_class& p, const size_t div = 0)
 {
-	return mpz_likely_prime_p(p.get_mpz_t(), gmp_random::r.get_randstate_t(), div);
+	return bool(mpz_likely_prime_p(p.get_mpz_t(), gmp_random::r.get_randstate_t(), div));
 }
 
 bool mpir_is_probable_prime(const mpz_class& p, const int prob, const size_t div)
 {
-	return mpz_probable_prime_p(p.get_mpz_t(), gmp_random::r.get_randstate_t(), prob, div);
+	return bool(mpz_probable_prime_p(p.get_mpz_t(), gmp_random::r.get_randstate_t(), prob, div));
 }
 
 constexpr bool brute_force_is_prime(const size_t n)
@@ -116,7 +116,7 @@ mpz_class bin_to_base(const mpz_class& binary, const int base)
 
 inline uint64_t pop_count(uint64_t n)
 {
-	return _mm_popcnt_u64(n);
+	return uint64_t(_mm_popcnt_u64(n));
 
 	//n -= ((n >> 1) & 0x5555555555555555ull);
 	//n = (n & 0x3333333333333333ull) + (n >> 2 & 0x3333333333333333ull);

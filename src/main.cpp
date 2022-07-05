@@ -130,12 +130,11 @@ inline bool has_small_divisor(const size_t number,
 	return false;
 }
 
-
 void find_multibase_primes()
 {
 	using namespace mbp;
 
-	gmp_random::r.seed(rand());
+	gmp_random::r.seed(mpir_ui(rand()));
 
 	size_t number = mbp::benchmark_mode ? mbp::bm_start : load_from_results();
 	mpz_class mpz_number = 0ull; // it's a surprise tool that will help us later
@@ -230,6 +229,7 @@ void find_multibase_primes()
 
 	std::cout << "Finished. " << current_time_in_ms() - start << " ms elapsed\n";
 }
+
 
 
 int main()

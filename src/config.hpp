@@ -25,12 +25,13 @@ namespace mbp
 	const size_t p11 = 0b1000000010000011110100010001000101001010110111001;
 
 	const bool benchmark_mode = false;
+
 	const size_t bm_start = p11;
 	const size_t bm_size = 5'000'000'000;
 	const size_t bm_stop = bm_start + bm_size;
 
 	// The size of the static sieve is the product of these numbers. Exercise caution.
-	constexpr std::array static_sieve_primes{ 3, 5, 7, 11, 13 };
+	constexpr std::array static_sieve_primes{ 3ull, 5ull, 7ull, 11ull, 13ull };
 
 	constexpr size_t static_sieve_size = std::accumulate(static_sieve_primes.begin(), static_sieve_primes.end(), size_t(1), std::multiplies());
 

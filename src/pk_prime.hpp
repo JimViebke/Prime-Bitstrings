@@ -28,7 +28,8 @@ namespace pk
 	  1531,1543,1549,1553,1559,1567,1571,1579,1583,1597,1601,1607,1609,1613,1619,1621
 	};
 
-	uint64_t mulMod(uint64_t a, uint64_t b, uint64_t m) {
+	uint64_t mulMod(uint64_t a, uint64_t b, uint64_t m)
+	{
 		/* Calculate ab (mod m)
 		**
 		** Decompose into sum of powers of 2 (mod m)
@@ -50,7 +51,8 @@ namespace pk
 		return r;
 	}
 
-	uint64_t powMod(uint64_t a, uint64_t b, uint64_t m) {
+	uint64_t powMod(uint64_t a, uint64_t b, uint64_t m)
+	{
 		/* Calculate a^b (mod m)
 		**
 		** Decomposes into product of squares (mod m)
@@ -64,7 +66,8 @@ namespace pk
 		return r;
 	}
 
-	bool sprp(uint64_t n, uint64_t a) {
+	bool sprp(uint64_t n, uint64_t a)
+	{
 		/* Calculate d/s representation of n */
 		uint64_t d = n - 1;
 		uint8_t s = 0;
@@ -84,7 +87,8 @@ namespace pk
 		return false;
 	}
 
-	bool is_prime(uint64_t n) {
+	bool is_prime(uint64_t n)
+	{
 		// Catch easy answers
 		if (n < 2) return false;    // 0 and 1 are not prime
 		if (n < 4) return true;     // 2 and 3 are prime
@@ -130,7 +134,8 @@ namespace pk
 		return true;
 	}
 
-	bool fast_is_prime(uint64_t n) {
+	bool fast_is_prime(uint64_t n)
+	{
 		// SPRP tests
 		//
 		// Thresholds from Sloan sequence A014233
