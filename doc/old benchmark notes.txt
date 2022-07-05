@@ -1,0 +1,53 @@
+
+
+
+2022 Jun 18 - Using static sieve up to 17 saved 4% instead of 5% (we still have to sieve up to 997).
+            - Rebuilt MPIR on C++20, got a small performance boost. Previous builds seemed correct.
+2022 Jun 20 - If MPIR is ignoring "div", that absolutely should not have affected performance
+            - MPIR already uses a native 64-bit solution whenever an mpz fits in one word
+			- "likely prime" is much cheaper than "probable prime"
+
+
+
+SPRP comparisons:
+if (!franken::mpir_is_likely_prime_BPSW(number)) continue; // baseline
+misof_16k::is_prime(number); // ~2.5x slower
+misof_262k::is_prime_2_64(number); // ~1.25x slower
+if (!pk::is_prime(number)) continue; // ~6300x slower (??)
+if (!pk::fast_is_prime(number)) continue; // still extremely slow
+if (!franken::n_is_pseudoprime_fermat(number, 2)) continue; // 2x slower
+if (!franken::n_is_pseudoprime_fibonacci(number)) continue; // remarkably only a bit slower :P
+if (!franken::n_is_pseudoprime_lucas(number)) continue; // ??
+
+
+
+From the forum thread: "for a number to be prime in bases 2 thru n, the digit sum must be (n-1)-unsmooth and the alternating digit sum must (n+1)-unsmooth."
+
+
+
+36xxx/37612 ms : v1 - (baseline, above)
+36814/36737 ms : v2 - 2D remainder vector, 2D bitmask (~1% faster)
+43802/      ms : v3 - 1D remainder vector, 2D bitmask
+44336/      ms : v4 - 1D remainder vector, 1D bitmask
+38365/38403 ms : v5 - 2D remainder vector, 1D bitmask
+45369/      ms : v6 - 3D remainder vector, 2D bitmask, same as baseline but primes-first
+47081/      ms : v7 - 2D remainder vector, 1D bitmask, no padding
+39764/38852 ms : v8 - 2D remainder vector, 1D bitmask, no padding, *identical ordering to v1*
+36020       ms :    -    skip "2"
+35503       ms : v9 - 2D remainder vector, 1D bitmask, primes first, skipping "2"
+
+v1 is slow because it's div testing from 2 instead of 3
+v2 saw a tiny speed-up from switching to 2D
+	v3 heavy padding
+	v4 heavy padding still
+v5 ditches the worst of the padding
+	v6 is slow because it's primes-first, and starting from 2
+	v7 is slow because it's primes-first, and starting from 2, still
+v8 uses the exact bases-first ordering of v1.
+v9 is the fastest version by a bit, because it skips prime "2"
+
+
+
+Div testing does not need to check against 2.
+- Even bases can't be divisible by 2, because all candidates end in 1.
+- Odd bases can't be divisible by 2, because we check for an odd number of bits.

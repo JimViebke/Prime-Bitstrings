@@ -25,30 +25,16 @@ Calculate change [b]efore and [a]fter: b = (), a = (), (a-b)/b*100
 12326/12321/12348 ms : Change GCD lookup from vector to word (<1% faster)
  4924/ 4985/ 4938 ms : Div test bases 3-8 before any primality testing (~60% faster)
  4233/ 4313/ 4226 ms : Perform div tests without converting from base 2 (~14% faster)
- === change benchmark from p11 + 500 million to p11 + 5 billion ===
+=== change benchmark from p11 + 500 million to p11 + 5 billion ===
 47091 ms : (no changes)
 37193 ms : Use lookup table for div tests instead of modulo (~21% faster)
+
 
 ideas:
 - Let the full sieve be larger than (ie, a multiple of) the static sieve
 - Use vector<bool> (1/8 the memory, but with an instruction overhead)
 - Compare sieving with wheel factorization
 - Don't redo div tests during primality tests
-
-2022 Jun 18 - Using static sieve up to 17 saved 4% instead of 5% (we still have to sieve up to 997).
-            - Rebuilt MPIR on C++20, got a small performance boost. Previous builds seemed correct.
-2022 Jun 20 - If MPIR is ignoring "div", that absolutely should not have affected performance
-            - MPIR already uses a native 64-bit solution whenever an mpz fits in one word
-			- "likely prime" is much cheaper than "probable prime"
-
-SPRP comparisons:
-if (!franken::mpir_is_likely_prime_BPSW(number)) continue; // baseline
-misof_16k::is_prime(number); // ~2.5x slower
-misof_262k::is_prime_2_64(number); // ~1.25x slower
-if (!pk::is_prime(number)) continue; // ~6300x slower (??)
-if (!pk::fast_is_prime(number)) continue; // still extremely slow
-if (!franken::n_is_pseudoprime_fermat(number, 2)) continue; // 2x slower
-if (!franken::n_is_pseudoprime_fibonacci(number)) continue; // remarkably only a bit slower :P
-if (!franken::n_is_pseudoprime_lucas(number)) continue; // ??
-
-
+- Make remainder vector and/or bitmask vector as constexpr
+- Combine remainders or 
+- Don't store many bitmasks, just a number between 1 and 64 to describe which mask to use.

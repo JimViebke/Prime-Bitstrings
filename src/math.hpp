@@ -1,7 +1,7 @@
 #pragma once
 
 #include "mpirxx.h"
-#include "pk_prime.hpp"
+//#include "pk_prime.hpp"
 
 #include <stdint.h>
 #include <nmmintrin.h>

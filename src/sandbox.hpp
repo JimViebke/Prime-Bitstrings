@@ -1,8 +1,13 @@
 #pragma once
 
-
-
 #include <iostream>
+#include <vector>
+#include <bitset>
+
+#include "mpirxx.h"
+
+#include "math.hpp"
+#include "utility.hpp"
 
 namespace mbp
 {
@@ -223,6 +228,33 @@ namespace mbp
 				if (sieve_size > 1'000'000'000) return;
 			}
 			std::cout << "(no suitable sieve size found)\n";
+		}
+
+		void cheaper_divtests()
+		{
+			mpz_class n = 0b001010111010010000111010101;
+			size_t base = 3;
+
+			for (size_t i = 0; i < 30; ++i)
+			{
+				mpz_pow_ui(n.get_mpz_t(), mpz_class{ base }.get_mpz_t(), i);
+
+				std::cout << base << '^' << i << " = " << n << '\n';
+			}
+		}
+
+		void diminishing_returns()
+		{
+			const auto primes = build_small_primes_lookup();
+
+			size_t product = 1;
+
+			for (size_t i = 1; i < 10; ++i)
+			{
+				product *= primes[i];
+
+				std::cout << primes[i] << " eliminates 1/" << product << " additional candidates\n";
+			}
 		}
 	}
 }
