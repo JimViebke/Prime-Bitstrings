@@ -15,6 +15,8 @@
 
 constexpr bool brute_force_is_prime(const size_t n)
 {
+	if (n == 2) return true;
+
 	if (n % 2 == 0) return false;
 
 	const size_t sqrt_n = size_t(franken_boost::sqrt(n));
@@ -28,7 +30,7 @@ constexpr bool brute_force_is_prime(const size_t n)
 
 namespace detail
 {
-	constexpr const std::vector<size_t> build_small_primes_lookup()
+	constexpr const std::vector<size_t> build_small_primes_lookup_impl()
 	{
 		std::vector<size_t> primes;
 
@@ -38,18 +40,17 @@ namespace detail
 
 		return primes;
 	}
+
+	constexpr std::array<size_t, build_small_primes_lookup_impl().size()> build_small_primes_lookup()
+	{
+		decltype(build_small_primes_lookup()) primes{};
+		const auto x = build_small_primes_lookup_impl();
+		std::copy(x.begin(), x.end(), primes.begin());
+		return primes;
+	}
 }
 
-constexpr std::array<size_t, detail::build_small_primes_lookup().size()> build_small_primes_lookup()
-{
-
-	decltype(build_small_primes_lookup()) primes{};
-	const auto x = detail::build_small_primes_lookup();
-	std::copy(x.begin(), x.end(), primes.begin());
-	return primes;
-}
-
-constexpr std::array small_primes_lookup = build_small_primes_lookup();
+constexpr std::array small_primes_lookup = detail::build_small_primes_lookup();
 
 namespace gmp_random
 {

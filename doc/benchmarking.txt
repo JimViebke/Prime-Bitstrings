@@ -28,11 +28,12 @@ Calculate change [b]efore and [a]fter: b = (), a = (), (a-b)/b*100
 === change benchmark from p11 + 500 million to p11 + 5 billion ===
 47091 ms : (no changes)
 37193 ms : Use lookup table for div tests instead of modulo (~21% faster)
-34075 ms : Iterate primes before bases in div tests; start from 3 instead of 2 (~8% faster)
+34075 ms : Iterate primes before bases in div tests (~8% faster)
 33287 ms : Div test with 20 primes instead of 40 (~2% faster)
 27977 ms : Build with AVX2 instruction set (~16% faster)
 20810 ms : Make bitmask lookup constexpr (~26% faster)
 20212 ms : Perform first remainder summation before loop (~3% faster)
+17252 ms : Div test from 3; skip expensive tests (some are always false) (~15% faster)
 
 
 
@@ -42,7 +43,7 @@ ideas:
 - Use vector<bool> (1/8 the memory, but with an instruction overhead)
 - Compare sieving with wheel factorization
 - Don't redo div tests during primality tests
-- Make remainder vector and/or bitmask vector as constexpr
+- Make remainder vector and constexpr
 - Combine remainders and bitmasks into one structure
 - Don't store many bitmasks, just a number between 1 and 64 to describe which mask to use.
 - Run profile-guided optimization

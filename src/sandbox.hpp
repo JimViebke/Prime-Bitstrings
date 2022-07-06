@@ -3,6 +3,7 @@
 #include <iostream>
 #include <vector>
 #include <bitset>
+#include <map>
 
 #pragma warning(push, 0)
 #include "mpirxx.h"
@@ -169,13 +170,24 @@ namespace mbp
 
 			auto it = remainders.begin();
 
+			std::multimap<size_t, std::string> ordered_checks;
+
 			for (size_t i = 1; i < n_of_primes; ++i)
 			{
 				for (size_t b = 3; b <= up_to_base; ++b)
 				{
-					std::cout << b << "^n % " << small_primes_lookup[i] << " = (" << it->size() << " place values)\n";
+					std::stringstream ss;
+					ss << b << "^n % " << small_primes_lookup[i] << " = (" << it->size() << " place values)";
+
+					ordered_checks.insert({ small_primes_lookup[i] * it->size(), ss.str() });
+
 					++it;
 				}
+			}
+
+			for (const auto& kv : ordered_checks)
+			{
+				std::cout << kv.first << '\t' << kv.second << '\n';
 			}
 		}
 	}

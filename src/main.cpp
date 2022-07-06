@@ -116,6 +116,9 @@ inline bool has_small_divisor(const size_t number,
 
 	for (size_t i = 0; i < remainders.size(); ++i)
 	{
+		// skip six expensive tests, four of which are always false
+		if (remainders[i].size() == 64) continue;
+
 		// Do this here, because first shift is always 0 and first rem is always 1
 		size_t rem = pop_count(number & (bitmasks[i]));
 
