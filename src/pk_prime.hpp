@@ -28,7 +28,7 @@ namespace pk
 	  1531,1543,1549,1553,1559,1567,1571,1579,1583,1597,1601,1607,1609,1613,1619,1621
 	};
 
-	uint64_t mulMod(uint64_t a, uint64_t b, uint64_t m)
+	constexpr uint64_t mulMod(uint64_t a, uint64_t b, uint64_t m)
 	{
 		/* Calculate ab (mod m)
 		**
@@ -51,7 +51,7 @@ namespace pk
 		return r;
 	}
 
-	uint64_t powMod(uint64_t a, uint64_t b, uint64_t m)
+	constexpr uint64_t powMod(uint64_t a, uint64_t b, uint64_t m)
 	{
 		/* Calculate a^b (mod m)
 		**

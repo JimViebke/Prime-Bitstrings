@@ -31,6 +31,7 @@ Calculate change [b]efore and [a]fter: b = (), a = (), (a-b)/b*100
 34075 ms : Iterate primes before bases in div tests; start from 3 instead of 2 (~8% faster)
 33287 ms : Div test with 20 primes instead of 40 (~2% faster)
 27977 ms : Build with AVX2 instruction set (~16% faster)
+20810 ms : Make bitmask lookup constexpr (~26% faster)
 
 
 
@@ -43,3 +44,4 @@ ideas:
 - Make remainder vector and/or bitmask vector as constexpr
 - Combine remainders and bitmasks into one structure
 - Don't store many bitmasks, just a number between 1 and 64 to describe which mask to use.
+- Run profile-guided optimization

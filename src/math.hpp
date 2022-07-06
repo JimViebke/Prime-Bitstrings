@@ -8,57 +8,48 @@
 #include <nmmintrin.h>
 
 #include "config.hpp"
+#include "franken_boost.hpp"
 #pragma warning(push, 0)
 #include "franken_fermat.hpp"
 #pragma warning(pop)
 
-const std::vector<size_t> small_primes_lookup = build_small_primes_lookup();
-
-namespace bpsw_1_native
+constexpr bool brute_force_is_prime(const size_t n)
 {
-	int pow(int pow_a, unsigned int pow_b, int pow_c)
+	if (n % 2 == 0) return false;
+
+	const size_t sqrt_n = size_t(franken_boost::sqrt(n));
+	for (size_t i = 3; i <= sqrt_n; i += 2)
 	{
-		int result = 1;
-		pow_a = pow_a % pow_c;
-		while (pow_b > 0) {
-			if (pow_b & 1)
-				result = (result * pow_a) % pow_c;
-			pow_b = pow_b >> 1;
-			pow_a = (pow_a * pow_a) % pow_c;
-		}
-		return result;
+		if (n % i == 0) return false;
 	}
-	bool MiillerTest(int MT_dt, int MT_num)
+
+	return true;
+}
+
+namespace detail
+{
+	constexpr const std::vector<size_t> build_small_primes_lookup()
 	{
-		int MT_a = 2 + rand() % (MT_num - 4);
-		int MT_x = pow(MT_a, MT_dt, MT_num);
-		if (MT_x == 1 || MT_x == MT_num - 1)
-			return true;
-		while (MT_dt != MT_num - 1) {
-			MT_x = (MT_x * MT_x) % MT_num;
-			MT_dt *= 2;
-			if (MT_x == 1)
-				return false;
-			if (MT_x == MT_num - 1)
-				return true;
-		}
-		return false;
-	}
-	bool prime(int P_N, int P_K)
-	{
-		if (P_N <= 1 || P_N == 4)
-			return false;
-		if (P_N <= 3)
-			return true;
-		int P_D = P_N - 1;
-		while (P_D % 2 == 0)
-			P_D /= 2;
-		for (int i = 0; i < P_K; i++)
-			if (MiillerTest(P_D, P_N) == false)
-				return false;
-		return true;
+		std::vector<size_t> primes;
+
+		for (size_t i = 2; i <= mbp::sieve_primes_cap; ++i)
+			if (brute_force_is_prime(i))
+				primes.push_back(i);
+
+		return primes;
 	}
 }
+
+constexpr std::array<size_t, detail::build_small_primes_lookup().size()> build_small_primes_lookup()
+{
+
+	decltype(build_small_primes_lookup()) primes{};
+	const auto x = detail::build_small_primes_lookup();
+	std::copy(x.begin(), x.end(), primes.begin());
+	return primes;
+}
+
+constexpr std::array small_primes_lookup = build_small_primes_lookup();
 
 namespace gmp_random
 {
@@ -68,24 +59,6 @@ namespace gmp_random
 bool mpir_is_prime(const mpz_class& p, const size_t div = 0)
 {
 	return bool(mpz_likely_prime_p(p.get_mpz_t(), gmp_random::r.get_randstate_t(), div));
-}
-
-bool mpir_is_probable_prime(const mpz_class& p, const int prob, const size_t div)
-{
-	return bool(mpz_probable_prime_p(p.get_mpz_t(), gmp_random::r.get_randstate_t(), prob, div));
-}
-
-constexpr bool brute_force_is_prime(const size_t n)
-{
-	if (n % 2 == 0) return false;
-
-	const size_t sqrt_n = size_t(sqrt(n));
-	for (size_t i = 3; i <= sqrt_n; i += 2)
-	{
-		if (n % i == 0) return false;
-	}
-
-	return true;
 }
 
 size_t binary_to_base(size_t binary, const size_t base)
@@ -114,13 +87,9 @@ mpz_class bin_to_base(const mpz_class& binary, const int base)
 	return mpz_class{ binary.get_str(2), base };
 }
 
-inline uint64_t pop_count(uint64_t n)
+inline auto pop_count(uint64_t n)
 {
-	return uint64_t(_mm_popcnt_u64(n));
-
-	//n -= ((n >> 1) & 0x5555555555555555ull);
-	//n = (n & 0x3333333333333333ull) + (n >> 2 & 0x3333333333333333ull);
-	//return ((n + (n >> 4)) & 0xf0f0f0f0f0f0f0full) * 0x101010101010101ull >> 56;
+	return _mm_popcnt_u64(n);
 }
 
 constexpr uint64_t build_tiny_primes_lookup()
@@ -151,17 +120,6 @@ constexpr uint64_t build_tiny_primes_lookup()
 	lookup |= (1ull << 61);
 
 	return lookup;
-}
-
-const std::vector<size_t> build_small_primes_lookup()
-{
-	std::vector<size_t> primes;
-
-	for (size_t i = 2; i <= mbp::sieve_primes_cap; ++i)
-		if (mpir_is_prime(i))
-			primes.push_back(i);
-
-	return primes;
 }
 
 constexpr size_t gcd(size_t a, size_t b)

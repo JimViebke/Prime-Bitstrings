@@ -40,6 +40,12 @@ namespace mbp
 		const size_t n_of_primes = 20;
 
 		const size_t up_to_base = 8;
+
+		// if up_to_base==8, then (3..n values) == (6 values) == (n + 1 - 3 values)
+		constexpr size_t n_of_bases = (up_to_base + 1) - 3;
+
+		// -1 because we skip 2
+		constexpr size_t mod_remainders_size = (n_of_primes - 1) * n_of_bases;
 	}
 
 	const size_t sieve_primes_cap = 1621; // previously 1000

@@ -29,8 +29,6 @@ Boston, MA 02110-1301, USA.
 #include "longlong.h"
 #pragma warning(pop)
 
-const std::vector<size_t> build_small_primes_lookup();
-
 namespace franken
 {
 

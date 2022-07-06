@@ -18,12 +18,10 @@ Then, cheaply determine if this sum is divisible by p. This determines if the bi
 namespace mbp::div_test
 {
 	// Dimensions are [primes * bases][remainders]
-	const std::vector<std::vector<uint8_t>> generate_mod_remainders()
+	constexpr const std::vector<std::vector<uint8_t>> generate_mod_remainders()
 	{
 		std::vector<std::vector<uint8_t>> remainders;
-		// if up_to_base==8, then (3..n values) == (6 values) == (n + 1 - 3 values)
-		remainders.reserve(n_of_primes - 1 *
-						   ((up_to_base + 1) - 3));
+		remainders.reserve(mod_remainders_size);
 
 		for (size_t i = 1; i < n_of_primes; ++i) // for each small prime
 		{
@@ -46,24 +44,24 @@ namespace mbp::div_test
 		return remainders;
 	}
 
-	// Dimensions are [prime * bases]
-	const std::vector<size_t> generate_mod_remainder_bitmasks(const std::vector<std::vector<uint8_t>>& remainders)
+	constexpr std::array<size_t, mod_remainders_size> generate_mod_remainder_bitmasks()
 	{
-		std::vector<size_t> bitmasks;
-		bitmasks.reserve(remainders.size());
+		std::array<size_t, mod_remainders_size> bitmasks = {};
 
-		for (auto& rems : remainders)
+		const auto remainders = generate_mod_remainders();
+
+		for (size_t i = 0; i < mod_remainders_size; ++i)
 		{
-			const size_t k = rems.size();
-			size_t bitmask = 0;
+			const size_t k = remainders[i].size();
+			size_t bitmask = 1;
 
-			for (size_t j = 0; j < 64; j += k)
+			for (size_t j = 0; j < 64 && k < 64; j += k)
 			{
 				bitmask <<= k;
 				bitmask |= 1;
 			}
 
-			bitmasks.push_back(bitmask);
+			bitmasks[i] = bitmask;
 		}
 
 		return bitmasks;

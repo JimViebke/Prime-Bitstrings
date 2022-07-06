@@ -109,11 +109,9 @@ const std::vector<uint8_t> generate_static_sieve()
 
 inline bool has_small_divisor(const size_t number,
 							  const std::vector<std::vector<uint8_t>>& remainders,
-							  const std::vector<size_t>& bitmasks)
+							  const auto& bitmasks)
 {
 	using namespace mbp;
-
-	constexpr size_t n_of_bases = (div_test::up_to_base + 1) - 3;
 
 	for (size_t i = 0; i < remainders.size(); ++i)
 	{
@@ -124,7 +122,7 @@ inline bool has_small_divisor(const size_t number,
 		}
 
 		// see if the sum of remainders is evenly divisible by a given prime
-		if (div_test::divides_evenly(rem, (i / n_of_bases) + 1)) return true;
+		if (div_test::divides_evenly(rem, (i / div_test::n_of_bases) + 1)) return true;
 	}
 
 	return false;
@@ -156,7 +154,7 @@ void find_multibase_primes()
 	// Dimensions are [primes * bases][remainders]
 	const std::vector<std::vector<uint8_t>> remainders = div_test::generate_mod_remainders();
 	// Dimensions are [primes * bases]
-	const std::vector<size_t> bitmasks = div_test::generate_mod_remainder_bitmasks(remainders);
+	constexpr std::array<size_t, div_test::mod_remainders_size> bitmasks = div_test::generate_mod_remainder_bitmasks();
 
 	// Don't start the clock until here
 	const auto start = current_time_in_ms();
@@ -177,8 +175,8 @@ void find_multibase_primes()
 			if ((tiny_primes_lookup & (1ull << pop_count(number))) == 0) continue;
 
 			// Bail if gcd(abs(alternating sums), 1155) is not equal to one.
-			const int pca = (int)pop_count(number & 0xAAAAAAAAAAAAAAAA);
-			const int pcb = (int)pop_count(number & 0x5555555555555555);
+			const auto pca = pop_count(number & 0xAAAAAAAAAAAAAAAA);
+			const auto pcb = pop_count(number & 0x5555555555555555);
 			if ((gcd_1155_lookup & (1ull << abs(pca - pcb))) == 0) continue;
 
 			// Run cheap trial division tests across multiple bases

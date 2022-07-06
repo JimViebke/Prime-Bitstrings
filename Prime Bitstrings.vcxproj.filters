@@ -233,6 +233,9 @@
     <ClInclude Include="src\sandbox.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\franken_boost.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="results.txt">
