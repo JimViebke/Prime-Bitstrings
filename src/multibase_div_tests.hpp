@@ -17,7 +17,7 @@ Then, cheaply determine if this sum is divisible by p. This determines if the bi
 
 namespace mbp::div_test
 {
-	// Dimensions are [primes * bases][remainders]
+	// Dimensions are [primes * bases][remainders], for testing base^place_value % prime == 0
 	constexpr const std::vector<std::vector<uint8_t>> generate_mod_remainders()
 	{
 		std::vector<std::vector<uint8_t>> remainders;
@@ -69,27 +69,28 @@ namespace mbp::div_test
 
 	namespace detail
 	{
-		// Replaces "n % prime[k] == 0" with "lookup[n] & (1 << k)"
-		const std::vector<size_t> build_divides_evenly_lookup()
+		constexpr size_t largest_remainder()
 		{
-			// Given a % b, a must be smaller than (the largest prime <64) * (the largest remainder)
-
 			// find the largest remainder
 			size_t largest_remainder = 0;
+			const auto remainders = generate_mod_remainders();
+			for (const auto& a : remainders)
+				for (const auto& b : a)
+					if (b > largest_remainder)
+						largest_remainder = b;
+			return largest_remainder;
+		}
 
-			{
-				const auto remainders = generate_mod_remainders();
-				for (const auto& a : remainders)
-					for (const auto& b : a)
-						if (b > largest_remainder)
-							largest_remainder = b;
-			} // deallocate remainders copy
+		// Given a % b, a won't be larger than (largest prime <64) * (the largest remainder)
+		constexpr size_t prime_factor_lookup_size = 61 * largest_remainder();
 
+		std::vector<size_t> build_prime_factor_lookup()
+		{
 			std::vector<size_t> lookup;
-			lookup.reserve(largest_remainder * 61); // 61 is the smallest prime <= 64
+			lookup.reserve(prime_factor_lookup_size);
 
 			// for every possible summation of remainders
-			for (size_t i = 0; i < largest_remainder * 61; ++i)
+			for (size_t i = 0; i < prime_factor_lookup_size; ++i)
 			{
 				// for the first 64 primes
 				size_t entry = 0;
@@ -105,11 +106,12 @@ namespace mbp::div_test
 			return lookup;
 		}
 
-		const std::vector<size_t> divides_evenly_lookup = build_divides_evenly_lookup();
+		// Replaces "n % prime[k] == 0" with "lookup[n] & (1 << k)"
+		const std::vector<size_t> prime_factor_lookup = build_prime_factor_lookup();
 	}
 
-	inline bool divides_evenly(const size_t n, const size_t prime_index)
+	inline bool has_small_prime_factor(const size_t n, const size_t prime_index)
 	{
-		return (detail::divides_evenly_lookup[n] & (1ull << prime_index)) != 0;
+		return (detail::prime_factor_lookup[n] & (1ull << prime_index)) != 0;
 	}
 }

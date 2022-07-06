@@ -12,6 +12,7 @@
 #include "math.hpp"
 #include "multibase_div_tests.hpp"
 #include "config.hpp"
+#include "sandbox.hpp"
 
 size_t load_from_results()
 {
@@ -109,20 +110,22 @@ const std::vector<uint8_t> generate_static_sieve()
 
 inline bool has_small_divisor(const size_t number,
 							  const std::vector<std::vector<uint8_t>>& remainders,
-							  const auto& bitmasks)
+							  const std::array<size_t, mbp::div_test::mod_remainders_size>& bitmasks)
 {
 	using namespace mbp;
 
 	for (size_t i = 0; i < remainders.size(); ++i)
 	{
-		size_t rem = 0;
-		for (size_t l = 0; l < remainders[i].size(); ++l)
+		// Do this here, because first shift is always 0 and first rem is always 1
+		size_t rem = pop_count(number & (bitmasks[i]));
+
+		for (size_t l = 1; l < remainders[i].size(); ++l)
 		{
 			rem += pop_count(number & (bitmasks[i] << l)) * remainders[i][l];
 		}
 
 		// see if the sum of remainders is evenly divisible by a given prime
-		if (div_test::divides_evenly(rem, (i / div_test::n_of_bases) + 1)) return true;
+		if (div_test::has_small_prime_factor(rem, (i / div_test::n_of_bases) + 1)) return true;
 	}
 
 	return false;

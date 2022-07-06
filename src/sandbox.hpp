@@ -10,36 +10,12 @@
 
 #include "math.hpp"
 #include "utility.hpp"
+#include "multibase_div_tests.hpp"
 
 namespace mbp
 {
 	namespace detail
 	{
-		void compare_implementations()
-		{
-			size_t num = 282607273285049; // p11 - too large for 32-bit BPSW
-			// size_t num = 113;
-			std::cout << "Naive + native implementation:\n";
-			std::cout << num << " is " << (mpir_is_prime(num) ? "prime" : "not prime") << std::endl;
-
-			std::cout << "BPSW + native implementation:\n";
-			std::cout << num << " is " << (bpsw_1_native::prime((int)num, 50) ? "prime" : "not prime") << std::endl;
-		}
-
-		void test_bpsw_1_native()
-		{
-			size_t primes_found = 0;
-
-			for (size_t num = 2; ; ++num)
-			{
-				if (bpsw_1_native::prime((int)num, 50))
-				{
-					std::cout << num << ' ';
-					++primes_found;
-				}
-			}
-		}
-
 		void test_binary_to_decimal()
 		{
 			for (size_t i = 0; i < 50; ++i)
@@ -74,9 +50,7 @@ namespace mbp
 				const size_t b8 = binary_to_base(binary, 8);
 				if (!mpir_is_prime(b8)) continue;
 
-				const size_t b10 = binary_to_base(binary, 10);
-
-				std::cout << b10 << " is prime in bases 2-8 (" <<
+				std::cout << binary_to_base(binary, 10) << " is prime in bases 2-8 (" <<
 					binary << ", " <<
 					b3 << ", " <<
 					b4 << ", " <<
@@ -164,58 +138,13 @@ namespace mbp
 		void pk_testing()
 		{
 			// print n largest primes, counting down from 2^64
-			for (size_t i = -1, n = 0; n < 1000; i--)
+			for (size_t i = size_t(-1), n = 0; n < 1000; i--)
 			{
 				if (pk::is_prime(i))
 				{
 					n++;
 					std::cout << i << '\n';
 				}
-			}
-		}
-
-		void multibase_gap_tests()
-		{
-			const size_t p11 = 0b1000000010000011110100010001000101001010110111001; // large starting point
-
-			size_t previous_p4 = 0;
-			size_t found = 0;
-
-			mpz_class b3;
-
-			for (size_t b2 = p11; found < 100; b2 += 2)
-			{
-				char bin_str[64 + 1];
-				auto result = std::to_chars(&bin_str[0], &bin_str[64], b2, 2);
-				*result.ptr = '\0';
-
-				b3.set_str(bin_str, 3);
-				// b4.set_str(bin_str, 4);
-				// b5.set_str(bin_str, 5);
-
-				if (mpir_is_prime(b2) && mpir_is_prime(b3)) // && mpir_is_prime(b4) && mpir_is_prime(b5))
-				{
-					std::cout << std::bitset<32>(b2) << '\t' << b2;
-
-					if (previous_p4 != 0)
-					{
-						std::cout << "\t+" << b2 - previous_p4;
-						++found;
-					}
-					previous_p4 = b2;
-
-					std::cout << '\n';
-				}
-
-				continue;
-
-				for (int i = 2; i < 10; ++i)
-				{
-					size_t v = binary_to_base(b2, i);
-					std::cout << '\t' << v << (mpir_is_prime(v) ? '\'' : ' ');
-				}
-
-				std::cout << '\n';
 			}
 		}
 
@@ -232,30 +161,21 @@ namespace mbp
 			std::cout << "(no suitable sieve size found)\n";
 		}
 
-		void cheaper_divtests()
+		void print_mod_remainders()
 		{
-			mpz_class n = 0b001010111010010000111010101;
-			size_t base = 3;
+			using namespace mbp::div_test;
 
-			for (size_t i = 0; i < 30; ++i)
+			const std::vector<std::vector<uint8_t>> remainders = generate_mod_remainders();
+
+			auto it = remainders.begin();
+
+			for (size_t i = 1; i < n_of_primes; ++i)
 			{
-				mpz_pow_ui(n.get_mpz_t(), mpz_class{ base }.get_mpz_t(), i);
-
-				std::cout << base << '^' << i << " = " << n << '\n';
-			}
-		}
-
-		void diminishing_returns()
-		{
-			const auto primes = build_small_primes_lookup();
-
-			size_t product = 1;
-
-			for (size_t i = 1; i < 10; ++i)
-			{
-				product *= primes[i];
-
-				std::cout << primes[i] << " eliminates 1/" << product << " additional candidates\n";
+				for (size_t b = 3; b <= up_to_base; ++b)
+				{
+					std::cout << b << "^n % " << small_primes_lookup[i] << " = (" << it->size() << " place values)\n";
+					++it;
+				}
 			}
 		}
 	}
