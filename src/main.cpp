@@ -13,6 +13,9 @@
 #include "multibase_div_tests.hpp"
 #include "config.hpp"
 #include "sandbox.hpp"
+#pragma warning(push, 0)
+#include "franken_mpir.hpp"
+#pragma warning(pop)
 
 size_t load_from_results()
 {
@@ -76,22 +79,23 @@ void log_result(const mpz_class& n, size_t up_to_base)
 
 void partial_sieve(const size_t start, std::vector<uint8_t>& sieve)
 {
-	for (const size_t p : small_primes_lookup)
+	constexpr static size_t idx = mbp::static_sieve_primes.size() + 1;
+
+	for (size_t i = idx; i < small_primes_lookup.size(); ++i)
 	{
-		// only mark off the small primes not already here
-		if (p <= mbp::static_sieve_primes.back()) continue;
+		const size_t p = small_primes_lookup[i];
 
 		// Find out how far past we are from the previous multiple of p.
 		// ie 3 == 10 % 7
 		// This will always be <= p.
-		size_t offset_from_last_pn = (start % p) / 2;
+		const size_t offset_from_last_pn = (start % p) / 2;
 		// Divide by 2 because the sieve only represents odd numbers
 
 		// Now mark false each multiple of p, starting from [0 + p - distance from previous p],
 		// where 0 is the n we started with.
-		for (size_t i = p - offset_from_last_pn; i < sieve.size(); i += p)
+		for (size_t j = p - offset_from_last_pn; j < sieve.size(); j += p)
 		{
-			sieve[i] = false;
+			sieve[j] = false;
 		}
 	}
 }
@@ -138,7 +142,7 @@ void find_multibase_primes()
 {
 	using namespace mbp;
 
-	gmp_random::r.seed(mpir_ui(rand()));
+	gmp_random::r.seed(mpir_ui(0xdeadbeef));
 
 	size_t number = mbp::benchmark_mode ? mbp::bm_start : load_from_results();
 	mpz_class mpz_number = 0ull; // it's a surprise tool that will help us later
@@ -197,22 +201,22 @@ void find_multibase_primes()
 			*result.ptr = '\0';
 
 			mpz_number.set_str(bin_str, 3);
-			if (!mpir_is_prime(mpz_number)) continue;
+			if (!franken::mpir_is_prime(mpz_number, div_test::n_of_primes)) continue;
 
 			mpz_number.set_str(bin_str, 4);
-			if (!mpir_is_prime(mpz_number)) continue;
+			if (!franken::mpir_is_prime(mpz_number, div_test::n_of_primes)) continue;
 
 			mpz_number.set_str(bin_str, 5);
-			if (!mpir_is_prime(mpz_number)) continue;
+			if (!franken::mpir_is_prime(mpz_number, div_test::n_of_primes)) continue;
 
 			mpz_number.set_str(bin_str, 6);
-			if (!mpir_is_prime(mpz_number)) continue;
+			if (!franken::mpir_is_prime(mpz_number, div_test::n_of_primes)) continue;
 
 			mpz_number.set_str(bin_str, 7);
-			if (!mpir_is_prime(mpz_number)) continue;
+			if (!franken::mpir_is_prime(mpz_number, div_test::n_of_primes)) continue;
 
 			mpz_number.set_str(bin_str, 8);
-			if (!mpir_is_prime(mpz_number)) continue;
+			if (!franken::mpir_is_prime(mpz_number, div_test::n_of_primes)) continue;
 
 			mpz_number.set_str(bin_str, 9);
 			if (!mpir_is_prime(mpz_number)) { log_result(number, 8); continue; }

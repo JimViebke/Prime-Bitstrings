@@ -9,9 +9,6 @@
 
 #include "config.hpp"
 #include "franken_boost.hpp"
-#pragma warning(push, 0)
-#include "franken_fermat.hpp"
-#pragma warning(pop)
 
 constexpr bool brute_force_is_prime(const size_t n)
 {

@@ -221,7 +221,7 @@
     <ClInclude Include="lib\mpir\msvc\vs17\lib_mpir_gc\x64\Release\mpirxx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\franken_fermat.hpp">
+    <ClInclude Include="src\franken_mpir.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\multibase_div_tests.hpp">

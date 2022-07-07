@@ -32,13 +32,7 @@ Boston, MA 02110-1301, USA.
 namespace franken
 {
 
-#if GMP_LIMB_BITS == 32 || GMP_LIMB_BITS == 64
-
-#if GMP_LIMB_BITS == 32
-#define D_BITS 31
-#else 
 #define D_BITS 53
-#endif
 
 	typedef struct pair_s
 	{
@@ -885,57 +879,27 @@ namespace franken
 		}
 	}
 
-#endif /* GMP_LIMB_BITS */
-
-	int
-		mpz_likely_prime_p(mpz_srcptr N, gmp_randstate_t STATE, mpir_ui td)
+	unsigned long mpir_trial_division(mpz_srcptr N, size_t start_idx, size_t stop)
 	{
-		/*
-		   Could have another parameter to specify what "likely" means
-		   i.e. for factoring, for RSA or to state that we have already done
-		   trial div
-		*/
+		// iterate until we hit a prime >= stop
 
-		/*
-		   could call it mpz_likely_composite_p then when true return more info,
-		   i.e. a factor
-		*/
+		for (size_t i = start_idx; small_primes_lookup[i] < stop; ++i)
+			if (mpz_divisible_ui_p(N, small_primes_lookup[i]))
+				return small_primes_lookup[i];
 
-		int d, t, r;
-		unsigned long long tdlim, i;
-		mpz_t base, nm1, x, e, n;
+		return 0;
+	}
 
-		ALLOC(n) = ALLOC(N);
-		SIZ(n) = ABSIZ(N);
-		PTR(n) = PTR(N);		/* fake up an absolute value that we don't have de-allocate */
-
-		/* algorithm does not handle small values, get rid of them here */
-		if (mpz_cmp_ui(n, 2) == 0 || mpz_cmp_ui(n, 3) == 0)
-			return 1;
-
-		if (mpz_cmp_ui(n, 5) < 0 || mpz_even_p(n))
-			return 0;
-
-#if GMP_LIMB_BITS == 64 || GMP_LIMB_BITS == 32
+	int mpir_likely_prime(mpz_srcptr n, gmp_randstate_t STATE, size_t start_idx)
+	{
 		if (SIZ(n) == 1)
 		{
 			return mpir_is_likely_prime_BPSW(PTR(n)[0]);
 		}
-#endif
 
-		/*
-		   For factoring purposes we assume we know nothing about N i.e. it is
-		   a random integer. Therefore it has a good chance of factoring by small
-		   divisiors. So try trial division as its fast and it checks small
-		   divisors. Checking for other divisors is not worth it even if the test
-		   is fast as we have random integer so only small divisors are common
-		   enough. Remember this is not exact so it doesn't matter if we miss a
-		   few divisors
-		*/
-		tdlim = mpz_sizeinbase(n, 2);
-		tdlim = MAX(1000, tdlim);
+		const size_t tdlim = std::max(1000ull, mpz_sizeinbase(n, 2));
 
-		d = mpz_trial_division(n, 3, tdlim);
+		const size_t d = mpir_trial_division(n, start_idx, tdlim);
 
 		if (d != 0)
 		{
@@ -948,11 +912,10 @@ namespace franken
 		if (mpz_cmp_ui(n, tdlim * tdlim) < 0)
 			return 1;	/* if tdlim*tdlim overflows, n is not a single limb so can't be true */
 
-		ASSERT(mpz_odd_p(n));
-		ASSERT(mpz_cmp_ui(n, 5) >= 0);	/* so we can choose a base */
-
 		/* now do strong pseudoprime test */
 		/* get random base, for now choose any size, later choose a small one */
+		mpz_t base, nm1, x, e;
+
 		mpz_init(base);
 		mpz_init_set(nm1, n);
 		mpz_sub_ui(nm1, nm1, 1);
@@ -960,9 +923,10 @@ namespace franken
 		mpz_init(e);
 		mpz_init(x);
 
-		r = 1;
+		int r = 1;
 
-		for (i = 0; i < 10; i++) /* try LP_ITERS random bases */
+		// try n_random_bases of iterations
+		for (size_t i = 0; i < mbp::prime_test::n_random_bases; i++)
 		{
 			do
 			{
@@ -973,7 +937,7 @@ namespace franken
 			   Base is 2 to n - 2 which implies n >= 4. Only really want a
 			   small base, and ignore the rare base = n - 1 condition etc.
 			*/
-			t = mpz_scan1(nm1, 0);	/* 2^t divides nm1 */
+			int t = mpz_scan1(nm1, 0);	/* 2^t divides nm1 */
 
 			ASSERT(t > 0);
 
@@ -1013,6 +977,12 @@ namespace franken
 		mpz_clear(x);
 
 		return r;
+	}
+
+	// has no factors <= primes[idx]
+	inline bool mpir_is_prime(const mpz_class& p, const size_t div_p_idx)
+	{
+		return bool(mpir_likely_prime(p.get_mpz_t(), gmp_random::r.get_randstate_t(), div_p_idx));
 	}
 }
 
