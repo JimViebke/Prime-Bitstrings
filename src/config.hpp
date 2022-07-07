@@ -35,6 +35,8 @@ namespace mbp
 
 	constexpr size_t static_sieve_size = std::accumulate(static_sieve_primes.begin(), static_sieve_primes.end(), size_t(1), std::multiplies());
 
+	const size_t sieve_primes_cap = 1621; // previously 1000
+
 	namespace div_test // trial division tests
 	{
 		const size_t n_of_primes = 20;
@@ -48,7 +50,10 @@ namespace mbp
 		constexpr size_t mod_remainders_size = (n_of_primes - 1) * n_of_bases;
 	}
 
-	const size_t sieve_primes_cap = 1621; // previously 1000
+	namespace prime_test
+	{
+		const size_t n_random_bases = 1;
+	}
 
 	const char results_path[] = "results.txt";
 }

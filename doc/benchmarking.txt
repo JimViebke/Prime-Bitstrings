@@ -35,6 +35,7 @@ Calculate change [b]efore and [a]fter: b = (), a = (), (a-b)/b*100
 20212 ms : Perform first div test remainder sums before inner loop (~3% faster)
 17252 ms : Div test from 3; skip expensive tests (some are always false) (~15% faster)
 16647 ms : Use custom prime test with trial division awareness (~3% faster)
+14941 ms : Run one round of strong pseudoprime testing instead of 10 (~10% faster)
 
 
 
