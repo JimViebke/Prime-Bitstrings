@@ -112,13 +112,42 @@ const std::vector<uint8_t> generate_static_sieve()
 	return sieve;
 }
 
+// Dimensions are [primes * bases]
+constexpr std::array<size_t, mbp::div_test::mod_remainders_size> g_bitmasks = mbp::div_test::generate_mod_remainder_bitmasks();
+
+/*
+Never divtest against
+
+2 in any base
+3 in bases 3, 4, 5, 6, 7, 8
+5 in bases 4, 5, 6, 7, 8
+*/
+
+// 5 values are in positions 6-11
+inline bool divisible_by_5(const size_t number)
+{
+	// 3^n % 5 has 4 values: 1 3 4 2
+
+	// test base 3
+	constexpr size_t b3_mask = g_bitmasks[6];
+	size_t rem = 0;
+	rem += pop_count(number & (b3_mask << 0)) * 1;
+	rem += pop_count(number & (b3_mask << 1)) * 3;
+	rem += pop_count(number & (b3_mask << 2)) * 4;
+	rem += pop_count(number & (b3_mask << 3)) * 2;
+	return mbp::div_test::has_small_prime_factor(rem, 2); // idx 2; 5 is the 3rd prime
+}
+
+
 inline bool has_small_divisor(const size_t number,
 							  const std::vector<std::vector<uint8_t>>& remainders,
 							  const std::array<size_t, mbp::div_test::mod_remainders_size>& bitmasks)
 {
 	using namespace mbp;
 
-	for (size_t i = 0; i < remainders.size(); ++i)
+	if (divisible_by_5(number)) return true;
+
+	for (size_t i = div_test::n_of_bases * 2; i < remainders.size(); ++i)
 	{
 		// skip six expensive tests, four of which are always false
 		if (remainders[i].size() == 64) continue;
@@ -132,7 +161,30 @@ inline bool has_small_divisor(const size_t number,
 		}
 
 		// see if the sum of remainders is evenly divisible by a given prime
-		if (div_test::has_small_prime_factor(rem, (i / div_test::n_of_bases) + 1)) return true;
+		if (div_test::has_small_prime_factor(rem, (i / div_test::n_of_bases) + 1))
+		{
+#if 0
+			static std::vector<uint8_t> active_indexes(remainders.size(), false);
+			if (!active_indexes[i]) // if this isn't known to be an active index
+			{
+				active_indexes[i] = true; // note it as active
+
+				std::cout << "\n\n\nA number was divisible by " << small_primes_lookup[(i / div_test::n_of_bases) + 1]
+					<< " in base " << (i % 6) + 3 << "\n\n";
+				for (size_t j = 0; j < active_indexes.size(); ++j)
+				{
+					if (!active_indexes[j])
+					{
+						std::cout << "No numbers found divisible by " << small_primes_lookup[(j / div_test::n_of_bases) + 1]
+							<< " in base " << (j % 6) + 3 << " (idx = " << j << ")\n";
+					}
+				}
+
+				mbp::detail::print_active_mod_remainders(active_indexes);
+			}
+#endif
+			return true;
+		}
 	}
 
 	return false;

@@ -30,17 +30,20 @@ namespace detail
 	constexpr const std::vector<size_t> build_small_primes_lookup_impl()
 	{
 		std::vector<size_t> primes;
+		primes.push_back(2);
 
-		for (size_t i = 2; i <= mbp::sieve_primes_cap; ++i)
+		for (size_t i = 3; i < mbp::sieve_primes_cap; i += 2)
 			if (brute_force_is_prime(i))
 				primes.push_back(i);
 
 		return primes;
 	}
 
-	constexpr std::array<size_t, build_small_primes_lookup_impl().size()> build_small_primes_lookup()
+	constexpr size_t n_of_small_primes = build_small_primes_lookup_impl().size();
+
+	constexpr std::array<size_t, n_of_small_primes> build_small_primes_lookup()
 	{
-		decltype(build_small_primes_lookup()) primes{};
+		std::array<size_t, n_of_small_primes> primes{};
 		const auto x = build_small_primes_lookup_impl();
 		std::copy(x.begin(), x.end(), primes.begin());
 		return primes;
@@ -80,9 +83,9 @@ size_t binary_to_base(size_t binary, const size_t base)
 	return num;
 }
 
-mpz_class bin_to_base(const mpz_class& binary, const int base)
+mpz_class bin_to_base(const mpz_class& binary, const size_t base)
 {
-	return mpz_class{ binary.get_str(2), base };
+	return mpz_class{ binary.get_str(2), int(base) };
 }
 
 inline auto pop_count(uint64_t n)
@@ -131,7 +134,7 @@ constexpr size_t build_gcd_1155_lookup()
 {
 	size_t lookup = 0;
 
-	// set bit i high if and only if the GCD of (i, 1155) is 1
+	// set bit i high if the GCD of (i, 1155) is 1
 	for (size_t i = 0; i < 32; ++i)
 	{
 		lookup |= size_t(gcd(i, 1155u) == 1ull) << i;

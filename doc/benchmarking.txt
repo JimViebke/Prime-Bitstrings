@@ -1,7 +1,7 @@
 
 Notes for benchmarking
 
-Benchmark: performing full 2->n tests from p11 to p11 + 100 million.
+Benchmark: search from from p11 to p11 + 100 million.
 
 Calculate change [b]efore and [a]fter: b = (), a = (), (a-b)/b*100
 
@@ -36,6 +36,8 @@ Calculate change [b]efore and [a]fter: b = (), a = (), (a-b)/b*100
 17252 ms : Div test from 3; skip expensive tests (some are always false) (~15% faster)
 16647 ms : Use custom prime test with trial division awareness (~3% faster)
 14941 ms : Run one round of strong pseudoprime testing instead of 10 (~10% faster)
+14288 ms : Skip div tests by 3 in bases 3-8 (always false) (~4% faster)
+13743 ms : Skip div tests by 5 in bases 4-8, hardcode remaining test (~4% faster)
 
 
 

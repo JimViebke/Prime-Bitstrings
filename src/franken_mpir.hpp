@@ -879,12 +879,10 @@ namespace franken
 		}
 	}
 
-	unsigned long mpir_trial_division(mpz_srcptr N, size_t start_idx, size_t stop)
+	unsigned long mpir_trial_division(mpz_srcptr n, size_t start_idx, size_t stop)
 	{
-		// iterate until we hit a prime >= stop
-
 		for (size_t i = start_idx; small_primes_lookup[i] < stop; ++i)
-			if (mpz_divisible_ui_p(N, small_primes_lookup[i]))
+			if (mpz_divisible_ui_p(n, small_primes_lookup[i]))
 				return small_primes_lookup[i];
 
 		return 0;
@@ -980,9 +978,9 @@ namespace franken
 	}
 
 	// has no factors <= primes[idx]
-	inline bool mpir_is_prime(const mpz_class& p, const size_t div_p_idx)
+	inline bool mpir_is_prime(const mpz_class& n, const size_t div_p_idx)
 	{
-		return bool(mpir_likely_prime(p.get_mpz_t(), gmp_random::r.get_randstate_t(), div_p_idx));
+		return bool(mpir_likely_prime(n.get_mpz_t(), gmp_random::r.get_randstate_t(), div_p_idx));
 	}
 }
 
