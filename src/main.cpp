@@ -112,31 +112,8 @@ const std::vector<uint8_t> generate_static_sieve()
 	return sieve;
 }
 
-constexpr size_t generate_bitmask_for(size_t prime, size_t base)
-{
-	size_t i = 0;
-	for (; i < 64; ++i) // calculate base^i MOD prime
-	{
-		uint8_t rem = uint8_t(pk::powMod(base, i, prime));
-		if (rem == 1 && i > 0) break; // break when the pattern repeats
-	}
-
-	size_t bitmask = 0;
-	for (size_t j = 0; j < 64 && i < 64; j += i)
-	{
-		bitmask <<= i;
-		bitmask |= 1;
-	}
-
-	return bitmask;
-}
-
-// Require calculation at compile-time
-template<size_t a, size_t b, size_t m>
-struct pow_mod
-{
-	static constexpr size_t rem = pk::powMod(a, b, m);
-};
+#pragma warning(push)
+#pragma warning(disable: 26450)
 
 /*
 Never divtest against
@@ -147,58 +124,8 @@ Never divtest against
 7 in base 6, 7, or 8
 */
 
-__forceinline bool divisible_by_5(const size_t number)
-{
-	// 3^n % 5 has 4 values
 
-	// test base 3
-	constexpr size_t b3_mask = generate_bitmask_for(5, 3);
-	size_t rem = 0;
-	rem += pop_count(number & (b3_mask << 0)) * pow_mod<3, 0, 5>::rem;
-	rem += pop_count(number & (b3_mask << 1)) * pow_mod<3, 1, 5>::rem;
-	rem += pop_count(number & (b3_mask << 2)) * pow_mod<3, 2, 5>::rem;
-	rem += pop_count(number & (b3_mask << 3)) * pow_mod<3, 3, 5>::rem;
-	return mbp::div_test::has_small_prime_factor(rem, 2); // idx 2; 5 is the 3rd prime
-}
-
-__forceinline bool divisible_by_7(const size_t number)
-{
-	// 3^n % 7 has 6 values
-	// 4^n % 7 has 3 values
-	// 5^n % 7 has 6 values
-
-	// test base 3
-	constexpr size_t b3_mask = generate_bitmask_for(7, 3);
-	size_t rem = 0;
-	rem += pop_count(number & (b3_mask << 0)) * pow_mod<3, 0, 7>::rem;
-	rem += pop_count(number & (b3_mask << 1)) * pow_mod<3, 1, 7>::rem;
-	rem += pop_count(number & (b3_mask << 2)) * pow_mod<3, 2, 7>::rem;
-	rem += pop_count(number & (b3_mask << 3)) * pow_mod<3, 3, 7>::rem;
-	rem += pop_count(number & (b3_mask << 4)) * pow_mod<3, 4, 7>::rem;
-	rem += pop_count(number & (b3_mask << 5)) * pow_mod<3, 5, 7>::rem;
-	if (mbp::div_test::has_small_prime_factor(rem, 3)) return true; // idx 3; 7 is the 4th prime
-
-	// test base 4
-	constexpr size_t b4_mask = generate_bitmask_for(7, 4);
-	rem = 0;
-	rem += pop_count(number & (b4_mask << 0)) * pow_mod<4, 0, 7>::rem;
-	rem += pop_count(number & (b4_mask << 1)) * pow_mod<4, 1, 7>::rem;
-	rem += pop_count(number & (b4_mask << 2)) * pow_mod<4, 2, 7>::rem;
-	if (mbp::div_test::has_small_prime_factor(rem, 3)) return true; // idx 3; 7 is the 4th prime
-
-	// test base 5
-	constexpr size_t b5_mask = generate_bitmask_for(7, 5);
-	rem = 0;
-	rem += pop_count(number & (b5_mask << 0)) * pow_mod<5, 0, 7>::rem;
-	rem += pop_count(number & (b5_mask << 1)) * pow_mod<5, 1, 7>::rem;
-	rem += pop_count(number & (b5_mask << 2)) * pow_mod<5, 2, 7>::rem;
-	rem += pop_count(number & (b5_mask << 3)) * pow_mod<5, 3, 7>::rem;
-	rem += pop_count(number & (b5_mask << 4)) * pow_mod<5, 4, 7>::rem;
-	rem += pop_count(number & (b5_mask << 5)) * pow_mod<5, 5, 7>::rem;
-	if (mbp::div_test::has_small_prime_factor(rem, 3)) return true; // idx 3; 7 is the 4th prime
-
-	return false;
-}
+#pragma warning(pop)
 
 __forceinline bool has_small_divisor(const size_t number,
 									 const std::vector<std::vector<uint8_t>>& remainders,
@@ -206,9 +133,9 @@ __forceinline bool has_small_divisor(const size_t number,
 {
 	using namespace mbp;
 
-	if (divisible_by_5(number)) return true;
+	if (div_test::divisible_by_5(number)) return true;
 
-	if (divisible_by_7(number)) return true;
+	if (div_test::divisible_by_7(number)) return true;
 
 	// *3 because we are skipping all 3s, 5s, and 7s
 	for (size_t i = div_test::n_of_bases * 3; i < remainders.size(); ++i)
@@ -225,9 +152,9 @@ __forceinline bool has_small_divisor(const size_t number,
 		}
 
 		// see if the sum of remainders is evenly divisible by a given prime
-		if (div_test::has_small_prime_factor(rem, (i / div_test::n_of_bases) + 1))
+		if (div_test::detail::has_small_prime_factor(rem, (i / div_test::n_of_bases) + 1))
 		{
-#if 0
+#if 1
 			static std::vector<uint8_t> active_indexes(remainders.size(), false);
 			if (!active_indexes[i]) // if this isn't known to be an active index
 			{

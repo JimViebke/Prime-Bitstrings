@@ -69,6 +69,54 @@ namespace mbp::div_test
 
 	namespace detail
 	{
+		template<size_t prime, size_t base>
+		struct bitmask_for
+		{
+		private:
+			static constexpr size_t f()
+			{
+				size_t i = 0;
+				for (; i < 64; ++i) // calculate base^i MOD prime
+				{
+					uint8_t rem = uint8_t(pk::powMod(base, i, prime));
+					if (rem == 1 && i > 0) break; // break when the pattern repeats
+				}
+
+				size_t bitmask = 0;
+				for (size_t j = 0; j < 64 && i < 64; j += i)
+				{
+					bitmask <<= i;
+					bitmask |= 1;
+				}
+
+				return bitmask;
+			}
+		public:
+			static constexpr size_t val = f();
+		};
+
+		template<size_t a, size_t b, size_t m>
+		struct pow_mod
+		{
+			static constexpr size_t rem = pk::powMod(a, b, m);
+		};
+
+		template<size_t bitmask>
+		struct period_of
+		{
+		private:
+			static constexpr size_t f()
+			{
+				// shift bitmask until we find a 1
+				static_assert(bitmask & 1);
+				for (size_t i = 1; i < 64; ++i)
+					if ((bitmask >> i) & 1)
+						return i;
+			}
+		public:
+			static constexpr size_t val = f();
+		};
+
 		constexpr size_t largest_remainder()
 		{
 			// find the largest remainder
@@ -81,8 +129,8 @@ namespace mbp::div_test
 			return largest_remainder;
 		}
 
-		// Given a % b, a won't be larger than (largest prime <64) * (the largest remainder)
-		constexpr size_t prime_factor_lookup_size = 61 * largest_remainder();
+		// The sum of remainders won't be larger than (largest prime <56) * (the largest remainder)
+		constexpr size_t prime_factor_lookup_size = 53 * largest_remainder();
 
 		std::vector<size_t> build_prime_factor_lookup()
 		{
@@ -108,10 +156,81 @@ namespace mbp::div_test
 
 		// Replaces "n % prime[k] == 0" with "lookup[n] & (1 << k)"
 		const std::vector<size_t> prime_factor_lookup = build_prime_factor_lookup();
+
+		__forceinline bool has_small_prime_factor(const size_t n, const size_t prime_index)
+		{
+			return (prime_factor_lookup[n] & (1ull << prime_index)) != 0;
+		}
 	}
 
-	inline bool has_small_prime_factor(const size_t n, const size_t prime_index)
+	__forceinline bool divisible_by_5_in_base_3(const size_t number)
 	{
-		return (detail::prime_factor_lookup[n] & (1ull << prime_index)) != 0;
+		using namespace detail;
+
+		constexpr size_t b3_mask = bitmask_for<5, 3>::val;
+		static_assert(period_of<b3_mask>::val == 4); // 3^n % 5 has 4 values
+		size_t rem = 0;
+		rem += pop_count(number & (b3_mask << 0)) * pow_mod<3, 0, 5>::rem;
+		rem += pop_count(number & (b3_mask << 1)) * pow_mod<3, 1, 5>::rem;
+		rem += pop_count(number & (b3_mask << 2)) * pow_mod<3, 2, 5>::rem;
+		rem += pop_count(number & (b3_mask << 3)) * pow_mod<3, 3, 5>::rem;
+		return detail::has_small_prime_factor(rem, 2); // idx 2; 5 is the 3rd prime
+	}
+
+	__forceinline bool divisible_by_5(const size_t number)
+	{
+		if (divisible_by_5_in_base_3(number)) return true;
+
+		return false;
+	}
+
+	__forceinline bool divisible_by_7_in_base_3(const size_t number)
+	{
+		using namespace detail;
+		constexpr size_t b3_mask = bitmask_for<7, 3>::val;
+		static_assert(period_of<b3_mask>::val == 6);
+		size_t rem = 0;
+		rem += pop_count(number & (b3_mask << 0)) * pow_mod<3, 0, 7>::rem;
+		rem += pop_count(number & (b3_mask << 1)) * pow_mod<3, 1, 7>::rem;
+		rem += pop_count(number & (b3_mask << 2)) * pow_mod<3, 2, 7>::rem;
+		rem += pop_count(number & (b3_mask << 3)) * pow_mod<3, 3, 7>::rem;
+		rem += pop_count(number & (b3_mask << 4)) * pow_mod<3, 4, 7>::rem;
+		rem += pop_count(number & (b3_mask << 5)) * pow_mod<3, 5, 7>::rem;
+		return detail::has_small_prime_factor(rem, 3); // idx 3; 7 is the 4th prime
+	}
+
+	__forceinline bool divisible_by_7_in_base_4(const size_t number)
+	{
+		using namespace detail;
+		constexpr size_t b4_mask = bitmask_for<7, 4>::val;
+		static_assert(period_of<b4_mask>::val == 3);
+		size_t rem = 0;
+		rem += pop_count(number & (b4_mask << 0)) * pow_mod<4, 0, 7>::rem;
+		rem += pop_count(number & (b4_mask << 1)) * pow_mod<4, 1, 7>::rem;
+		rem += pop_count(number & (b4_mask << 2)) * pow_mod<4, 2, 7>::rem;
+		return detail::has_small_prime_factor(rem, 3); // idx 3; 7 is the 4th prime
+	}
+
+	__forceinline bool divisible_by_7_in_base_5(const size_t number)
+	{
+		using namespace detail;
+		constexpr size_t b5_mask = bitmask_for<7, 5>::val;
+		static_assert(period_of<b5_mask>::val == 6);
+		size_t rem = 0;
+		rem += pop_count(number & (b5_mask << 0)) * pow_mod<5, 0, 7>::rem;
+		rem += pop_count(number & (b5_mask << 1)) * pow_mod<5, 1, 7>::rem;
+		rem += pop_count(number & (b5_mask << 2)) * pow_mod<5, 2, 7>::rem;
+		rem += pop_count(number & (b5_mask << 3)) * pow_mod<5, 3, 7>::rem;
+		rem += pop_count(number & (b5_mask << 4)) * pow_mod<5, 4, 7>::rem;
+		rem += pop_count(number & (b5_mask << 5)) * pow_mod<5, 5, 7>::rem;
+		return detail::has_small_prime_factor(rem, 3); // idx 3; 7 is the 4th prime
+	}
+
+	__forceinline bool divisible_by_7(const size_t number)
+	{
+		if (divisible_by_7_in_base_3(number)) return true;
+		if (divisible_by_7_in_base_4(number)) return true;
+		if (divisible_by_7_in_base_5(number)) return true;
+		return false;
 	}
 }
