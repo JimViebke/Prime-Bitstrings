@@ -66,6 +66,8 @@ void log_time()
 
 void log_result(const mpz_class& n, size_t up_to_base)
 {
+	if constexpr (mbp::benchmark_mode) return;
+
 	log_time();
 
 	std::stringstream ss;
