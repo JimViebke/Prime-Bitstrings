@@ -178,6 +178,7 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="doc\benchmarking.txt" />
+    <Text Include="doc\math stuff.txt" />
     <Text Include="doc\old benchmark notes.txt" />
     <Text Include="results.txt" />
   </ItemGroup>

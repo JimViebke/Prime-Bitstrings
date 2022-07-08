@@ -38,6 +38,7 @@ Calculate change [b]efore and [a]fter: b = (), a = (), (a-b)/b*100
 14941 ms : Run one round of strong pseudoprime testing instead of 10 (~10% faster)
 14288 ms : Skip div tests by 3 in bases 3-8 (always false) (~4% faster)
 13743 ms : Skip div tests by 5 in bases 4-8, hardcode remaining test (~4% faster)
+13279 ms : Skip div tests by 7 in bases 6-8, hardcode remaining tests (~3% faster)
 
 
 
@@ -46,7 +47,8 @@ ideas:
 - Let the full sieve be larger than (ie, a multiple of) the static sieve
 - Use vector<bool> (1/8 the memory, but with an instruction overhead)
 - Compare sieving with wheel factorization
-- Make remainder vector and constexpr
+- Make remainder vector constexpr
 - Combine remainders and bitmasks into one structure
 - Don't store many bitmasks, just a number between 1 and 64 to describe which mask to use.
 - Run profile-guided optimization
+- Check against multiple sieve values at once

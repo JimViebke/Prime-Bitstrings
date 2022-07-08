@@ -245,5 +245,6 @@
       <Filter>Resource Files</Filter>
     </Text>
     <Text Include="doc\old benchmark notes.txt" />
+    <Text Include="doc\math stuff.txt" />
   </ItemGroup>
 </Project>
