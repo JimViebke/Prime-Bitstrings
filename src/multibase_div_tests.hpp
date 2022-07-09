@@ -69,7 +69,8 @@ namespace mbp::div_test
 
 	namespace detail
 	{
-		template<size_t prime, size_t base>
+		// bitmask for all base^n mod prime
+		template<size_t base, size_t prime>
 		struct bitmask_for
 		{
 		private:
@@ -95,6 +96,7 @@ namespace mbp::div_test
 			static constexpr size_t val = f();
 		};
 
+		// calculate a^b mod m
 		template<size_t a, size_t b, size_t m>
 		struct pow_mod
 		{
@@ -171,13 +173,13 @@ namespace mbp::div_test
 	{
 		using namespace detail;
 
-		constexpr size_t b3_mask = bitmask_for<5, 3>::val;
-		static_assert(period_of<b3_mask>::val == 4); // 3^n % 5 has 4 values
+		constexpr size_t mask = bitmask_for<3, 5>::val;
+		static_assert(period_of<mask>::val == 4); // 3^n % 5 has 4 values
 		size_t rem = 0;
-		rem += pop_count(number & (b3_mask << 0)) * pow_mod<3, 0, 5>::rem;
-		rem += pop_count(number & (b3_mask << 1)) * pow_mod<3, 1, 5>::rem;
-		rem += pop_count(number & (b3_mask << 2)) * pow_mod<3, 2, 5>::rem;
-		rem += pop_count(number & (b3_mask << 3)) * pow_mod<3, 3, 5>::rem;
+		rem += pop_count(number & (mask << 0)) * pow_mod<3, 0, 5>::rem;
+		rem += pop_count(number & (mask << 1)) * pow_mod<3, 1, 5>::rem;
+		rem += pop_count(number & (mask << 2)) * pow_mod<3, 2, 5>::rem;
+		rem += pop_count(number & (mask << 3)) * pow_mod<3, 3, 5>::rem;
 		return detail::has_small_prime_factor(rem, 2); // idx 2; 5 is the 3rd prime
 	}
 
@@ -191,42 +193,42 @@ namespace mbp::div_test
 	__forceinline bool divisible_by_7_in_base_3(const size_t number)
 	{
 		using namespace detail;
-		constexpr size_t b3_mask = bitmask_for<7, 3>::val;
-		static_assert(period_of<b3_mask>::val == 6);
+		constexpr size_t mask = bitmask_for<3, 7>::val;
+		static_assert(period_of<mask>::val == 6);
 		size_t rem = 0;
-		rem += pop_count(number & (b3_mask << 0)) * pow_mod<3, 0, 7>::rem;
-		rem += pop_count(number & (b3_mask << 1)) * pow_mod<3, 1, 7>::rem;
-		rem += pop_count(number & (b3_mask << 2)) * pow_mod<3, 2, 7>::rem;
-		rem += pop_count(number & (b3_mask << 3)) * pow_mod<3, 3, 7>::rem;
-		rem += pop_count(number & (b3_mask << 4)) * pow_mod<3, 4, 7>::rem;
-		rem += pop_count(number & (b3_mask << 5)) * pow_mod<3, 5, 7>::rem;
+		rem += pop_count(number & (mask << 0)) * pow_mod<3, 0, 7>::rem;
+		rem += pop_count(number & (mask << 1)) * pow_mod<3, 1, 7>::rem;
+		rem += pop_count(number & (mask << 2)) * pow_mod<3, 2, 7>::rem;
+		rem += pop_count(number & (mask << 3)) * pow_mod<3, 3, 7>::rem;
+		rem += pop_count(number & (mask << 4)) * pow_mod<3, 4, 7>::rem;
+		rem += pop_count(number & (mask << 5)) * pow_mod<3, 5, 7>::rem;
 		return detail::has_small_prime_factor(rem, 3); // idx 3; 7 is the 4th prime
 	}
 
 	__forceinline bool divisible_by_7_in_base_4(const size_t number)
 	{
 		using namespace detail;
-		constexpr size_t b4_mask = bitmask_for<7, 4>::val;
-		static_assert(period_of<b4_mask>::val == 3);
+		constexpr size_t mask = bitmask_for<4, 7>::val;
+		static_assert(period_of<mask>::val == 3);
 		size_t rem = 0;
-		rem += pop_count(number & (b4_mask << 0)) * pow_mod<4, 0, 7>::rem;
-		rem += pop_count(number & (b4_mask << 1)) * pow_mod<4, 1, 7>::rem;
-		rem += pop_count(number & (b4_mask << 2)) * pow_mod<4, 2, 7>::rem;
+		rem += pop_count(number & (mask << 0)) * pow_mod<4, 0, 7>::rem;
+		rem += pop_count(number & (mask << 1)) * pow_mod<4, 1, 7>::rem;
+		rem += pop_count(number & (mask << 2)) * pow_mod<4, 2, 7>::rem;
 		return detail::has_small_prime_factor(rem, 3); // idx 3; 7 is the 4th prime
 	}
 
 	__forceinline bool divisible_by_7_in_base_5(const size_t number)
 	{
 		using namespace detail;
-		constexpr size_t b5_mask = bitmask_for<7, 5>::val;
-		static_assert(period_of<b5_mask>::val == 6);
+		constexpr size_t mask = bitmask_for<5, 7>::val;
+		static_assert(period_of<mask>::val == 6);
 		size_t rem = 0;
-		rem += pop_count(number & (b5_mask << 0)) * pow_mod<5, 0, 7>::rem;
-		rem += pop_count(number & (b5_mask << 1)) * pow_mod<5, 1, 7>::rem;
-		rem += pop_count(number & (b5_mask << 2)) * pow_mod<5, 2, 7>::rem;
-		rem += pop_count(number & (b5_mask << 3)) * pow_mod<5, 3, 7>::rem;
-		rem += pop_count(number & (b5_mask << 4)) * pow_mod<5, 4, 7>::rem;
-		rem += pop_count(number & (b5_mask << 5)) * pow_mod<5, 5, 7>::rem;
+		rem += pop_count(number & (mask << 0)) * pow_mod<5, 0, 7>::rem;
+		rem += pop_count(number & (mask << 1)) * pow_mod<5, 1, 7>::rem;
+		rem += pop_count(number & (mask << 2)) * pow_mod<5, 2, 7>::rem;
+		rem += pop_count(number & (mask << 3)) * pow_mod<5, 3, 7>::rem;
+		rem += pop_count(number & (mask << 4)) * pow_mod<5, 4, 7>::rem;
+		rem += pop_count(number & (mask << 5)) * pow_mod<5, 5, 7>::rem;
 		return detail::has_small_prime_factor(rem, 3); // idx 3; 7 is the 4th prime
 	}
 
