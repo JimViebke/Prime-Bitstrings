@@ -66,14 +66,14 @@ void log_time()
 
 void log_result(const mpz_class& n, size_t up_to_base)
 {
-	if constexpr (mbp::benchmark_mode) return;
-
 	log_time();
 
 	std::stringstream ss;
 	ss << bin_to_base(n, 10) << " is a p" << up_to_base << " (" << n << ")\n";
 
 	std::cout << ss.str();
+
+	if constexpr (mbp::benchmark_mode) return;
 
 	std::ofstream ofs(mbp::results_path, std::ofstream::app);
 	ofs << ss.str();
@@ -156,7 +156,7 @@ __forceinline bool has_small_divisor(const size_t number,
 		// see if the sum of remainders is evenly divisible by a given prime
 		if (div_test::detail::has_small_prime_factor(rem, (i / div_test::n_of_bases) + 1))
 		{
-#if 1
+#if 0
 			static std::vector<uint8_t> active_indexes(remainders.size(), false);
 			if (!active_indexes[i]) // if this isn't known to be an active index
 			{
