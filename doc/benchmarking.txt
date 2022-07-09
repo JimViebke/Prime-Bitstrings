@@ -45,7 +45,6 @@ Calculate change [b]efore and [a]fter: b = (), a = (), (a-b)/b*100
 
 ideas:
 - Let the full sieve be larger than (ie, a multiple of) the static sieve
-- Use vector<bool> (1/8 the memory, but with an instruction overhead)
 - Compare sieving with wheel factorization
 - Make remainder vector constexpr
 - Combine remainders and bitmasks into one structure

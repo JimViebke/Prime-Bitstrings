@@ -64,6 +64,9 @@ void log_time()
 	std::cout << std::setfill('0') << std::setw(2) << ((now.tm_hour % 12 == 0) ? 12 : now.tm_hour % 12) << ':' << std::setw(2) << now.tm_min << '\t';
 }
 
+// suppress "unreachable" warning while in benchmark mode
+#pragma warning(push)
+#pragma warning(disable: 4702)
 void log_result(const mpz_class& n, size_t up_to_base)
 {
 	log_time();
@@ -77,9 +80,24 @@ void log_result(const mpz_class& n, size_t up_to_base)
 
 	std::ofstream ofs(mbp::results_path, std::ofstream::app);
 	ofs << ss.str();
+
+}
+#pragma warning(pop)
+
+using sieve_t = uint8_t;
+const std::vector<sieve_t> generate_static_sieve()
+{
+	std::vector<sieve_t> sieve(mbp::static_sieve_size, true);
+
+	// for each prime, mark off all multiples
+	for (const auto p : mbp::static_sieve_primes)
+		for (auto i = p; i < sieve.size(); i += p)
+			sieve[i] = false;
+
+	return sieve;
 }
 
-void partial_sieve(const size_t start, std::vector<uint8_t>& sieve)
+void partial_sieve(const size_t start, std::vector<sieve_t>& sieve)
 {
 	constexpr static size_t idx = mbp::static_sieve_primes.size() + 1;
 
@@ -102,18 +120,6 @@ void partial_sieve(const size_t start, std::vector<uint8_t>& sieve)
 	}
 }
 
-const std::vector<uint8_t> generate_static_sieve()
-{
-	std::vector<uint8_t> sieve(mbp::static_sieve_size, true);
-
-	// for each prime, mark off all multiples
-	for (const auto p : mbp::static_sieve_primes)
-		for (auto i = p; i < sieve.size(); i += p)
-			sieve[i] = false;
-
-	return sieve;
-}
-
 __forceinline bool has_small_divisor(const size_t number,
 									 const std::vector<std::vector<uint8_t>>& remainders,
 									 const std::array<size_t, mbp::div_test::mod_remainders_size>& bitmasks)
@@ -124,10 +130,10 @@ __forceinline bool has_small_divisor(const size_t number,
 
 	if (div_test::divisible_by_7(number)) return true;
 
-	// *3 because we are skipping all 3s, 5s, and 7s
+	// div_test::n_of_bases * [the number of primes to skip, starting from 3]
 	for (size_t i = div_test::n_of_bases * 3; i < remainders.size(); ++i)
 	{
-		// skip six expensive tests, four of which are always false
+		// skip two expensive tests
 		if (remainders[i].size() == 64) continue;
 
 		// Do this here, because first shift is always 0 and first rem is always 1
@@ -148,17 +154,20 @@ __forceinline bool has_small_divisor(const size_t number,
 				active_indexes[i] = true; // note it as active
 
 				std::cout << "\n\n\nA number was divisible by " << small_primes_lookup[(i / div_test::n_of_bases) + 1]
-					<< " in base " << (i % 6) + 3 << "\n\n";
+					<< " in base " << (i % div_test::n_of_bases) + 3 << " (" << remainders[i].size() << " remainders)\n\n";
+				bool any = false;
 				for (size_t j = 0; j < active_indexes.size(); ++j)
 				{
 					if (!active_indexes[j])
 					{
+						any = true;
 						std::cout << "No numbers found divisible by " << small_primes_lookup[(j / div_test::n_of_bases) + 1]
-							<< " in base " << (j % 6) + 3 << " (idx = " << j << ")\n";
+							<< " in base " << (j % div_test::n_of_bases) + 3 << " (idx = " << j << ")\n";
 					}
 				}
+				if (!any) std::cout << "All values in remainders lookup used\n";
 
-				mbp::detail::print_active_mod_remainders(active_indexes);
+				// mbp::detail::print_active_mod_remainders(active_indexes);
 			}
 #endif
 			return true;
@@ -177,8 +186,8 @@ void find_multibase_primes()
 	size_t number = mbp::benchmark_mode ? mbp::bm_start : load_from_results();
 	mpz_class mpz_number = 0ull; // it's a surprise tool that will help us later
 
-	const std::vector<uint8_t> static_sieve = generate_static_sieve();
-	std::vector<uint8_t> sieve;
+	const std::vector<sieve_t> static_sieve = generate_static_sieve();
+	std::vector<sieve_t> sieve;
 
 	/* The number must start on an odd multiple of the sieve size. To round N to the nearest odd multiple of K:
 	 * n -= k;

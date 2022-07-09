@@ -51,3 +51,7 @@ v9 is the fastest version by a bit, because it skips prime "2"
 Div testing does not need to check against 2.
 - Even bases can't be divisible by 2, because all candidates end in 1.
 - Odd bases can't be divisible by 2, because we check for an odd number of bits.
+
+
+
+Vector<bool> (1/8 the memory, but with an instruction overhead) was slightly slower than vector<uint8_t>, including when one prime was added.
