@@ -163,6 +163,10 @@ namespace mbp::div_test
 		}
 	}
 
+	// Suppress warnings about bitmasks having upper bits moved
+#pragma warning(push)
+#pragma warning(disable: 26450)
+
 	__forceinline bool divisible_by_5_in_base_3(const size_t number)
 	{
 		using namespace detail;
@@ -233,4 +237,7 @@ namespace mbp::div_test
 		if (divisible_by_7_in_base_5(number)) return true;
 		return false;
 	}
+
+#pragma warning(pop)
+
 }

@@ -114,21 +114,6 @@ const std::vector<uint8_t> generate_static_sieve()
 	return sieve;
 }
 
-#pragma warning(push)
-#pragma warning(disable: 26450)
-
-/*
-Never divtest against
-
-2 in any base
-3 in bases 3, 4, 5, 6, 7, 8
-5 in bases 4, 5, 6, 7, 8
-7 in base 6, 7, or 8
-*/
-
-
-#pragma warning(pop)
-
 __forceinline bool has_small_divisor(const size_t number,
 									 const std::vector<std::vector<uint8_t>>& remainders,
 									 const std::array<size_t, mbp::div_test::mod_remainders_size>& bitmasks)
