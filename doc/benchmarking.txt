@@ -46,8 +46,50 @@ Calculate change [b]efore and [a]fter: b = (), a = (), (a-b)/b*100
 ideas:
 - Let the full sieve be larger than (ie, a multiple of) the static sieve
 - Compare sieving with wheel factorization
-- Make remainder vector constexpr
-- Combine remainders and bitmasks into one structure
-- Don't store many bitmasks, just a number between 1 and 64 to describe which mask to use.
+- All three of these are likely to be obsoleted by hardcoding the div tests:
+	- Make remainder vector constexpr
+	- Combine remainders and bitmasks into one structure
+	- Don't store many bitmasks, just a number between 1 and 64 to describe which mask to use.
 - Run profile-guided optimization
 - Check against multiple sieve values at once
+- Search permutations of bits rather than linearly (see below)
+
+
+
+
+
+
+
+- Compare permutations with linear+sieve
+- count from 0 to 32: check sieve, popcount, gcd, then ++counter
+- count from 0 to 32: permute 13, 17, 19, 23, 29 31, skip popcount, do gcd, then ++counter
+- The permutation version may require base2 div tests to compensate for no sieve
+
+Don't permute p bits in n-bit space
+Permute p-1 bits in n-1-bit space, then add 1 on the end
+
+size_t count_trailing_0s(size_t v)
+{
+	unsigned long c;
+	_BitScanForward64(&c, v);
+	return c;
+}
+
+size_t step(size_t v)
+{
+	size_t t = v | (v - 1); // t gets v's least significant 0 bits set to 1
+	// Next set to 1 the most significant bit to change,
+	// set to 0 the least significant ones, and add the necessary 1 bits.
+	return (t + 1) | (((~t & -~t) - 1) >> (count_trailing_0s(v) + 1));
+}
+
+void f()
+{
+	size_t next = 123;
+	for (size_t i = 0; i < 100; ++i)
+	{
+		next = step(next);
+		size_t number = (next << 1) | 0x1;
+		std::cout << std::bitset<64>(number) << '\n';
+	}
+}

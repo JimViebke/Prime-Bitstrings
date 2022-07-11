@@ -6,7 +6,6 @@
 #include <fstream>
 #include <sstream>
 #include <charconv>
-#include <bitset>
 
 #include "utility.hpp"
 #include "math.hpp"
@@ -80,7 +79,6 @@ void log_result(const mpz_class& n, size_t up_to_base)
 
 	std::ofstream ofs(mbp::results_path, std::ofstream::app);
 	ofs << ss.str();
-
 }
 #pragma warning(pop)
 
@@ -125,10 +123,13 @@ __forceinline bool has_small_divisor(const size_t number,
 									 const std::array<size_t, mbp::div_test::mod_remainders_size>& bitmasks)
 {
 	using namespace mbp;
+	using namespace div_test;
 
-	if (div_test::divisible_by_5(number)) return true;
+	if (is_divisible_by<5, in_base<3>>(number)) return true;
 
-	if (div_test::divisible_by_7(number)) return true;
+	if (is_divisible_by<7, in_base<3>>(number)) return true;
+	if (is_divisible_by<7, in_base<4>>(number)) return true;
+	if (is_divisible_by<7, in_base<5>>(number)) return true;
 
 	// div_test::n_of_bases * [the number of primes to skip, starting from 3]
 	for (size_t i = div_test::n_of_bases * 3; i < remainders.size(); ++i)

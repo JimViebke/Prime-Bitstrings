@@ -1,12 +1,8 @@
-
-
-
 2022 Jun 18 - Using static sieve up to 17 saved 4% instead of 5% (we still have to sieve up to 997).
             - Rebuilt MPIR on C++20, got a small performance boost. Previous builds seemed correct.
 2022 Jun 20 - If MPIR is ignoring "div", that absolutely should not have affected performance
             - MPIR already uses a native 64-bit solution whenever an mpz fits in one word
 			- "likely prime" is much cheaper than "probable prime"
-
 
 
 SPRP comparisons:
@@ -20,9 +16,7 @@ if (!franken::n_is_pseudoprime_fibonacci(number)) continue; // remarkably only a
 if (!franken::n_is_pseudoprime_lucas(number)) continue; // ??
 
 
-
 From the forum thread: "for a number to be prime in bases 2 thru n, the digit sum must be (n-1)-unsmooth and the alternating digit sum must (n+1)-unsmooth."
-
 
 
 36xxx/37612 ms : v1 - (baseline, above)
@@ -47,11 +41,13 @@ v8 uses the exact bases-first ordering of v1.
 v9 is the fastest version by a bit, because it skips prime "2"
 
 
-
 Div testing does not need to check against 2.
 - Even bases can't be divisible by 2, because all candidates end in 1.
 - Odd bases can't be divisible by 2, because we check for an odd number of bits.
 
 
+- Vector<bool> (1/8 the memory, but with an instruction overhead) was slightly slower than vector<uint8_t>, including when one prime was added.
+- The newer templated versions of div_test functions compile to the same assembly as the earlier non-templated versions.
+- unrolled div testing is more efficient against factors 5 and 7, but slower for 11
 
-Vector<bool> (1/8 the memory, but with an instruction overhead) was slightly slower than vector<uint8_t>, including when one prime was added.
+
