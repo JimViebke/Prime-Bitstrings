@@ -2,7 +2,6 @@
 #include <iostream>
 #include <vector>
 #include <iomanip>
-#include <numeric>
 #include <fstream>
 #include <sstream>
 #include <charconv>
@@ -15,6 +14,8 @@
 #pragma warning(push, 0)
 #include "franken_mpir.hpp"
 #pragma warning(pop)
+
+
 
 size_t load_from_results()
 {
@@ -132,7 +133,7 @@ __forceinline bool has_small_divisor(const size_t number,
 	if (is_divisible_by<7, in_base<5>>(number)) return true;
 
 	// div_test::n_of_bases * [the number of primes to skip, starting from 3]
-	for (size_t i = div_test::n_of_bases * 3; i < remainders.size(); ++i)
+	for (size_t i = 0; i < remainders.size(); ++i)
 	{
 		// skip two expensive tests
 		if (remainders[i].size() == 64) continue;
@@ -146,7 +147,7 @@ __forceinline bool has_small_divisor(const size_t number,
 		}
 
 		// see if the sum of remainders is evenly divisible by a given prime
-		if (div_test::detail::has_small_prime_factor(rem, (i / div_test::n_of_bases) + 1))
+		if (div_test::detail::has_small_prime_factor(rem, (i / div_test::n_of_bases) + 1 + div_test::n_of_primes_with_hardcoded_divtests))
 		{
 #if 0
 			static std::vector<uint8_t> active_indexes(remainders.size(), false);
@@ -156,21 +157,74 @@ __forceinline bool has_small_divisor(const size_t number,
 
 				std::cout << "\n\n\nA number was divisible by " << small_primes_lookup[(i / div_test::n_of_bases) + 1]
 					<< " in base " << (i % div_test::n_of_bases) + 3 << " (" << remainders[i].size() << " remainders)\n\n";
-				bool any = false;
-				for (size_t j = 0; j < active_indexes.size(); ++j)
-				{
-					if (!active_indexes[j])
-					{
-						any = true;
-						std::cout << "No numbers found divisible by " << small_primes_lookup[(j / div_test::n_of_bases) + 1]
-							<< " in base " << (j % div_test::n_of_bases) + 3 << " (idx = " << j << ")\n";
-					}
-				}
-				if (!any) std::cout << "All values in remainders lookup used\n";
+				//bool any = false;
+				//for (size_t j = 0; j < active_indexes.size(); ++j)
+				//{
+				//	if (!active_indexes[j])
+				//	{
+				//		any = true;
+				//		std::cout << "No numbers found divisible by " << small_primes_lookup[(j / div_test::n_of_bases) + 1]
+				//			<< " in base " << (j % div_test::n_of_bases) + 3 << " (idx = " << j << ")\n";
+				//	}
+				//}
+				//if (!any) std::cout << "All values in remainders lookup used\n";
 
-				// mbp::detail::print_active_mod_remainders(active_indexes);
+				mbp::detail::print_active_mod_remainders(active_indexes);
 			}
 #endif
+			return true;
+		}
+	}
+
+	return false;
+}
+
+#pragma warning(push)
+#pragma warning(disable: 26450)
+constexpr std::array<size_t, 64> bitmask_lookup = []
+{
+	std::array<size_t, 64> bitmasks = { 0 };
+
+	for (size_t i = 1; i < 64; ++i)
+	{
+		size_t bitmask = 0;
+		for (size_t j = 0; j < 64; j += i)
+		{
+			bitmask <<= i;
+			bitmask |= 1;
+		}
+		bitmasks[i] = bitmask;
+	}
+
+	return bitmasks;
+} ();
+#pragma warning(pop)
+
+__forceinline bool has_small_divisor(const size_t number,
+									 const std::array<mbp::div_test::div_test_t, mbp::div_test::div_tests_size>& div_tests)
+{
+	using namespace mbp;
+	using namespace mbp::div_test;
+
+	if (is_divisible_by<5, in_base<3>>(number)) return true;
+
+	if (is_divisible_by<7, in_base<3>>(number)) return true;
+	if (is_divisible_by<7, in_base<4>>(number)) return true;
+	if (is_divisible_by<7, in_base<5>>(number)) return true;
+
+	for (const div_test_t& div_test : div_tests)
+	{
+		// Perform the first popcount here, because first shift is always 0 and first rem is always 1
+		size_t rem = pop_count(number & bitmask_lookup[div_test.n_of_remainders]);
+
+		for (size_t i = 1; i < div_test.n_of_remainders; ++i)
+		{
+			rem += pop_count(number & (bitmask_lookup[div_test.n_of_remainders] << i)) * div_test.remainders[i];
+		}
+
+		if (div_test::detail::has_small_prime_factor(rem, div_test.prime_idx))
+		{
+			// std::cout << number << " is divisible by " << small_primes_lookup[div_test.prime_idx] << " in base " << size_t(div_test.base) << '\n';
 			return true;
 		}
 	}
@@ -188,7 +242,7 @@ void find_multibase_primes()
 	mpz_class mpz_number = 0ull; // it's a surprise tool that will help us later
 
 	const std::vector<sieve_t> static_sieve = generate_static_sieve();
-	std::vector<sieve_t> sieve;
+	std::vector<sieve_t> sieve = static_sieve;
 
 	/* The number must start on an odd multiple of the sieve size. To round N to the nearest odd multiple of K:
 	 * n -= k;
@@ -201,22 +255,19 @@ void find_multibase_primes()
 	constexpr size_t tiny_primes_lookup = build_tiny_primes_lookup();
 	constexpr size_t gcd_1155_lookup = build_gcd_1155_lookup();
 
-	// Dimensions are [primes * bases][remainders]
-	const std::vector<std::vector<uint8_t>> remainders = div_test::generate_mod_remainders();
-	// Dimensions are [primes * bases]
-	constexpr std::array<size_t, div_test::mod_remainders_size> bitmasks = div_test::generate_mod_remainder_bitmasks();
+	static const std::array<div_test::div_test_t, div_test::div_tests_size> div_tests = div_test::generate_div_tests();
 
-	// Don't start the clock until here
+	// Start the clock after setup
 	const auto start = current_time_in_ms();
 
-	// Condition optimizes out when not benchmarking
+	// (condition optimizes out when not benchmarking)
 	while (mbp::benchmark_mode ? number < bm_stop : true)
 	{
 		// perform additional sieving on the static sieve
 		sieve = static_sieve;
 		partial_sieve(number, sieve);
 
-		for (size_t i = 0; i < mbp::static_sieve_size; ++i, number += 2)
+		for (size_t i = 0; i < sieve.size(); ++i, number += 2)
 		{
 			// Bail if this number is already known to have a small prime factor
 			if (!sieve[i]) continue;
@@ -230,7 +281,9 @@ void find_multibase_primes()
 			if ((gcd_1155_lookup & (1ull << abs(pca - pcb))) == 0) continue;
 
 			// Run cheap trial division tests across multiple bases
-			if (has_small_divisor(number, remainders, bitmasks)) continue;
+			if (has_small_divisor(number, div_tests)) continue;
+
+
 
 			// Do full primality tests, starting with base 2
 			if (!franken::mpir_is_likely_prime_BPSW(number)) continue;
@@ -277,7 +330,6 @@ void find_multibase_primes()
 
 	std::cout << "Finished. " << current_time_in_ms() - start << " ms elapsed\n";
 }
-
 
 
 int main()

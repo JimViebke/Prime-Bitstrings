@@ -3,7 +3,7 @@ Notes for benchmarking
 
 Benchmark: search from from p11 to p11 + 100 million.
 
-Calculate change [b]efore and [a]fter: b = (), a = (), (a-b)/b*100
+Calculate change: 1 - (  /  )
 
 30899/31213/31276 ms : Basic implementation
 16690/16602/16832 ms : Added sieve in size 1,000,000 (~46% faster)
@@ -39,12 +39,14 @@ Calculate change [b]efore and [a]fter: b = (), a = (), (a-b)/b*100
 14288 ms : Skip div tests by 3 in bases 3-8 (always false) (~4% faster)
 13743 ms : Skip div tests by 5 in bases 4-8, hardcode remaining test (~4% faster)
 13279 ms : Skip div tests by 7 in bases 6-8, hardcode remaining tests (~3% faster)
+12951 ms : Sort div tests by (prime * period of remainders) (~3% faster)
 
 
 
 
 ideas:
 - Let the full sieve be larger than (ie, a multiple of) the static sieve
+	- The above was slower - instead, store a larger, repeating static sieve
 - Compare sieving with wheel factorization
 - All three of these are likely to be obsoleted by hardcoding the div tests:
 	- Make remainder vector constexpr

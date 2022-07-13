@@ -40,7 +40,6 @@ namespace detail
 	}
 
 	constexpr size_t n_of_small_primes = build_small_primes_lookup_impl().size();
-
 	constexpr std::array<size_t, n_of_small_primes> build_small_primes_lookup()
 	{
 		std::array<size_t, n_of_small_primes> primes{};

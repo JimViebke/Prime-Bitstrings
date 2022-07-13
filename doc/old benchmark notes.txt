@@ -13,7 +13,7 @@ if (!pk::is_prime(number)) continue; // ~6300x slower (??)
 if (!pk::fast_is_prime(number)) continue; // still extremely slow
 if (!franken::n_is_pseudoprime_fermat(number, 2)) continue; // 2x slower
 if (!franken::n_is_pseudoprime_fibonacci(number)) continue; // remarkably only a bit slower :P
-if (!franken::n_is_pseudoprime_lucas(number)) continue; // ??
+if (!franken::n_is_pseudoprime_lucas(number)) continue; // ~4% slower
 
 
 From the forum thread: "for a number to be prime in bases 2 thru n, the digit sum must be (n-1)-unsmooth and the alternating digit sum must (n+1)-unsmooth."
@@ -48,6 +48,10 @@ Div testing does not need to check against 2.
 
 - Vector<bool> (1/8 the memory, but with an instruction overhead) was slightly slower than vector<uint8_t>, including when one prime was added.
 - The newer templated versions of div_test functions compile to the same assembly as the earlier non-templated versions.
-- unrolled div testing is more efficient against factors 5 and 7, but slower for 11
+- Unrolled div testing is more efficient against factors 5 and 7, but slower for 11
+- Letting the full sieve be a multiple of the static sieve ended up being slower
+
+
+
 
 

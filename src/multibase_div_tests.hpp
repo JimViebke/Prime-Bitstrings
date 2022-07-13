@@ -23,7 +23,7 @@ namespace mbp::div_test
 		std::vector<std::vector<uint8_t>> remainders;
 		remainders.reserve(mod_remainders_size);
 
-		for (size_t i = 1; i < n_of_primes; ++i) // for each small prime
+		for (size_t i = n_of_primes_with_hardcoded_divtests + 1; i < n_of_primes; ++i) // for each small prime
 		{
 			for (size_t base = 3; base <= up_to_base; ++base) // for each base 3..n
 			{
@@ -172,164 +172,7 @@ namespace mbp::div_test
 #pragma warning(push)
 #pragma warning(disable: 26450)
 
-	// 1/3 - hardcoded version:
-
-	__forceinline bool divisible_by_5_in_base_3(const size_t number)
-	{
-		using namespace detail;
-
-		constexpr size_t mask = bitmask_for<3, 5>::val;
-		static_assert(period_of<mask>::val == 4); // 3^n % 5 has 4 values
-		size_t rem = 0;
-		rem += pop_count(number & (mask << 0)) * pow_mod<3, 0, 5>::rem;
-		rem += pop_count(number & (mask << 1)) * pow_mod<3, 1, 5>::rem;
-		rem += pop_count(number & (mask << 2)) * pow_mod<3, 2, 5>::rem;
-		rem += pop_count(number & (mask << 3)) * pow_mod<3, 3, 5>::rem;
-		return detail::has_small_prime_factor(rem, get_prime_index<5>::idx);
-	}
-
-	__forceinline bool divisible_by_7_in_base_3(const size_t number)
-	{
-		using namespace detail;
-		constexpr size_t mask = bitmask_for<3, 7>::val;
-		static_assert(period_of<mask>::val == 6);
-		size_t rem = 0;
-		rem += pop_count(number & (mask << 0)) * pow_mod<3, 0, 7>::rem;
-		rem += pop_count(number & (mask << 1)) * pow_mod<3, 1, 7>::rem;
-		rem += pop_count(number & (mask << 2)) * pow_mod<3, 2, 7>::rem;
-		rem += pop_count(number & (mask << 3)) * pow_mod<3, 3, 7>::rem;
-		rem += pop_count(number & (mask << 4)) * pow_mod<3, 4, 7>::rem;
-		rem += pop_count(number & (mask << 5)) * pow_mod<3, 5, 7>::rem;
-		return detail::has_small_prime_factor(rem, get_prime_index<7>::idx);
-	}
-
-	__forceinline bool divisible_by_7_in_base_4(const size_t number)
-	{
-		using namespace detail;
-		constexpr size_t mask = bitmask_for<4, 7>::val;
-		static_assert(period_of<mask>::val == 3);
-		size_t rem = 0;
-		rem += pop_count(number & (mask << 0)) * pow_mod<4, 0, 7>::rem;
-		rem += pop_count(number & (mask << 1)) * pow_mod<4, 1, 7>::rem;
-		rem += pop_count(number & (mask << 2)) * pow_mod<4, 2, 7>::rem;
-		return detail::has_small_prime_factor(rem, get_prime_index<7>::idx);
-	}
-
-	__forceinline bool divisible_by_7_in_base_5(const size_t number)
-	{
-		using namespace detail;
-		constexpr size_t mask = bitmask_for<5, 7>::val;
-		static_assert(period_of<mask>::val == 6);
-		size_t rem = 0;
-		rem += pop_count(number & (mask << 0)) * pow_mod<5, 0, 7>::rem;
-		rem += pop_count(number & (mask << 1)) * pow_mod<5, 1, 7>::rem;
-		rem += pop_count(number & (mask << 2)) * pow_mod<5, 2, 7>::rem;
-		rem += pop_count(number & (mask << 3)) * pow_mod<5, 3, 7>::rem;
-		rem += pop_count(number & (mask << 4)) * pow_mod<5, 4, 7>::rem;
-		rem += pop_count(number & (mask << 5)) * pow_mod<5, 5, 7>::rem;
-		return detail::has_small_prime_factor(rem, get_prime_index<7>::idx);
-	}
-
-	__forceinline bool divisible_by_11_in_base_3(const size_t number)
-	{
-		using namespace detail;
-		constexpr size_t mask = bitmask_for<3, 11>::val;
-		static_assert(period_of<mask>::val == 5);
-		size_t rem = 0;
-		rem += pop_count(number & (mask << 0)) * pow_mod<3, 0, 11>::rem;
-		rem += pop_count(number & (mask << 1)) * pow_mod<3, 1, 11>::rem;
-		rem += pop_count(number & (mask << 2)) * pow_mod<3, 2, 11>::rem;
-		rem += pop_count(number & (mask << 3)) * pow_mod<3, 3, 11>::rem;
-		rem += pop_count(number & (mask << 4)) * pow_mod<3, 4, 11>::rem;
-		return detail::has_small_prime_factor(rem, 4); // idx 4; 11 is the 5th prime
-	}
-
-	__forceinline bool divisible_by_11_in_base_4(const size_t number)
-	{
-		using namespace detail;
-		constexpr size_t mask = bitmask_for<4, 11>::val;
-		static_assert(period_of<mask>::val == 5);
-		size_t rem = 0;
-		rem += pop_count(number & (mask << 0)) * pow_mod<4, 0, 11>::rem;
-		rem += pop_count(number & (mask << 1)) * pow_mod<4, 1, 11>::rem;
-		rem += pop_count(number & (mask << 2)) * pow_mod<4, 2, 11>::rem;
-		rem += pop_count(number & (mask << 3)) * pow_mod<4, 3, 11>::rem;
-		rem += pop_count(number & (mask << 4)) * pow_mod<4, 4, 11>::rem;
-		return detail::has_small_prime_factor(rem, 4);
-	}
-
-	__forceinline bool divisible_by_11_in_base_5(const size_t number)
-	{
-		using namespace detail;
-		constexpr size_t mask = bitmask_for<5, 11>::val;
-		static_assert(period_of<mask>::val == 5);
-		size_t rem = 0;
-		rem += pop_count(number & (mask << 0)) * pow_mod<5, 0, 11>::rem;
-		rem += pop_count(number & (mask << 1)) * pow_mod<5, 1, 11>::rem;
-		rem += pop_count(number & (mask << 2)) * pow_mod<5, 2, 11>::rem;
-		rem += pop_count(number & (mask << 3)) * pow_mod<5, 3, 11>::rem;
-		rem += pop_count(number & (mask << 4)) * pow_mod<5, 4, 11>::rem;
-		return detail::has_small_prime_factor(rem, 4);
-	}
-
-	__forceinline bool divisible_by_11_in_base_6(const size_t number)
-	{
-		using namespace detail;
-		constexpr size_t mask = bitmask_for<6, 11>::val;
-		static_assert(period_of<mask>::val == 10);
-		size_t rem = 0;
-		rem += pop_count(number & (mask << 0)) * pow_mod<6, 0, 11>::rem;
-		rem += pop_count(number & (mask << 1)) * pow_mod<6, 1, 11>::rem;
-		rem += pop_count(number & (mask << 2)) * pow_mod<6, 2, 11>::rem;
-		rem += pop_count(number & (mask << 3)) * pow_mod<6, 3, 11>::rem;
-		rem += pop_count(number & (mask << 4)) * pow_mod<6, 4, 11>::rem;
-		rem += pop_count(number & (mask << 5)) * pow_mod<6, 5, 11>::rem;
-		rem += pop_count(number & (mask << 6)) * pow_mod<6, 6, 11>::rem;
-		rem += pop_count(number & (mask << 7)) * pow_mod<6, 7, 11>::rem;
-		rem += pop_count(number & (mask << 8)) * pow_mod<6, 8, 11>::rem;
-		rem += pop_count(number & (mask << 9)) * pow_mod<6, 9, 11>::rem;
-		return detail::has_small_prime_factor(rem, 4);
-	}
-
-	__forceinline bool divisible_by_11_in_base_7(const size_t number)
-	{
-		using namespace detail;
-		constexpr size_t mask = bitmask_for<7, 11>::val;
-		static_assert(period_of<mask>::val == 10);
-		size_t rem = 0;
-		rem += pop_count(number & (mask << 0)) * pow_mod<7, 0, 11>::rem;
-		rem += pop_count(number & (mask << 1)) * pow_mod<7, 1, 11>::rem;
-		rem += pop_count(number & (mask << 2)) * pow_mod<7, 2, 11>::rem;
-		rem += pop_count(number & (mask << 3)) * pow_mod<7, 3, 11>::rem;
-		rem += pop_count(number & (mask << 4)) * pow_mod<7, 4, 11>::rem;
-		rem += pop_count(number & (mask << 5)) * pow_mod<7, 5, 11>::rem;
-		rem += pop_count(number & (mask << 6)) * pow_mod<7, 6, 11>::rem;
-		rem += pop_count(number & (mask << 7)) * pow_mod<7, 7, 11>::rem;
-		rem += pop_count(number & (mask << 8)) * pow_mod<7, 8, 11>::rem;
-		rem += pop_count(number & (mask << 9)) * pow_mod<7, 9, 11>::rem;
-		return detail::has_small_prime_factor(rem, 4);
-	}
-
-	__forceinline bool divisible_by_11_in_base_8(const size_t number)
-	{
-		using namespace detail;
-		constexpr size_t mask = bitmask_for<8, 11>::val;
-		static_assert(period_of<mask>::val == 10);
-		size_t rem = 0;
-		rem += pop_count(number & (mask << 0)) * pow_mod<8, 0, 11>::rem;
-		rem += pop_count(number & (mask << 1)) * pow_mod<8, 1, 11>::rem;
-		rem += pop_count(number & (mask << 2)) * pow_mod<8, 2, 11>::rem;
-		rem += pop_count(number & (mask << 3)) * pow_mod<8, 3, 11>::rem;
-		rem += pop_count(number & (mask << 4)) * pow_mod<8, 4, 11>::rem;
-		rem += pop_count(number & (mask << 5)) * pow_mod<8, 5, 11>::rem;
-		rem += pop_count(number & (mask << 6)) * pow_mod<8, 6, 11>::rem;
-		rem += pop_count(number & (mask << 7)) * pow_mod<8, 7, 11>::rem;
-		rem += pop_count(number & (mask << 8)) * pow_mod<8, 8, 11>::rem;
-		rem += pop_count(number & (mask << 9)) * pow_mod<8, 9, 11>::rem;
-		return detail::has_small_prime_factor(rem, 4);
-	}
-
-	// 2/3 - templated version:
+	// unrolled div tests, templated version:
 
 	template<size_t base>
 	struct in_base
@@ -422,7 +265,7 @@ namespace mbp::div_test
 		return detail::has_small_prime_factor(rem, detail::get_prime_index<divisor>::idx);
 	}
 
-	// 3/3 - recursive templated version:
+	// unrolled div tests, recursive templated version:
 
 	template<size_t divisor, size_t base, size_t mask, size_t place_value>
 	__forceinline void recursive_is_divisible_by(size_t& rem, const size_t number)
@@ -445,4 +288,71 @@ namespace mbp::div_test
 
 #pragma warning(pop)
 
+	// looping div tests, but sorted:
+
+	class div_test_t
+	{
+	public:
+		uint8_t base; // can probably be removed; we don't need to know the base to perform a test
+		uint8_t prime_idx;
+		uint8_t n_of_remainders; // is also the index of the req'd bitmask
+		std::array<uint8_t, max_div_test_remainders + 1> remainders;
+	};
+
+	namespace detail
+	{
+		constexpr std::vector<div_test_t> generate_div_tests_impl()
+		{
+			// assert that the nth prime fits in a uint8_t for div testing
+			static_assert(small_primes_lookup[mbp::div_test::n_of_primes - 1] < uint8_t(-1));
+
+			std::vector<div_test_t> div_tests;
+
+			for (size_t i = mbp::div_test::n_of_primes_with_hardcoded_divtests + 1; i < n_of_primes; ++i) // for each small prime
+			{
+				for (size_t base = 3; base <= up_to_base; ++base) // for each base 3..n
+				{
+					div_test_t dt{ .base = uint8_t(base), .prime_idx = uint8_t(i) };
+
+					// calculate base^j mod prime, where j is the place value
+					for (size_t j = 0; j < max_div_test_remainders; ++j)
+					{
+						uint8_t rem = uint8_t(pk::powMod(base, j, small_primes_lookup[i]));
+						if (rem == 1 && j > 0)
+						{
+							// The pattern is repeating - store what we have, then break
+							div_tests.push_back(dt);
+							break;
+						}
+
+						dt.remainders[j] = rem;
+						dt.n_of_remainders++;
+					}
+				}
+			}
+
+			// Order div tests by worthwhileness
+			std::sort(div_tests.begin(), div_tests.end(), [] (const auto& a, const auto& b)
+					  {
+						  // return a.n_of_terms < b.n_of_terms;
+						  return
+							  size_t(a.n_of_remainders) * small_primes_lookup[a.prime_idx] <
+							  size_t(b.n_of_remainders) * small_primes_lookup[b.prime_idx];
+					  });
+
+			//for (auto& dt : div_tests)
+			//	std::cout << "b" << size_t(dt.base) << " % " << small_primes_lookup[dt.prime_idx] << " \t" << size_t(dt.n_of_terms) << " terms\n";
+
+			return div_tests;
+		}
+	}
+
+	constexpr size_t div_tests_size = detail::generate_div_tests_impl().size();
+	constexpr std::array<div_test_t, div_tests_size> generate_div_tests()
+	{
+		std::array<div_test_t, div_tests_size> div_tests;
+		const auto x = detail::generate_div_tests_impl();
+		std::copy(x.begin(), x.end(), div_tests.begin());
+		return div_tests;
+	}
 }
