@@ -40,6 +40,7 @@ Calculate change: 1 - (  /  )
 13743 ms : Skip div tests by 5 in bases 4-8, hardcode remaining test (~4% faster)
 13279 ms : Skip div tests by 7 in bases 6-8, hardcode remaining tests (~3% faster)
 12951 ms : Sort div tests by (prime * period of remainders) (~3% faster)
+13635 ms : Fix critical sieving bug (~5% slower)
 
 
 

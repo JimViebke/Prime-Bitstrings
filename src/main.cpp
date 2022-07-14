@@ -90,7 +90,7 @@ const std::vector<sieve_t> generate_static_sieve()
 
 	// for each prime, mark off all multiples
 	for (const auto p : mbp::static_sieve_primes)
-		for (auto i = p; i < sieve.size(); i += p)
+		for (auto i = 0; i < sieve.size(); i += p)
 			sieve[i] = false;
 
 	return sieve;
@@ -104,15 +104,24 @@ void partial_sieve(const size_t start, std::vector<sieve_t>& sieve)
 	{
 		const size_t p = small_primes_lookup[i];
 
-		// Find out how far past we are from the previous multiple of p.
-		// ie 3 == 10 % 7
-		// This will always be <= p.
-		const size_t offset_from_last_pn = (start % p) / 2;
-		// Divide by 2 because the sieve only represents odd numbers
+		// Find out how far it is to the next multiple of p.
+		size_t n = p - (start % p);
 
-		// Now mark false each multiple of p, starting from [0 + p - distance from previous p],
-		// where 0 is the n we started with.
-		for (size_t j = p - offset_from_last_pn; j < sieve.size(); j += p)
+		// Start is always odd. Therefore, if n is odd, it is pointing to the next even multiple of p.
+		// -- increase by p
+		// However, if n is even, it is pointing to the next odd multiple of p.
+		// -- do nothing
+
+		// if (n % 2 == 1) // branchful
+		//	n += p;
+		n += p & -(n % 2 == 1); // branchless
+
+		// We now have the distance to the next odd multiple of p.
+		// Divide by 2 to get the *index* of the next odd multiple of p.
+		n /= 2;
+
+		// Mark false each (implicitly odd) multiple of p
+		for (size_t j = n; j < sieve.size(); j += p)
 		{
 			sieve[j] = false;
 		}
