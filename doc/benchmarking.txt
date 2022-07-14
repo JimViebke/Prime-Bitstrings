@@ -50,13 +50,13 @@ ideas:
 - Let the full sieve be larger than (ie, a multiple of) the static sieve
 	- The above was slower - instead, store a larger, repeating static sieve
 - Compare sieving with wheel factorization
-- All three of these are likely to be obsoleted by hardcoding the div tests:
-	- Make remainder vector constexpr
-	- Combine remainders and bitmasks into one structure
-	- Don't store many bitmasks, just a number between 1 and 64 to describe which mask to use.
 - Run profile-guided optimization
 - Check against multiple sieve values at once
-- Search permutations of bits rather than linearly (see below)
+- Search permutations of bits, rather than linearly (see below)
+- Make the divtest lookup with 32-bit ints instead of 64
+	- Also calculate better max size using remainder averages
+- Make the small primes lookup use 16 bits
+- Make the sieve offset cache use 16 bits
 
 
 
