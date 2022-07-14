@@ -90,17 +90,18 @@ const std::vector<sieve_t> generate_static_sieve()
 
 	// for each prime, mark off all multiples
 	for (const auto p : mbp::static_sieve_primes)
-		for (auto i = 0; i < sieve.size(); i += p)
+		for (size_t i = 0; i < sieve.size(); i += p)
 			sieve[i] = false;
 
 	return sieve;
 }
 
-void partial_sieve(const size_t start, std::vector<sieve_t>& sieve)
-{
-	constexpr static size_t idx = mbp::static_sieve_primes.size() + 1;
+std::vector<size_t> sieve_offsets_cache(small_primes_lookup.size());
 
-	for (size_t i = idx; i < small_primes_lookup.size(); ++i)
+void set_up_sieve_offsets_cache(const size_t start)
+{
+	// Start with the first prime not in the static sieve.
+	for (size_t i = mbp::static_sieve_primes.size() + 1; i < small_primes_lookup.size(); ++i)
 	{
 		const size_t p = small_primes_lookup[i];
 
@@ -117,14 +118,31 @@ void partial_sieve(const size_t start, std::vector<sieve_t>& sieve)
 		n += p & -(n % 2 == 1); // branchless
 
 		// We now have the distance to the next odd multiple of p.
-		// Divide by 2 to get the *index* of the next odd multiple of p.
-		n /= 2;
+		// Divide by 2 to store the *index* of the next odd multiple of p.
+		sieve_offsets_cache[i] = n / 2;
+	}
+}
+
+void partial_sieve(std::vector<sieve_t>& sieve)
+{
+	static_assert(mbp::static_sieve_size > mbp::sieve_primes_cap);
+
+	// Start with the first prime not in the static sieve
+	for (size_t i = mbp::static_sieve_primes.size() + 1; i < small_primes_lookup.size(); ++i)
+	{
+		const size_t p = small_primes_lookup[i];
+
+		// Get the index of the next odd multiple of p
+		size_t j = sieve_offsets_cache[i];
 
 		// Mark false each (implicitly odd) multiple of p
-		for (size_t j = n; j < sieve.size(); j += p)
+		for (; j < sieve.size(); j += p)
 		{
 			sieve[j] = false;
 		}
+
+		// Update the cache for the next sieving
+		sieve_offsets_cache[i] = j - mbp::static_sieve_size;
 	}
 }
 
@@ -261,6 +279,8 @@ void find_multibase_primes()
 	number -= number % (2 * static_sieve.size());
 	number += static_sieve.size();
 
+	set_up_sieve_offsets_cache(number);
+
 	constexpr size_t tiny_primes_lookup = build_tiny_primes_lookup();
 	constexpr size_t gcd_1155_lookup = build_gcd_1155_lookup();
 
@@ -272,9 +292,9 @@ void find_multibase_primes()
 	// (condition optimizes out when not benchmarking)
 	while (mbp::benchmark_mode ? number < bm_stop : true)
 	{
-		// perform additional sieving on the static sieve
+		// Perform additional sieving on the static sieve
 		sieve = static_sieve;
-		partial_sieve(number, sieve);
+		partial_sieve(sieve);
 
 		for (size_t i = 0; i < sieve.size(); ++i, number += 2)
 		{
