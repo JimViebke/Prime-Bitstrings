@@ -236,6 +236,9 @@
     <ClInclude Include="src\franken_boost.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\types.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="results.txt">
@@ -244,7 +247,7 @@
     <Text Include="doc\benchmarking.txt">
       <Filter>Resource Files</Filter>
     </Text>
-    <Text Include="doc\old benchmark notes.txt" />
     <Text Include="doc\math stuff.txt" />
+    <Text Include="doc\additional benchmark notes.txt" />
   </ItemGroup>
 </Project>

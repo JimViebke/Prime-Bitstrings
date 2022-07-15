@@ -9,6 +9,7 @@
 
 #include "config.hpp"
 #include "franken_boost.hpp"
+#include "types.hpp"
 
 constexpr bool brute_force_is_prime(const size_t n)
 {
@@ -27,22 +28,24 @@ constexpr bool brute_force_is_prime(const size_t n)
 
 namespace detail
 {
-	constexpr const std::vector<size_t> build_small_primes_lookup_impl()
+	using namespace mbp;
+
+	constexpr const std::vector<sieve_prime_t> build_small_primes_lookup_impl()
 	{
-		std::vector<size_t> primes;
+		std::vector<sieve_prime_t> primes;
 		primes.push_back(2);
 
-		for (size_t i = 3; i < mbp::sieve_primes_cap; i += 2)
+		for (size_t i = 3; i < sieve_primes_cap; i += 2)
 			if (brute_force_is_prime(i))
-				primes.push_back(i);
+				primes.push_back(sieve_prime_t(i));
 
 		return primes;
 	}
 
 	constexpr size_t n_of_small_primes = build_small_primes_lookup_impl().size();
-	constexpr std::array<size_t, n_of_small_primes> build_small_primes_lookup()
+	constexpr std::array<sieve_prime_t, n_of_small_primes> build_small_primes_lookup()
 	{
-		std::array<size_t, n_of_small_primes> primes{};
+		decltype(build_small_primes_lookup()) primes{};
 		const auto x = build_small_primes_lookup_impl();
 		std::copy(x.begin(), x.end(), primes.begin());
 		return primes;
@@ -59,27 +62,6 @@ namespace gmp_random
 bool mpir_is_prime(const mpz_class& p, const size_t div = 0)
 {
 	return bool(mpz_likely_prime_p(p.get_mpz_t(), gmp_random::r.get_randstate_t(), div));
-}
-
-size_t binary_to_base(size_t binary, const size_t base)
-{
-	constexpr size_t highest_bit = size_t(1) << 63;
-
-	size_t num = 0;
-
-	// for each bit
-	for (auto i = 0; i < 64; binary <<= 1, ++i)
-	{
-		num *= base;
-
-		// if the (i-1)th bit is set, +1
-		if ((binary & highest_bit) == highest_bit)
-		{
-			num += 1;
-		}
-	}
-
-	return num;
 }
 
 mpz_class bin_to_base(const mpz_class& binary, const size_t base)

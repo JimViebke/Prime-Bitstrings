@@ -42,6 +42,7 @@ Calculate change: 1 - (  /  )
 12951 ms : Sort div tests by (prime * period of remainders) (~3% faster)
 13635 ms : Fix critical sieving bug (~5% slower)
 13445 ms : Cache offsets for sieving (~1.5% faster)
+10986 ms : Overhaul datatypes and re-tune many knobs in config (~18% faster)
 
 
 
@@ -53,11 +54,9 @@ ideas:
 - Run profile-guided optimization
 - Check against multiple sieve values at once
 - Search permutations of bits, rather than linearly (see below)
-- Make the divtest lookup with 32-bit ints instead of 64
-	- Also calculate better max size using remainder averages
-- Make the small primes lookup use 16 bits
-- Make the sieve offset cache use 16 bits
-
+- Disable buffer security check
+- Check for unused div tests in bases up to 11
+- Try remove duplicate MPIR code
 
 
 

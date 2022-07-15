@@ -89,6 +89,7 @@
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
       <AdditionalOptions>/constexpr:steps4194304 %(AdditionalOptions)</AdditionalOptions>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -174,12 +175,13 @@
     <ClInclude Include="src\pk_prime.hpp" />
     <ClInclude Include="src\math.hpp" />
     <ClInclude Include="src\sandbox.hpp" />
+    <ClInclude Include="src\types.hpp" />
     <ClInclude Include="src\utility.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <Text Include="doc\additional benchmark notes.txt" />
     <Text Include="doc\benchmarking.txt" />
     <Text Include="doc\math stuff.txt" />
-    <Text Include="doc\old benchmark notes.txt" />
     <Text Include="results.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
