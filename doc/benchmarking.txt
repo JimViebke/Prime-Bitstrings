@@ -43,6 +43,8 @@ Calculate change: 1 - (  /  )
 13635 ms : Fix critical sieving bug (~5% slower)
 13445 ms : Cache offsets for sieving (~1.5% faster)
 10986 ms : Overhaul datatypes and re-tune many knobs in config (~18% faster)
+10384 ms : Skip six additional unused div tests (~5% faster)
+10148 ms : Skip three div tests that are congruent with others (~2% faster)
 
 
 

@@ -336,12 +336,13 @@ namespace mbp
 
 #if display_unused_div_tests
 		div_test_summaries :
-		std::sort(div_tests.begin(), div_tests.end(), [] (const auto& a, const auto& b)
-				  {
-					  return
-						  a.hits / a.n_of_remainders <
-						  b.hits / b.n_of_remainders;
-				  });
+		//std::sort(div_tests.begin(), div_tests.end(), [] (const auto& a, const auto& b)
+		//		  {
+		//			  return a.hits < b.hits;
+		//			  //return
+		//				 // a.hits / a.n_of_remainders <
+		//				 // b.hits / b.n_of_remainders;
+		//		  });
 
 		for (const auto& dt : div_tests)
 		{

@@ -54,14 +54,26 @@ namespace mbp::div_test
 					if (base == 5 && p == 3) continue; // base 5^n % 3 unused
 					if (base == 7 && p == 3) continue; // base 7^n % 3 unused
 					if (base == 8 && p == 3) continue; // base 8^n % 3 unused
+					if (base == 10 && p == 3) continue; // base 10^n % 3 unused
+					if (base == 11 && p == 3) continue; // base 11^n % 3 unused
 
 					if (base == 4 && p == 5) continue; // base 4^n % 5 unused
 					if (base == 6 && p == 5) continue; // base 6^n % 5 unused
 					if (base == 7 && p == 5) continue; // base 7^n % 5 unused
-					if (base == 8 && p == 5) continue; // base 8^n % 5 unused
+					if (base == 9 && p == 5) continue; // base 9^n % 5 unused
+					if (base == 11 && p == 5) continue; // base 11^n % 5 unused
 
 					if (base == 6 && p == 7) continue; // base 6^n % 7 unused
 					if (base == 8 && p == 7) continue; // base 8^n % 7 unused
+					if (base == 9 && p == 7) continue; // base 9^n % 7 unused
+
+					if (base == 10 && p == 11) continue; // base 10^n % 11 unused
+
+					// If two div tests are identical, remove one
+					if (base == 8 && p == 5) continue; //  base 3^n % 5 is congruent to  8^n % 5
+					if (base == 10 && p == 7) continue; // base 3^n % 7 is congruent to 10^n % 7
+					if (base == 11 && p == 7) continue; // base 4^n % 7 is congruent to 11^n % 7
+
 
 					div_test_t dt{ .prime_idx = prime_idx_t(i) };
 #endif
@@ -89,12 +101,9 @@ namespace mbp::div_test
 						  //return a.n_of_remainders < b.n_of_remainders;
 						  //return a.prime_idx < b.prime_idx;
 
-						  constexpr size_t rp = 1; // n_remainder penalty
-						  constexpr size_t pp = 1; // prime penalty
-
 						  return
-							  (size_t(a.n_of_remainders) * rp) * (small_primes_lookup[a.prime_idx] * pp) <
-							  (size_t(b.n_of_remainders) * rp) * (small_primes_lookup[b.prime_idx] * pp);
+							  size_t(a.n_of_remainders) * small_primes_lookup[a.prime_idx] <
+							  size_t(b.n_of_remainders) * small_primes_lookup[b.prime_idx];
 					  });
 
 			//for (auto& dt : div_tests)
