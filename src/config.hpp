@@ -3,7 +3,7 @@
 #include <array>
 #include <numeric>
 
-#define display_unused_div_tests 1
+#define display_unused_div_tests 0
 
 namespace mbp
 {
