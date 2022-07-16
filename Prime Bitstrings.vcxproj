@@ -182,6 +182,7 @@
     <Text Include="doc\additional benchmark notes.txt" />
     <Text Include="doc\benchmarking.txt" />
     <Text Include="doc\math stuff.txt" />
+    <Text Include="doc\verification snippet.cpp" />
     <Text Include="results.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

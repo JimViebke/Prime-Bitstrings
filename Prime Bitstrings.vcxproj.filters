@@ -249,5 +249,6 @@
     </Text>
     <Text Include="doc\math stuff.txt" />
     <Text Include="doc\additional benchmark notes.txt" />
+    <Text Include="doc\verification snippet.cpp" />
   </ItemGroup>
 </Project>
