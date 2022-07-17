@@ -25,7 +25,7 @@ namespace mbp::div_test
 	class div_test_t
 	{
 	public:
-#if display_unused_div_tests
+#if analyze_div_tests
 		bool used = false;
 		base_t base;
 		uint32_t hits = 0;
@@ -41,26 +41,23 @@ namespace mbp::div_test
 		{
 			std::vector<div_test_t> div_tests;
 
-			for (size_t i = n_of_primes_with_hardcoded_divtests + 1; i < n_of_primes; ++i) // for each small prime
+			for (size_t i = 1; i < n_of_primes; ++i) // for each small prime starting from 3
 			{
 				for (size_t base = 3; base <= up_to_base; ++base) // for each base 3..n
 				{
-#if display_unused_div_tests
-					div_test_t dt{ .base = base_t(base), .prime_idx = prime_idx_t(i) };
-#else
+#if !analyze_div_tests or supress_extra_div_tests
 					const auto p = small_primes_lookup[i];
-
-					if (base == 4 && p == 3) continue; // base 4^n % 3 unused
-					if (base == 5 && p == 3) continue; // base 5^n % 3 unused
-					if (base == 7 && p == 3) continue; // base 7^n % 3 unused
-					if (base == 8 && p == 3) continue; // base 8^n % 3 unused
+					if (base == 4 && p == 3) continue; //  base  4^n % 3 unused
+					if (base == 5 && p == 3) continue; //  base  5^n % 3 unused
+					if (base == 7 && p == 3) continue; //  base  7^n % 3 unused
+					if (base == 8 && p == 3) continue; //  base  8^n % 3 unused
 					if (base == 10 && p == 3) continue; // base 10^n % 3 unused
 					if (base == 11 && p == 3) continue; // base 11^n % 3 unused
 
-					if (base == 4 && p == 5) continue; // base 4^n % 5 unused
-					if (base == 6 && p == 5) continue; // base 6^n % 5 unused
-					if (base == 7 && p == 5) continue; // base 7^n % 5 unused
-					if (base == 9 && p == 5) continue; // base 9^n % 5 unused
+					if (base == 4 && p == 5) continue; //  base  4^n % 5 unused
+					if (base == 6 && p == 5) continue; //  base  6^n % 5 unused
+					if (base == 7 && p == 5) continue; //  base  7^n % 5 unused
+					if (base == 9 && p == 5) continue; //  base  9^n % 5 unused
 					if (base == 11 && p == 5) continue; // base 11^n % 5 unused
 
 					if (base == 6 && p == 7) continue; // base 6^n % 7 unused
@@ -74,7 +71,18 @@ namespace mbp::div_test
 					if (base == 10 && p == 7) continue; // base 3^n % 7 is congruent to 10^n % 7
 					if (base == 11 && p == 7) continue; // base 4^n % 7 is congruent to 11^n % 7
 
+					// removed for performance (may be due to ordering)
+					// if (base == 8 && p == 73) continue; //   base  8^n %  73:  11 hits  3 remainders : 1   8  64
+					// if (base == 7 && p == 43) continue; //   base  7^n %  43: 155 hits  6 remainders : 1   7   6  42  36  37
+					// if (base == 10 && p == 101) continue; // base 10^n % 101:   4 hits  4 remainders : 1  10 100  91
 
+					// removed for being unused (due to ordering)
+					if (base == 9 && p == 73) continue; //   base  9^n %  73:   -       6 remainders : 1   9   8  72  64  65
+#endif
+
+#if analyze_div_tests
+					div_test_t dt{ .base = base_t(base), .prime_idx = prime_idx_t(i) };
+#else
 					div_test_t dt{ .prime_idx = prime_idx_t(i) };
 #endif
 
@@ -98,8 +106,13 @@ namespace mbp::div_test
 			// Order div tests by worthwhileness
 			std::sort(div_tests.begin(), div_tests.end(), [] (const auto& a, const auto& b)
 					  {
-						  //return a.n_of_remainders < b.n_of_remainders;
+						  //if (a.prime_idx == b.prime_idx)
+							 // return a.n_of_remainders < b.n_of_remainders;
 						  //return a.prime_idx < b.prime_idx;
+
+						  //if (a.n_of_remainders == b.n_of_remainders)
+							 // return a.prime_idx < b.prime_idx;
+						  //return a.n_of_remainders < b.n_of_remainders;
 
 						  return
 							  size_t(a.n_of_remainders) * small_primes_lookup[a.prime_idx] <

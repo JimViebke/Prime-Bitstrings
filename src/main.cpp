@@ -68,7 +68,7 @@ namespace mbp
 		time_t timestamp = time(0);
 		tm now;
 		localtime_s(&now, &timestamp);
-		std::cout << std::setfill('0') << std::setw(2) << ((now.tm_hour % 12 == 0) ? 12 : now.tm_hour % 12) << ':' << std::setw(2) << now.tm_min << '\t';
+		std::cout << std::setfill(' ') << std::setw(2) << ((now.tm_hour % 12 == 0) ? 12 : now.tm_hour % 12) << ':' << std::setfill('0') << std::setw(2) << now.tm_min << '\t';
 	}
 
 	// suppress "unreachable" warning while in benchmark mode
@@ -180,14 +180,12 @@ namespace mbp
 
 	namespace div_test
 	{
-#if display_unused_div_tests
+#if analyze_div_tests
 		using div_tests_t = std::array<div_test_t, div_tests_size>;
 #else
 		using div_tests_t = const std::array<div_test_t, div_tests_size>;
 #endif
 	}
-
-
 
 	__forceinline bool has_small_divisor(const size_t number,
 										 div_test::div_tests_t& div_tests)
@@ -200,14 +198,22 @@ namespace mbp
 		//if (is_divisible_by<7, in_base<4>>(number)) return true;
 		//if (is_divisible_by<7, in_base<5>>(number)) return true;
 
-#if display_unused_div_tests
+#if analyze_div_tests
 		bool found_div = false;
-#endif
 
 		for (auto& div_test : div_tests)
+#else
+		for (const auto& div_test : div_tests)
+#endif
 		{
 			// Perform the first popcount here, because first shift is always 0 and first rem is always 1
 			size_t rem = pop_count(number & bitmask_lookup[div_test.n_of_remainders]);
+
+			//size_t i = 1;
+			//do
+			//{
+			//	rem += pop_count(number & (bitmask_lookup[div_test.n_of_remainders] << i)) * div_test.remainders[i];
+			//} while (++i < div_test.n_of_remainders);
 
 			for (size_t i = 1; i < div_test.n_of_remainders; ++i)
 			{
@@ -216,16 +222,17 @@ namespace mbp
 
 			if (has_small_prime_factor(rem, div_test.prime_idx))
 			{
-#if display_unused_div_tests
+#if analyze_div_tests
 				div_test.hits++;
 				found_div = true;
+				return true;
 #else
 				return true;
 #endif
 			}
 		}
 
-#if display_unused_div_tests
+#if analyze_div_tests
 		return found_div;
 #else
 		return false;
@@ -325,32 +332,57 @@ namespace mbp
 
 				mpz_number.set_str(bin_str, 13);
 				if (!mpir_is_prime(mpz_number)) { log_result(number, 12); continue; }
-			}
 
-#if display_unused_div_tests
+			} // end hot loop
+
+#if analyze_div_tests
 			for (const auto& dt : div_tests)
 				if (dt.hits >= 1'000'000)
 					goto div_test_summaries;
 #endif
-		}
+		} // end sieve loop
 
-#if display_unused_div_tests
+#if analyze_div_tests
 		div_test_summaries :
 		//std::sort(div_tests.begin(), div_tests.end(), [] (const auto& a, const auto& b)
 		//		  {
-		//			  return a.hits < b.hits;
+		//			  //return a.hits < b.hits;
+		//			  //return a.n_of_remainders < b.n_of_remainders;
+		// 
+		//			  if (a.prime_idx == b.prime_idx)
+		//				  return a.base < b.base;
+		//			  else
+		//				  return a.prime_idx < b.prime_idx;
+		// 
 		//			  //return
 		//				 // a.hits / a.n_of_remainders <
 		//				 // b.hits / b.n_of_remainders;
 		//		  });
 
+		auto w = std::setw;
 		for (const auto& dt : div_tests)
 		{
-			std::cout << "   base " << size_t(dt.base) << "^n % " << size_t(small_primes_lookup[dt.prime_idx]) << ":\t";
+			std::cout << "   base " << std::setfill(' ') << w(2) << size_t(dt.base) << "^n % " << w(3) << size_t(small_primes_lookup[dt.prime_idx]) << ":  ";
 			if (dt.hits == 0)
-				std::cout << "-\n";
+			{
+				std::cout << "      -       ";
+			}
 			else
-				std::cout << std::setfill(' ') << std::setw(7) << dt.hits << " hits, " << size_t(dt.n_of_remainders) << " remainders\n";
+			{
+				std::cout << w(7) << dt.hits << " hits  ";
+			}
+
+			std::cout << w(2) << size_t(dt.n_of_remainders) << " remainders: 1";
+			for (size_t j = 1; j < dt.n_of_remainders; ++j)
+			{
+				std::cout << ' ' << w(3) << dt.remainders[j];
+				if (j == 20)
+				{
+					std::cout << " ...";
+					break;
+				}
+			}
+			std::cout << '\n';
 		}
 #endif
 

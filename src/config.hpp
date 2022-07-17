@@ -3,8 +3,6 @@
 #include <array>
 #include <numeric>
 
-#define display_unused_div_tests 0
-
 namespace mbp
 {
 	/*
@@ -32,12 +30,6 @@ namespace mbp
 
 		constexpr size_t max_remainders = 42; // 42
 
-		// Full div testing should step over the #of primes (starting from 3) with a hardcoded divtest
-		constexpr size_t n_of_primes_with_hardcoded_divtests = 0; // 3 == skip 3, 5, 7
-
-		// if up_to_base==8, then (3..n values) == (6 values) == (n + 1 - 3 values)
-		constexpr size_t n_of_bases = (up_to_base + 1) - 3;
-
 		// Probably don't touch
 		constexpr size_t max_pn_bitwidth = 50;
 		static_assert(max_pn_bitwidth > std::bit_width(p11) &&
@@ -51,3 +43,6 @@ namespace mbp
 
 	const char results_path[] = "results.txt";
 }
+
+#define analyze_div_tests 0
+#define supress_extra_div_tests 1

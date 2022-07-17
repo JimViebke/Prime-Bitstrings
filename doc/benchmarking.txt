@@ -49,6 +49,9 @@ Calculate change: 1 - (  /  )
 
 
 
+
+
+
 ideas:
 - Let the full sieve be larger than (ie, a multiple of) the static sieve
 	- The above was slower - instead, store a larger, repeating static sieve
@@ -57,7 +60,6 @@ ideas:
 - Check against multiple sieve values at once
 - Search permutations of bits, rather than linearly (see below)
 - Disable buffer security check
-- Check for unused div tests in bases up to 11
 - Try remove duplicate MPIR code
 
 
