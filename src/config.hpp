@@ -41,7 +41,7 @@ namespace mbp
 		const size_t n_random_bases = 1;
 	}
 
-	const char results_path[] = "results.txt";
+	const char results_filename[] = "results.txt";
 }
 
 #define analyze_div_tests 0

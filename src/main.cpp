@@ -4,7 +4,7 @@
 #include <iomanip>
 #include <fstream>
 #include <sstream>
-#include <charconv>
+#include <filesystem>
 
 #include "utility.hpp"
 #include "math.hpp"
@@ -18,9 +18,35 @@
 
 namespace mbp
 {
+	static std::filesystem::path results_path;
+
+	void set_up_results_path()
+	{
+		namespace fs = std::filesystem;
+		fs::path dir = fs::current_path();
+
+		// Search upward for Prime Bitstrings folder
+		while (dir.filename() != "Prime Bitstrings")
+		{
+			if (dir.has_parent_path())
+			{
+				dir = dir.parent_path();
+			}
+			else
+			{
+				std::cout << "Could not find " << results_filename << " along " << fs::current_path() << '\n';
+				exit(EXIT_FAILURE);
+			}
+		}
+
+		results_path = dir;
+		results_path.append(results_filename);
+	}
+
 	size_t load_from_results()
 	{
 		// Load the largest (not necessarily last) number from the "results" log.
+		set_up_results_path();
 
 		std::ifstream ifs(results_path);
 		size_t number = 0;
@@ -42,9 +68,9 @@ namespace mbp
 			size_t v = 0;
 			auto r = std::from_chars(str.c_str(), str.c_str() + str.size(), v);
 
-			if (r.ec != std::errc())
+			if (r.ec != std::errc{})
 			{
-				std::cout << "Read bad value: " << v << ", error: " << size_t(r.ec) << std::endl;
+				std::cout << "Read bad entry: " << v << ", error: " << size_t(r.ec) << '\n';
 				continue;
 			}
 
@@ -58,7 +84,7 @@ namespace mbp
 			exit(EXIT_FAILURE);
 		}
 
-		std::cout << "Loaded starting point from " << results_path << ": " << number << std::endl;
+		std::cout << "Loaded " << number << " from " << results_path.generic_string() << '\n';
 
 		return number;
 	}
