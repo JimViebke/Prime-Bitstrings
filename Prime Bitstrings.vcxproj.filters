@@ -251,4 +251,7 @@
     <Text Include="doc\additional benchmark notes.txt" />
     <Text Include="doc\verification snippet.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="VTune Profiler Results\Prime Bitstrings\Prime Bitstrings.vtuneproj" />
+  </ItemGroup>
 </Project>

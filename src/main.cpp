@@ -213,8 +213,9 @@ namespace mbp
 #endif
 	}
 
-	__forceinline bool has_small_divisor(const size_t number,
-										 div_test::div_tests_t& div_tests)
+	static constexpr div_test::div_tests_t div_tests = div_test::generate_div_tests();
+
+	__forceinline bool has_small_divisor(const size_t number)
 	{
 		using namespace div_test;
 
@@ -234,12 +235,6 @@ namespace mbp
 		{
 			// Perform the first popcount here, because first shift is always 0 and first rem is always 1
 			size_t rem = pop_count(number & bitmask_lookup[div_test.n_of_remainders]);
-
-			//size_t i = 1;
-			//do
-			//{
-			//	rem += pop_count(number & (bitmask_lookup[div_test.n_of_remainders] << i)) * div_test.remainders[i];
-			//} while (++i < div_test.n_of_remainders);
 
 			for (size_t i = 1; i < div_test.n_of_remainders; ++i)
 			{
@@ -288,8 +283,6 @@ namespace mbp
 		constexpr size_t tiny_primes_lookup = build_tiny_primes_lookup();
 		constexpr size_t gcd_1155_lookup = build_gcd_1155_lookup();
 
-		div_test::div_tests_t div_tests = div_test::generate_div_tests();
-
 		// Start the clock after setup
 		const auto start = current_time_in_ms();
 
@@ -314,7 +307,7 @@ namespace mbp
 				if ((gcd_1155_lookup & (1ull << abs(pca - pcb))) == 0) continue;
 
 				// Run cheap trial division tests across multiple bases
-				if (has_small_divisor(number, div_tests)) continue;
+				if (has_small_divisor(number)) continue;
 
 
 

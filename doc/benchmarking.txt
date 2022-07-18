@@ -61,6 +61,7 @@ ideas:
 - Search permutations of bits, rather than linearly (see below)
 - Disable buffer security check
 - Try remove duplicate MPIR code
+- Unroll the div test loop to run in increments of 4
 
 
 

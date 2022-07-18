@@ -185,6 +185,9 @@
     <Text Include="doc\verification snippet.cpp" />
     <Text Include="results.txt" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="VTune Profiler Results\Prime Bitstrings\Prime Bitstrings.vtuneproj" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
