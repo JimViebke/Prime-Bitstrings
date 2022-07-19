@@ -27,12 +27,12 @@ namespace mbp::div_test
 	public:
 #if analyze_div_tests
 		bool used = false;
-		base_t base;
+		base_t base = 0;
 		uint32_t hits = 0;
 #endif
 		prime_idx_t prime_idx = 0;
 		n_of_remainders_t n_of_remainders = 0; // is also the index of the req'd bitmask
-		std::array<remainder_t, max_remainders + 1> remainders{ 0 };
+		std::array<remainder_t, max_remainders> remainders{ 0 };
 	};
 
 	namespace detail

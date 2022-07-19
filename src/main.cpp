@@ -116,6 +116,8 @@ namespace mbp
 	}
 #pragma warning(pop)
 
+
+
 	constexpr size_t static_sieve_size = std::accumulate(static_sieve_primes.begin(),
 														 static_sieve_primes.end(), size_t(1), std::multiplies());
 
@@ -181,6 +183,8 @@ namespace mbp
 			sieve_offsets_cache[i] = j - static_sieve_size;
 		}
 	}
+
+
 
 #pragma warning(push)
 #pragma warning(disable: 26450)
@@ -259,6 +263,8 @@ namespace mbp
 		return false;
 #endif		
 	}
+
+
 
 	void find_multibase_primes()
 	{
