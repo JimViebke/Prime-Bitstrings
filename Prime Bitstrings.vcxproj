@@ -88,7 +88,7 @@
       <AssemblerOutput>AssemblyAndSourceCode</AssemblerOutput>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
-      <AdditionalOptions>/constexpr:steps4194304 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/constexpr:steps4194304 /openmp:experimental /Qpar-report:2 %(AdditionalOptions)</AdditionalOptions>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
     </ClCompile>
     <Link>

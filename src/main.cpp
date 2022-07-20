@@ -5,6 +5,8 @@
 #include <fstream>
 #include <sstream>
 #include <filesystem>
+#include <cassert>
+#include <bitset>
 
 #include "utility.hpp"
 #include "math.hpp"
@@ -217,17 +219,17 @@ namespace mbp
 #endif
 	}
 
-	static constexpr div_test::div_tests_t div_tests = div_test::generate_div_tests();
+	static div_test::div_tests_t div_tests = div_test::generate_div_tests();
 
-	__forceinline bool has_small_divisor(const size_t number)
+	_declspec(noinline) /*__forceinline*/ bool has_small_divisor(const size_t number)
 	{
 		using namespace div_test;
 
-		//if (is_divisible_by<5, in_base<3>>(number)) return true;
+		if (is_divisible_by<5, in_base<3>>(number)) return true;
 
-		//if (is_divisible_by<7, in_base<3>>(number)) return true;
-		//if (is_divisible_by<7, in_base<4>>(number)) return true;
-		//if (is_divisible_by<7, in_base<5>>(number)) return true;
+		if (is_divisible_by<7, in_base<3>>(number)) return true;
+		if (is_divisible_by<7, in_base<4>>(number)) return true;
+		if (is_divisible_by<7, in_base<5>>(number)) return true;
 
 #if analyze_div_tests
 		bool found_div = false;
@@ -238,11 +240,11 @@ namespace mbp
 #endif
 		{
 			// Perform the first popcount here, because first shift is always 0 and first rem is always 1
-			size_t rem = pop_count(number & bitmask_lookup[div_test.n_of_remainders]);
+			size_t rem = pop_count(number & bitmask_lookup[div_test.bitmask_idx]);
 
 			for (size_t i = 1; i < div_test.n_of_remainders; ++i)
 			{
-				rem += pop_count(number & (bitmask_lookup[div_test.n_of_remainders] << i)) * div_test.remainders[i];
+				rem += pop_count(number & (bitmask_lookup[div_test.bitmask_idx] << i)) * div_test.remainders[i];
 			}
 
 			if (has_small_prime_factor(rem, div_test.prime_idx))
@@ -261,7 +263,130 @@ namespace mbp
 		return found_div;
 #else
 		return false;
-#endif		
+#endif
+	}
+
+	__declspec(noinline) /*__forceinline*/ bool has_small_divisor_vectorized(const size_t number)
+	{
+		using namespace div_test;
+
+		if (is_divisible_by<5, in_base<3>>(number)) return true;
+
+		if (is_divisible_by<7, in_base<3>>(number)) return true;
+		if (is_divisible_by<7, in_base<4>>(number)) return true;
+		if (is_divisible_by<7, in_base<5>>(number)) return true;
+
+		std::vector<uint64_t> data(64, 0);
+		std::vector<uint32_t> rems(64 * 2, 0);
+		uint32_t* ptr = (uint32_t*)data.data();
+
+#if analyze_div_tests
+		bool found_div = false;
+
+		for (auto& div_test : div_tests)
+#else
+		for (const auto& div_test : div_tests)
+#endif
+		{
+			// gross way of making sure we're on a multiple of 4
+			const uint64_t iters = (static_cast<uint64_t>(div_test.n_of_remainders >> 2)) << 2;
+			const uint64_t mask = bitmask_lookup[div_test.bitmask_idx]; // wrong bitmask
+
+			//std::fill(data.begin(), data.begin() + iters * 1, 0);
+			//std::fill(rems.begin(), rems.begin() + iters * 2, 0);
+
+			assert(iters % 4 == 0);
+
+			// Leave the odd-index elements as 0, set the even-index elements to rem[i]
+			for (size_t i = 0; i < iters; ++i)
+				rems[i * 2] = div_test.remainders[i];
+
+			//std::cout << "iters: " << iters << '\n';
+			//std::cout << "mask:\t\t" << std::bitset<64>(mask) << '\n';
+			//std::cout << "number:\t\t" << std::bitset<64>(number) << '\n';
+
+			// core steps
+
+#pragma omp simd
+			for (size_t a = 0; a < iters; ++a)
+				data[a] = mask;
+#pragma omp simd
+			for (size_t b = 0; b < iters; ++b) // can't vectorize variable shifts
+				data[b] <<= b;
+			//for (size_t b = 0; b < iters; ++b)
+			//	std::cout << "shifted mask " << b << ": " << std::bitset<64>(data[b]) << '\n';
+
+#pragma omp simd
+			for (size_t c = 0; c < iters; ++c)
+				data[c] &= number;
+			//for (size_t c = 0; c < iters; ++c)
+			//	std::cout << "applied mask " << c << ": " << std::bitset<64>(data[c]) << '\n';
+
+			// vectorized popcount
+
+#pragma omp simd
+			for (size_t d = 0; d < iters * 2; ++d)
+			{
+				ptr[d] = ptr[d] - ((ptr[d] >> 1) & 0x55555555);
+				ptr[d] = (ptr[d] & 0x33333333) + ((ptr[d] >> 2) & 0x33333333);
+				ptr[d] = ((ptr[d] + (ptr[d] >> 4) & 0xF0F0F0F) * 0x1010101) >> 24;
+			}
+			//std::cout << "  32 bit popcounts:";
+			//for (size_t d = 0; d < iters * 2; ++d)
+			//	std::cout << '\t' << ptr[d];
+			//std::cout << '\n';
+
+			// This should be entirely skippable
+			// Do the rest of the math on 8x32 instead of 4x64 and let std::accumulate do the rest
+#pragma omp simd
+			for (size_t e = 0; e < iters; ++e)
+			{
+				// fix 32b popcounts into 64b popcounts
+				data[e] = (data[e] & 0xFFFFFFFF) + (data[e] >> 32);
+			}
+			//std::cout << "combined popcounts:";
+			//for (size_t e = 0; e < iters * 2; ++e)
+			//	std::cout << '\t' << ptr[e];
+			//std::cout << '\n';
+
+			// end try vectorize popcount
+
+			//std::cout << "32 bit rems:\t";
+			//for (size_t f = 0; f < iters * 2; ++f)
+			//	std::cout << '\t' << rems[f];
+#pragma omp simd
+			for (size_t f = 0; f < iters * 2; ++f) // this might be doable within the vectorized popcount loop
+			{
+				// multiply remainder counts (32b) by remainders (32b)
+				ptr[f] *= rems[f];
+			}
+			//std::cout << "\n32 bit sums:\t";
+			//for (size_t f = 0; f < iters * 2; ++f)
+			//	std::cout << '\t' << ptr[f];
+			//std::cout << '\n';
+
+			// end core steps
+
+			size_t sum = std::accumulate(ptr, ptr + (iters * 2), size_t(0));
+			//std::cout << "sum: " << sum << '\n';
+
+			if (has_small_prime_factor(sum, div_test.prime_idx))
+			{
+#if analyze_div_tests
+				div_test.hits++;
+				found_div = true;
+				return true;
+#else
+				return true;
+#endif
+			}
+		}
+
+#if analyze_div_tests
+		return found_div;
+#else
+		return false;
+#endif
 	}
 
 
@@ -313,7 +438,15 @@ namespace mbp
 				if ((gcd_1155_lookup & (1ull << abs(pca - pcb))) == 0) continue;
 
 				// Run cheap trial division tests across multiple bases
-				if (has_small_divisor(number)) continue;
+				bool a = has_small_divisor(number);
+				bool b = has_small_divisor_vectorized(number);
+				if (a != b)
+					std::cout << "uhoh ";
+
+				if (a) continue;
+
+				// if (has_small_divisor(number)) continue;
+				// if (has_small_divisor_vectorized(number)) continue;
 
 
 
@@ -373,12 +506,17 @@ namespace mbp
 		//		  {
 		//			  //return a.hits < b.hits;
 		//			  //return a.n_of_remainders < b.n_of_remainders;
-		// 
-		//			  if (a.prime_idx == b.prime_idx)
+
+		//			  if (a.n_of_remainders == b.n_of_remainders)
 		//				  return a.base < b.base;
 		//			  else
-		//				  return a.prime_idx < b.prime_idx;
-		// 
+		//				  return a.n_of_remainders < b.n_of_remainders;
+
+		//			  //if (a.prime_idx == b.prime_idx)
+		//				 // return a.base < b.base;
+		//			  //else
+		//				 // return a.prime_idx < b.prime_idx;
+
 		//			  //return
 		//				 // a.hits / a.n_of_remainders <
 		//				 // b.hits / b.n_of_remainders;
