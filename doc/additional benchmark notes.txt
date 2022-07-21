@@ -53,5 +53,6 @@ Div testing does not need to check against 2.
 
 
 
+Vectorized/SIMD div tests were prohibitively expensive due to the lack of a SIMD hardware popcount in AVX2 (added in AVX512). The vectorized software popcount used required several constants taking up precious SIMD registers (the four different 0x consts, plus the 1, 2, 4, and 24 used for bitshifting).
 
 

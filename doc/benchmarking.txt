@@ -69,8 +69,8 @@ ideas:
 
 
 - Compare permutations with linear+sieve
-- count from 0 to 32: check sieve, popcount, gcd, then ++counter
-- count from 0 to 32: permute 13, 17, 19, 23, 29 31, skip popcount, do gcd, then ++counter
+- count from 0 to 2^32: check sieve, popcount, gcd, then ++counter
+- count from 0 to 2^32: permute 13, 17, 19, 23, 29 31, skip popcount, do gcd, then ++counter
 - The permutation version may require base2 div tests to compensate for no sieve
 
 Don't permute p bits in n-bit space
