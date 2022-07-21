@@ -221,7 +221,7 @@ namespace mbp
 
 	static div_test::div_tests_t div_tests = div_test::generate_div_tests();
 
-	_declspec(noinline) /*__forceinline*/ bool has_small_divisor(const size_t number)
+	__forceinline bool has_small_divisor(const size_t number)
 	{
 		using namespace div_test;
 
@@ -240,103 +240,14 @@ namespace mbp
 #endif
 		{
 			// Perform the first popcount here, because first shift is always 0 and first rem is always 1
-			size_t rem = pop_count(number & bitmask_lookup[div_test.bitmask_idx]);
+			size_t rem = pop_count(number & bitmask_lookup[div_test.n_of_remainders]);
 
 			for (size_t i = 1; i < div_test.n_of_remainders; ++i)
 			{
-				rem += pop_count(number & (bitmask_lookup[div_test.bitmask_idx] << i)) * div_test.remainders[i];
+				rem += pop_count(number & (bitmask_lookup[div_test.n_of_remainders] << i)) * div_test.remainders[i];
 			}
 
 			if (has_small_prime_factor(rem, div_test.prime_idx))
-			{
-#if analyze_div_tests
-				div_test.hits++;
-				found_div = true;
-				return true;
-#else
-				return true;
-#endif
-			}
-		}
-
-#if analyze_div_tests
-		return found_div;
-#else
-		return false;
-#endif
-	}
-
-	__declspec(noinline) /*__forceinline*/ bool has_small_divisor_vectorized(const size_t number)
-	{
-		using namespace div_test;
-
-		if (is_divisible_by<5, in_base<3>>(number)) return true;
-
-		if (is_divisible_by<7, in_base<3>>(number)) return true;
-		if (is_divisible_by<7, in_base<4>>(number)) return true;
-		if (is_divisible_by<7, in_base<5>>(number)) return true;
-
-		constexpr size_t avx2 = 256 / 8;
-		constexpr size_t steps = avx2 / sizeof(uint64_t);
-
-		alignas(avx2) const uint64_t num[steps] = { number, number, number, number };
-
-#if analyze_div_tests
-		bool found_div = false;
-
-		for (auto& div_test : div_tests)
-#else
-		for (const auto& div_test : div_tests)
-#endif
-		{
-			// Show the compiler we're on a multiple of 4
-			const uint64_t iters = uint64_t(div_test.n_of_remainders >> 2) << 2;
-			assert(iters % 4 == 0);
-			const uint64_t mask = bitmask_lookup[div_test.bitmask_idx];
-
-			alignas(avx2) uint32_t sums[steps * 2] = { 0 };
-
-			for (size_t i = 0; i < iters; i += steps)
-			{
-				// copy each remainder into two adjacent 32-bit words
-				alignas(avx2) uint64_t rems[steps];
-				uint32_t* rems_p = (uint32_t*)rems;
-				for (size_t k = 0; k < steps * 2; ++k)
-					rems_p[k] = div_test.remainders[i + (k / 2)];
-
-				// load the next four bitmasks
-				alignas(avx2) uint64_t data[steps];
-				uint32_t* data_p = (uint32_t*)data;
-				for (size_t k = 0; k < steps; ++k)
-					data[k] = mask << (i + k);
-
-#pragma omp simd
-				for (size_t k = 0; k < steps; ++k)
-					data[k] &= num[k];
-
-				for (size_t k = 0; k < steps; ++k)
-					data[k] = (uint64_t)std::popcount(data[k]);
-
-#pragma omp simd
-				for (size_t k = 0; k < steps * 2; ++k)
-				{
-					// AVX512 has a popcount instruction, but not AVX2
-					// (might be faster to do this using four x64 popcounts?)
-					// data_p[d] = data_p[d] - ((data_p[d] >> 1) & 0x55555555);
-					// data_p[d] = (data_p[d] & 0x33333333) + ((data_p[d] >> 2) & 0x33333333);
-					// data_p[d] = ((data_p[d] + (data_p[d] >> 4) & 0xF0F0F0F) * 0x1010101) >> 24;
-
-					// multiply remainder counts by remainders
-					data_p[k] *= rems_p[k];
-
-					// save results
-					sums[k] += data_p[k];
-				}
-			}
-
-			size_t sum = std::accumulate(sums, sums + (steps * 2), size_t(0));
-
-			if (has_small_prime_factor(sum, div_test.prime_idx))
 			{
 #if analyze_div_tests
 				div_test.hits++;
@@ -404,15 +315,7 @@ namespace mbp
 				if ((gcd_1155_lookup & (1ull << abs(pca - pcb))) == 0) continue;
 
 				// Run cheap trial division tests across multiple bases
-				bool a = has_small_divisor(number);
-				bool b = has_small_divisor_vectorized(number);
-				if (a != b)
-					std::cout << "uhoh ";
-
-				if (a) continue;
-
-				// if (has_small_divisor(number)) continue;
-				// if (has_small_divisor_vectorized(number)) continue;
+				if (has_small_divisor(number)) continue;
 
 
 

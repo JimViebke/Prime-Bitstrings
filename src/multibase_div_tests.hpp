@@ -31,7 +31,6 @@ namespace mbp::div_test
 		uint32_t hits = 0;
 #endif
 		prime_idx_t prime_idx = 0;
-		uint8_t bitmask_idx = 0;
 		n_of_remainders_t n_of_remainders = 0; // is also the index of the req'd bitmask
 		std::array<remainder_t, max_remainders> remainders{ 0 };
 	};
@@ -94,12 +93,6 @@ namespace mbp::div_test
 						if (rem == 1 && j > 0)
 						{
 							// The pattern is repeating - store what we have, then break
-
-							dt.bitmask_idx = dt.n_of_remainders;
-
-							while (dt.n_of_remainders % 4 != 0)
-								dt.n_of_remainders++;
-
 							div_tests.push_back(dt);
 							break;
 						}

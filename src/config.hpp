@@ -28,7 +28,7 @@ namespace mbp
 		const size_t n_of_primes = 32; // 32
 		const size_t up_to_base = 11; // 11
 
-		constexpr size_t max_remainders = 40; // 42
+		constexpr size_t max_remainders = 42; // 42
 
 		// Probably don't touch
 		constexpr size_t max_pn_bitwidth = 50;
