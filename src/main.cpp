@@ -276,9 +276,10 @@ namespace mbp
 		if (is_divisible_by<7, in_base<4>>(number)) return true;
 		if (is_divisible_by<7, in_base<5>>(number)) return true;
 
-		std::vector<uint64_t> data(64, 0);
-		std::vector<uint32_t> rems(64 * 2, 0);
-		uint32_t* ptr = (uint32_t*)data.data();
+		constexpr size_t avx2 = 256 / 8;
+		constexpr size_t steps = avx2 / sizeof(uint64_t);
+
+		alignas(avx2) const uint64_t num[steps] = { number, number, number, number };
 
 #if analyze_div_tests
 		bool found_div = false;
@@ -288,87 +289,52 @@ namespace mbp
 		for (const auto& div_test : div_tests)
 #endif
 		{
-			// gross way of making sure we're on a multiple of 4
-			const uint64_t iters = (static_cast<uint64_t>(div_test.n_of_remainders >> 2)) << 2;
-			const uint64_t mask = bitmask_lookup[div_test.bitmask_idx]; // wrong bitmask
-
-			//std::fill(data.begin(), data.begin() + iters * 1, 0);
-			//std::fill(rems.begin(), rems.begin() + iters * 2, 0);
-
+			// Show the compiler we're on a multiple of 4
+			const uint64_t iters = uint64_t(div_test.n_of_remainders >> 2) << 2;
 			assert(iters % 4 == 0);
+			const uint64_t mask = bitmask_lookup[div_test.bitmask_idx];
 
-			// Leave the odd-index elements as 0, set the even-index elements to rem[i]
-			for (size_t i = 0; i < iters; ++i)
-				rems[i * 2] = div_test.remainders[i];
+			alignas(avx2) uint32_t sums[steps * 2] = { 0 };
 
-			//std::cout << "iters: " << iters << '\n';
-			//std::cout << "mask:\t\t" << std::bitset<64>(mask) << '\n';
-			//std::cout << "number:\t\t" << std::bitset<64>(number) << '\n';
-
-			// core steps
-
-#pragma omp simd
-			for (size_t a = 0; a < iters; ++a)
-				data[a] = mask;
-#pragma omp simd
-			for (size_t b = 0; b < iters; ++b) // can't vectorize variable shifts
-				data[b] <<= b;
-			//for (size_t b = 0; b < iters; ++b)
-			//	std::cout << "shifted mask " << b << ": " << std::bitset<64>(data[b]) << '\n';
-
-#pragma omp simd
-			for (size_t c = 0; c < iters; ++c)
-				data[c] &= number;
-			//for (size_t c = 0; c < iters; ++c)
-			//	std::cout << "applied mask " << c << ": " << std::bitset<64>(data[c]) << '\n';
-
-			// vectorized popcount
-
-#pragma omp simd
-			for (size_t d = 0; d < iters * 2; ++d)
+			for (size_t i = 0; i < iters; i += steps)
 			{
-				ptr[d] = ptr[d] - ((ptr[d] >> 1) & 0x55555555);
-				ptr[d] = (ptr[d] & 0x33333333) + ((ptr[d] >> 2) & 0x33333333);
-				ptr[d] = ((ptr[d] + (ptr[d] >> 4) & 0xF0F0F0F) * 0x1010101) >> 24;
-			}
-			//std::cout << "  32 bit popcounts:";
-			//for (size_t d = 0; d < iters * 2; ++d)
-			//	std::cout << '\t' << ptr[d];
-			//std::cout << '\n';
+				// copy each remainder into two adjacent 32-bit words
+				alignas(avx2) uint64_t rems[steps];
+				uint32_t* rems_p = (uint32_t*)rems;
+				for (size_t k = 0; k < steps * 2; ++k)
+					rems_p[k] = div_test.remainders[i + (k / 2)];
 
-			// This should be entirely skippable
-			// Do the rest of the math on 8x32 instead of 4x64 and let std::accumulate do the rest
+				// load the next four bitmasks
+				alignas(avx2) uint64_t data[steps];
+				uint32_t* data_p = (uint32_t*)data;
+				for (size_t k = 0; k < steps; ++k)
+					data[k] = mask << (i + k);
+
 #pragma omp simd
-			for (size_t e = 0; e < iters; ++e)
-			{
-				// fix 32b popcounts into 64b popcounts
-				data[e] = (data[e] & 0xFFFFFFFF) + (data[e] >> 32);
-			}
-			//std::cout << "combined popcounts:";
-			//for (size_t e = 0; e < iters * 2; ++e)
-			//	std::cout << '\t' << ptr[e];
-			//std::cout << '\n';
+				for (size_t k = 0; k < steps; ++k)
+					data[k] &= num[k];
 
-			// end try vectorize popcount
+				for (size_t k = 0; k < steps; ++k)
+					data[k] = (uint64_t)std::popcount(data[k]);
 
-			//std::cout << "32 bit rems:\t";
-			//for (size_t f = 0; f < iters * 2; ++f)
-			//	std::cout << '\t' << rems[f];
 #pragma omp simd
-			for (size_t f = 0; f < iters * 2; ++f) // this might be doable within the vectorized popcount loop
-			{
-				// multiply remainder counts (32b) by remainders (32b)
-				ptr[f] *= rems[f];
+				for (size_t k = 0; k < steps * 2; ++k)
+				{
+					// AVX512 has a popcount instruction, but not AVX2
+					// (might be faster to do this using four x64 popcounts?)
+					// data_p[d] = data_p[d] - ((data_p[d] >> 1) & 0x55555555);
+					// data_p[d] = (data_p[d] & 0x33333333) + ((data_p[d] >> 2) & 0x33333333);
+					// data_p[d] = ((data_p[d] + (data_p[d] >> 4) & 0xF0F0F0F) * 0x1010101) >> 24;
+
+					// multiply remainder counts by remainders
+					data_p[k] *= rems_p[k];
+
+					// save results
+					sums[k] += data_p[k];
+				}
 			}
-			//std::cout << "\n32 bit sums:\t";
-			//for (size_t f = 0; f < iters * 2; ++f)
-			//	std::cout << '\t' << ptr[f];
-			//std::cout << '\n';
 
-			// end core steps
-
-			size_t sum = std::accumulate(ptr, ptr + (iters * 2), size_t(0));
-			//std::cout << "sum: " << sum << '\n';
+			size_t sum = std::accumulate(sums, sums + (steps * 2), size_t(0));
 
 			if (has_small_prime_factor(sum, div_test.prime_idx))
 			{
