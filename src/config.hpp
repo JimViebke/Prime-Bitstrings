@@ -54,4 +54,4 @@ namespace mbp
 }
 
 #define analyze_div_tests 0
-#define supress_extra_div_tests 1
+#define suppress_extra_div_tests 1

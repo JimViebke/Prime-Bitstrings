@@ -45,8 +45,16 @@ namespace mbp::div_test
 			{
 				for (size_t base = 3; base <= up_to_base; ++base) // for each base 3..n
 				{
-#if !analyze_div_tests or supress_extra_div_tests
 					const auto p = small_primes_lookup[i];
+
+					// Always suppress hardcoded div tests
+					if (base == 3 && p == 5) continue;
+
+					if (base == 3 && p == 7) continue;
+					if (base == 4 && p == 7) continue;
+					if (base == 5 && p == 7) continue;
+
+#if !analyze_div_tests or suppress_extra_div_tests
 					if (base == 4 && p == 3) continue; //  base  4^n % 3 unused
 					if (base == 5 && p == 3) continue; //  base  5^n % 3 unused
 					if (base == 7 && p == 3) continue; //  base  7^n % 3 unused
@@ -59,17 +67,22 @@ namespace mbp::div_test
 					if (base == 7 && p == 5) continue; //  base  7^n % 5 unused
 					if (base == 9 && p == 5) continue; //  base  9^n % 5 unused
 					if (base == 11 && p == 5) continue; // base 11^n % 5 unused
+					if (base == 12 && p == 5) continue; // base 12^n % 5 unused
 
-					if (base == 6 && p == 7) continue; // base 6^n % 7 unused
-					if (base == 8 && p == 7) continue; // base 8^n % 7 unused
-					if (base == 9 && p == 7) continue; // base 9^n % 7 unused
+					if (base == 6 && p == 7) continue; //  base  6^n % 7 unused
+					if (base == 8 && p == 7) continue; //  base  8^n % 7 unused
+					if (base == 9 && p == 7) continue; //  base  9^n % 7 unused
 
 					if (base == 10 && p == 11) continue; // base 10^n % 11 unused
+					if (base == 12 && p == 11) continue; // base 12^n % 11 unused
+
+					if (base == 12 && p == 13) continue; // base 12^n % 13 unused
 
 					// If two div tests are identical, remove one
-					if (base == 8 && p == 5) continue; //  base 3^n % 5 is congruent to  8^n % 5
-					if (base == 10 && p == 7) continue; // base 3^n % 7 is congruent to 10^n % 7
-					if (base == 11 && p == 7) continue; // base 4^n % 7 is congruent to 11^n % 7
+					if (base == 8 && p == 5) continue; //  base  8^n % 5 is congruent to 3^n % 5
+					if (base == 10 && p == 7) continue; // base 10^n % 7 is congruent to 3^n % 7
+					if (base == 11 && p == 7) continue; // base 11^n % 7 is congruent to 4^n % 7 
+					if (base == 12 && p == 7) continue; // base 12^n % 7 is congruent to 5^n % 7
 
 					// removed for performance (may be due to ordering)
 					// if (base == 8 && p == 73) continue; //   base  8^n %  73:  11 hits  3 remainders : 1   8  64
