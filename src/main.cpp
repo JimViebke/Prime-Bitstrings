@@ -136,7 +136,8 @@ namespace mbp
 		return sieve;
 	}
 
-	std::vector<sieve_prime_t> sieve_offsets_cache(small_primes_lookup.size());
+	using sieve_offset_t = narrowest_uint_for_val<static_sieve_size>;
+	std::vector<sieve_offset_t> sieve_offsets_cache(small_primes_lookup.size());
 
 	void set_up_sieve_offsets_cache(const size_t start)
 	{
@@ -173,7 +174,7 @@ namespace mbp
 			const sieve_prime_t p = small_primes_lookup[i];
 
 			// Get the index of the next odd multiple of p
-			sieve_prime_t j = sieve_offsets_cache[i];
+			sieve_offset_t j = sieve_offsets_cache[i];
 
 			// Mark false each (implicitly odd) multiple of p
 			for (; j < sieve.size(); j += p)
