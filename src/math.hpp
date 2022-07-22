@@ -111,15 +111,33 @@ constexpr size_t gcd(size_t a, size_t b)
 	return gcd(b, a % b);
 }
 
-constexpr size_t build_gcd_1155_lookup()
+constexpr size_t build_gcd_lookup()
 {
 	size_t lookup = 0;
 
-	// set bit i high if the GCD of (i, 1155) is 1
+	// set bit i high if the GCD of (i, n) is 1
+	// original n = { 3 * 5 * 7 * 11 }
 	for (size_t i = 0; i < 32; ++i)
 	{
-		lookup |= size_t(gcd(i, 1155u) == 1ull) << i;
+		lookup |= size_t(gcd(i, size_t(3 * 5 * 7 * 11 * 13)) == 1ull) << i;
 	}
 
 	return lookup;
+
+	/*
+	Alternatively, the loop can be:
+		for (size_t i = 0; i < 32; ++i)
+		{
+			lookup |= size_t(gcd( ... ) == 1ull) << (32 - i);
+			lookup |= size_t(gcd( ... ) == 1ull) << (32 + i);
+		}
+
+	Which changes the following:
+		(lookup & (1ull << abs(pca - pcb))) == 0
+
+	into this, requiring one less instruction:
+		(lookup & (1ull << (pca + 32 - pcb))) == 0
+
+	Any runtime different was indistinguishable on my machine.
+	*/
 }

@@ -289,7 +289,7 @@ namespace mbp
 		set_up_sieve_offsets_cache(number);
 
 		constexpr size_t tiny_primes_lookup = build_tiny_primes_lookup();
-		constexpr size_t gcd_1155_lookup = build_gcd_1155_lookup();
+		constexpr size_t gcd_lookup = build_gcd_lookup();
 
 		// Start the clock after setup
 		const auto start = current_time_in_ms();
@@ -312,7 +312,7 @@ namespace mbp
 				// Bail if gcd(abs(alternating sums), 1155) is not equal to one.
 				const auto pca = pop_count(number & 0xAAAAAAAAAAAAAAAA);
 				const auto pcb = pop_count(number & 0x5555555555555555);
-				if ((gcd_1155_lookup & (1ull << abs(pca - pcb))) == 0) continue;
+				if ((gcd_lookup & (1ull << abs(pca - pcb))) == 0) continue;
 
 				// Run cheap trial division tests across multiple bases
 				if (has_small_divisor(number)) continue;
