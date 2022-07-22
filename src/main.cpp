@@ -266,6 +266,57 @@ namespace mbp
 #endif
 	}
 
+	void print_div_test_analysis()
+	{
+#if analyze_div_tests
+		//std::sort(div_tests.begin(), div_tests.end(), [] (const auto& a, const auto& b)
+		//		  {
+		//			  //return a.hits < b.hits;
+		//			  //return a.n_of_remainders < b.n_of_remainders;
+
+		//			  if (a.n_of_remainders == b.n_of_remainders)
+		//				  return a.base < b.base;
+		//			  else
+		//				  return a.n_of_remainders < b.n_of_remainders;
+
+		//			  //if (a.prime_idx == b.prime_idx)
+		//				 // return a.base < b.base;
+		//			  //else
+		//				 // return a.prime_idx < b.prime_idx;
+
+		//			  //return
+		//				 // a.hits / a.n_of_remainders <
+		//				 // b.hits / b.n_of_remainders;
+		//		  });
+
+		auto w = std::setw;
+		for (const auto& dt : div_tests)
+		{
+			std::cout << "   base " << std::setfill(' ') << w(2) << size_t(dt.base) << "^n % " << w(3) << size_t(small_primes_lookup[dt.prime_idx]) << ":  ";
+			if (dt.hits == 0)
+			{
+				std::cout << "       -       ";
+			}
+			else
+			{
+				std::cout << w(8) << dt.hits << " hits  ";
+			}
+
+			std::cout << w(2) << size_t(dt.n_of_remainders) << " remainders: 1";
+			for (size_t j = 1; j < dt.n_of_remainders; ++j)
+			{
+				std::cout << ' ' << w(3) << dt.remainders[j];
+				if (j == 20)
+				{
+					std::cout << " ...";
+					break;
+				}
+			}
+			std::cout << '\n';
+		}
+#endif
+	}
+
 
 
 	void find_multibase_primes()
@@ -371,51 +422,95 @@ namespace mbp
 
 #if analyze_div_tests
 		div_test_summaries :
-		//std::sort(div_tests.begin(), div_tests.end(), [] (const auto& a, const auto& b)
-		//		  {
-		//			  //return a.hits < b.hits;
-		//			  //return a.n_of_remainders < b.n_of_remainders;
+		print_div_test_analysis();
+#endif
 
-		//			  if (a.n_of_remainders == b.n_of_remainders)
-		//				  return a.base < b.base;
-		//			  else
-		//				  return a.n_of_remainders < b.n_of_remainders;
+		std::cout << "Finished. " << current_time_in_ms() - start << " ms elapsed\n";
+	}
 
-		//			  //if (a.prime_idx == b.prime_idx)
-		//				 // return a.base < b.base;
-		//			  //else
-		//				 // return a.prime_idx < b.prime_idx;
+	void find_multibase_primes_permute()
+	{
+		gmp_random::r.seed(mpir_ui(0xdeadbeef));
 
-		//			  //return
-		//				 // a.hits / a.n_of_remainders <
-		//				 // b.hits / b.n_of_remainders;
-		//		  });
+		size_t number = benchmark_mode ? bm_start : load_from_results();
+		size_t bits = number >> 1; // The last bit is always 1; everything else is permuted
+		mpz_class mpz_number = 0ull; // it's a surprise tool that will help us later
 
-		auto w = std::setw;
-		for (const auto& dt : div_tests)
+		constexpr size_t gcd_lookup = build_gcd_lookup();
+
+		// Start the clock after setup
+		const auto start = current_time_in_ms();
+
+		// Search for primes across all permutations of p bits, where p is:
+		// { 13, 17, 19, 23, 29, 31, ...? }
+
+		// (condition optimizes out when not benchmarking)
+		while (benchmark_mode ? number < bm_stop : true)
 		{
-			std::cout << "   base " << std::setfill(' ') << w(2) << size_t(dt.base) << "^n % " << w(3) << size_t(small_primes_lookup[dt.prime_idx]) << ":  ";
-			if (dt.hits == 0)
-			{
-				std::cout << "      -       ";
-			}
-			else
-			{
-				std::cout << w(7) << dt.hits << " hits  ";
-			}
+			// The last bit is always 1; everything else is permuted
+			lex_permute(bits);
+			number = (bits << 1) | 0b1;
 
-			std::cout << w(2) << size_t(dt.n_of_remainders) << " remainders: 1";
-			for (size_t j = 1; j < dt.n_of_remainders; ++j)
-			{
-				std::cout << ' ' << w(3) << dt.remainders[j];
-				if (j == 20)
-				{
-					std::cout << " ...";
-					break;
-				}
-			}
-			std::cout << '\n';
+			// Bail if gcd(abs(alternating sums), 1155) is not equal to one.
+			const auto pca = pop_count(number & 0xAAAAAAAAAAAAAAAA);
+			const auto pcb = pop_count(number & 0x5555555555555555);
+			if ((gcd_lookup & (1ull << abs(pca - pcb))) == 0) continue;
+
+			// Run cheap trial division tests in base 2
+			// if (b2_has_small_divisor<32>(number)) continue;
+
+			// Run cheap trial division tests across multiple bases
+			if (has_small_divisor(number)) continue;
+
+			// Run cheap trial division tests in base 2
+			// if (b2_has_small_divisor<100, 32 + 1>(number)) continue;
+
+
+
+			// Do full primality tests, starting with base 2
+			if (!franken::mpir_is_likely_prime_BPSW(number)) continue;
+
+			// convert uint64_t to char array of ['0', '1'...] for MPIR
+			char bin_str[64 + 1];
+			auto result = std::to_chars(&bin_str[0], &bin_str[64], number, 2);
+			*result.ptr = '\0';
+
+			mpz_number.set_str(bin_str, 3);
+			if (!franken::mpir_is_prime(mpz_number, div_test::n_of_primes - 1)) continue;
+
+			mpz_number.set_str(bin_str, 4);
+			if (!franken::mpir_is_prime(mpz_number, div_test::n_of_primes - 1)) continue;
+
+			mpz_number.set_str(bin_str, 5);
+			if (!franken::mpir_is_prime(mpz_number, div_test::n_of_primes - 1)) continue;
+
+			mpz_number.set_str(bin_str, 6);
+			if (!franken::mpir_is_prime(mpz_number, div_test::n_of_primes - 1)) continue;
+
+			mpz_number.set_str(bin_str, 7);
+			if (!franken::mpir_is_prime(mpz_number, div_test::n_of_primes - 1)) continue;
+
+			mpz_number.set_str(bin_str, 8);
+			if (!franken::mpir_is_prime(mpz_number, div_test::n_of_primes - 1)) continue;
+
+			mpz_number.set_str(bin_str, 9);
+			if (!mpir_is_prime(mpz_number)) { log_result(number, 8); continue; }
+
+			mpz_number.set_str(bin_str, 10);
+			if (!mpir_is_prime(mpz_number)) { log_result(number, 9); continue; }
+
+			mpz_number.set_str(bin_str, 11);
+			if (!mpir_is_prime(mpz_number)) { log_result(number, 10); continue; }
+
+			mpz_number.set_str(bin_str, 12);
+			if (!mpir_is_prime(mpz_number)) { log_result(number, 11); continue; }
+
+			mpz_number.set_str(bin_str, 13);
+			if (!mpir_is_prime(mpz_number)) { log_result(number, 12); continue; }
 		}
+
+#if analyze_div_tests
+		print_div_test_analysis();
 #endif
 
 		std::cout << "Finished. " << current_time_in_ms() - start << " ms elapsed\n";

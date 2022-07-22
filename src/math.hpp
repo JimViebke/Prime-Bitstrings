@@ -54,6 +54,15 @@ namespace detail
 
 constexpr std::array small_primes_lookup = detail::build_small_primes_lookup();
 
+template<size_t n_of_primes, size_t p_index = 1>
+__forceinline bool b2_has_small_divisor(const size_t number)
+{
+	if constexpr (n_of_primes == p_index)
+		return false;
+	else
+		return (number % small_primes_lookup[p_index] == 0) ? true : b2_has_small_divisor<n_of_primes, p_index + 1>(number);
+}
+
 namespace gmp_random
 {
 	gmp_randclass r{ gmp_randinit_mt };
@@ -140,4 +149,20 @@ constexpr size_t build_gcd_lookup()
 
 	Any runtime different was indistinguishable on my machine.
 	*/
+}
+
+__forceinline void lex_permute(size_t& n)
+{
+	const size_t t = n | (n - 1); // t gets v's least significant 0 bits set to 1
+	// Next set to 1 the most significant bit to change, 
+	// set to 0 the least significant ones, and add the necessary 1 bits.
+
+	unsigned long idx;
+	_BitScanForward64(&idx, n);
+
+	// suppress "warning C4146 : unary minus operator applied to unsigned type, result still unsigned"
+#pragma warning (push)
+#pragma warning (disable: 4146)
+	n = (t + 1) | (((~t & -~t) - 1) >> (idx + 1));
+#pragma warning (pop)
 }
