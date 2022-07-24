@@ -13,6 +13,9 @@
 
 constexpr bool brute_force_is_prime(const size_t n)
 {
+	if (n == 0) return false;
+	if (n == 1) return false;
+
 	if (n == 2) return true;
 
 	if (n % 2 == 0) return false;
