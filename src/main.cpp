@@ -224,11 +224,11 @@ namespace mbp
 	{
 		using namespace div_test;
 
-		if (is_divisible_by<5, in_base<3>>(number)) return true;
+		if (recursive_is_divisible_by<5, in_base<3>>(number)) return true;
 
-		if (is_divisible_by<7, in_base<3>>(number)) return true;
-		if (is_divisible_by<7, in_base<4>>(number)) return true;
-		if (is_divisible_by<7, in_base<5>>(number)) return true;
+		if (recursive_is_divisible_by<7, in_base<3>>(number)) return true;
+		if (recursive_is_divisible_by<7, in_base<4>>(number)) return true;
+		if (recursive_is_divisible_by<7, in_base<5>>(number)) return true;
 
 #if analyze_div_tests
 		bool found_div = false;

@@ -249,127 +249,9 @@ namespace mbp::div_test
 		return (detail::prime_factor_lookup[n] & (detail::prime_lookup_t(1) << prime_index)) != 0;
 	}
 
-	// Suppress warnings about bitmasks having upper bits moved
-#pragma warning(push)
-#pragma warning(disable: 26450)
 
-	// unrolled div tests, templated version:
 
-	template<size_t base>
-	struct in_base
-	{
-		static constexpr size_t val = base;
-		static constexpr bool is(size_t b) { return b == base; }
-	};
-
-	template<size_t divisor, typename base_t, const size_t base = base_t::val> requires (divisor == 5 && base == 3)
-		/*__forceinline*/ bool is_divisible_by(const size_t number)
-	{
-		using namespace detail;
-		constexpr size_t mask = bitmask_for<base, divisor>::val;
-		static_assert(period_of<mask>::val == 4);
-		size_t rem = 0;
-		rem += pop_count(number & (mask << 0)) * pow_mod<base, 0, divisor>::rem;
-		rem += pop_count(number & (mask << 1)) * pow_mod<base, 1, divisor>::rem;
-		rem += pop_count(number & (mask << 2)) * pow_mod<base, 2, divisor>::rem;
-		rem += pop_count(number & (mask << 3)) * pow_mod<base, 3, divisor>::rem;
-
-		return has_small_prime_factor(rem, detail::get_prime_index<divisor>::idx);
-	}
-
-	template<size_t divisor, typename base_t, const size_t base = base_t::val> requires (divisor == 7 && base == 3)
-		/*__forceinline*/ bool is_divisible_by(const size_t number)
-	{
-		using namespace detail;
-		constexpr size_t mask = bitmask_for<base, divisor>::val;
-		static_assert(period_of<mask>::val == 6);
-		size_t rem = 0;
-		rem += pop_count(number & (mask << 0)) * pow_mod<base, 0, divisor>::rem;
-		rem += pop_count(number & (mask << 1)) * pow_mod<base, 1, divisor>::rem;
-		rem += pop_count(number & (mask << 2)) * pow_mod<base, 2, divisor>::rem;
-		rem += pop_count(number & (mask << 3)) * pow_mod<base, 3, divisor>::rem;
-		rem += pop_count(number & (mask << 4)) * pow_mod<base, 4, divisor>::rem;
-		rem += pop_count(number & (mask << 5)) * pow_mod<base, 5, divisor>::rem;
-
-		return has_small_prime_factor(rem, detail::get_prime_index<divisor>::idx);
-	}
-
-	template<size_t divisor, typename base_t, const size_t base = base_t::val> requires (divisor == 7 && base == 4)
-		/*__forceinline*/ bool is_divisible_by(const size_t number)
-	{
-		using namespace detail;
-		constexpr size_t mask = bitmask_for<base, divisor>::val;
-		static_assert(period_of<mask>::val == 3);
-		size_t rem = 0;
-		rem += pop_count(number & (mask << 0)) * pow_mod<base, 0, divisor>::rem;
-		rem += pop_count(number & (mask << 1)) * pow_mod<base, 1, divisor>::rem;
-		rem += pop_count(number & (mask << 2)) * pow_mod<base, 2, divisor>::rem;
-
-		return has_small_prime_factor(rem, detail::get_prime_index<divisor>::idx);
-	}
-
-	template<size_t divisor, typename base_t, const size_t base = base_t::val> requires (divisor == 7 && base == 5)
-		/*__forceinline*/ bool is_divisible_by(const size_t number)
-	{
-		using namespace detail;
-		constexpr size_t mask = bitmask_for<base, divisor>::val;
-		static_assert(period_of<mask>::val == 6);
-		size_t rem = 0;
-		rem += pop_count(number & (mask << 0)) * pow_mod<base, 0, divisor>::rem;
-		rem += pop_count(number & (mask << 1)) * pow_mod<base, 1, divisor>::rem;
-		rem += pop_count(number & (mask << 2)) * pow_mod<base, 2, divisor>::rem;
-		rem += pop_count(number & (mask << 3)) * pow_mod<base, 3, divisor>::rem;
-		rem += pop_count(number & (mask << 4)) * pow_mod<base, 4, divisor>::rem;
-		rem += pop_count(number & (mask << 5)) * pow_mod<base, 5, divisor>::rem;
-
-		return has_small_prime_factor(rem, detail::get_prime_index<divisor>::idx);
-	}
-
-	//template<size_t divisor, typename base_t, const size_t base = base_t::val> requires (divisor == 11 && base == 8)
-	//	__forceinline bool is_divisible_by(const size_t number)
-	//{
-	//	using namespace detail;
-	//	constexpr size_t mask = bitmask_for<base, divisor>::val;
-	//	static_assert(period_of<mask>::val == 10);
-	//	size_t rem = 0;
-	//	rem += pop_count(number & (mask << 0)) * pow_mod<base, 0, divisor>::rem;
-	//	rem += pop_count(number & (mask << 1)) * pow_mod<base, 1, divisor>::rem;
-	//	rem += pop_count(number & (mask << 2)) * pow_mod<base, 2, divisor>::rem;
-	//	rem += pop_count(number & (mask << 3)) * pow_mod<base, 3, divisor>::rem;
-	//	rem += pop_count(number & (mask << 4)) * pow_mod<base, 4, divisor>::rem;
-	//	rem += pop_count(number & (mask << 5)) * pow_mod<base, 5, divisor>::rem;
-	//	rem += pop_count(number & (mask << 6)) * pow_mod<base, 6, divisor>::rem;
-	//	rem += pop_count(number & (mask << 7)) * pow_mod<base, 7, divisor>::rem;
-	//	rem += pop_count(number & (mask << 8)) * pow_mod<base, 8, divisor>::rem;
-	//	rem += pop_count(number & (mask << 9)) * pow_mod<base, 9, divisor>::rem;
-
-	//	return detail::has_small_prime_factor(rem, detail::get_prime_index<divisor>::idx);
-	//}
-
-	// unrolled div tests, recursive templated version:
-
-	template<size_t divisor, size_t base, size_t mask, size_t place_value>
-	__forceinline void recursive_is_divisible_by(size_t& rem, const size_t number)
-	{
-		rem += pop_count(number & (mask << place_value)) * detail::pow_mod<base, place_value, divisor>::rem;
-		if constexpr (place_value > 0)
-			recursive_is_divisible_by<divisor, base, mask, place_value - 1>(rem, number);
-		return;
-	}
-
-	template<size_t divisor, typename base_t, const size_t base = base_t::val>
-	__forceinline bool recursive_is_divisible_by(const size_t number)
-	{
-		static_assert(base >= 3 && base <= up_to_base);
-		constexpr size_t bitmask = detail::bitmask_for<base, divisor>::val;
-		size_t rem = 0;
-		recursive_is_divisible_by<divisor, base, bitmask, detail::period_of<bitmask>::val - 1>(rem, number);
-		return has_small_prime_factor(rem, detail::get_prime_index<divisor>::idx);
-	}
-
-#pragma warning(pop)
-
-	// looping div tests, but sorted:
+	// looping, sorted div tests:
 
 	constexpr size_t div_tests_size = detail::generate_div_tests_impl().size();
 	constexpr std::array<div_test_t, div_tests_size> generate_div_tests()
@@ -379,4 +261,47 @@ namespace mbp::div_test
 		std::copy(x.begin(), x.end(), div_tests.begin());
 		return div_tests;
 	}
+
+
+
+	// unrolled div tests using recursive templates:
+
+	template<size_t base>
+	struct in_base
+	{
+		static constexpr size_t val = base;
+		static constexpr bool is(size_t b) { return b == base; }
+	};
+
+	// Suppress warnings about bitmasks having upper bits moved
+#pragma warning(push)
+#pragma warning(disable: 26450)
+
+	namespace detail
+	{
+		template<size_t divisor, size_t base, size_t mask, size_t place_value>
+		__forceinline void recursive_is_divisible_by(size_t& rem, const size_t number)
+		{
+			rem += pop_count(number & (mask << place_value)) * pow_mod<base, place_value, divisor>::rem;
+			if constexpr (place_value > 0)
+				recursive_is_divisible_by<divisor, base, mask, place_value - 1>(rem, number);
+		}
+	}
+
+	template<size_t divisor, typename base_t>
+	__forceinline bool recursive_is_divisible_by(const size_t number)
+	{
+		using namespace detail;
+
+		constexpr size_t base = base_t::val;
+		static_assert(base >= 3 && base <= up_to_base);
+		constexpr size_t bitmask = bitmask_for<base, divisor>::val;
+		size_t rem = 0;
+
+		recursive_is_divisible_by<divisor, base, bitmask, period_of<bitmask>::val - 1>(rem, number);
+
+		return has_small_prime_factor(rem, get_prime_index<divisor>::idx);
+	}
+
+#pragma warning(pop)
 }
