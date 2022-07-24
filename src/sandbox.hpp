@@ -7,11 +7,9 @@
 #include "mpirxx.h"
 #pragma warning(pop)
 
+#include "franken_mpir.hpp"
 #include "math.hpp"
 #include "utility.hpp"
-#pragma warning(push, 0)
-#include "franken_mpir.hpp"
-#pragma warning(pop)
 
 namespace mbp
 {
@@ -63,7 +61,6 @@ namespace mbp
 				std::cout << "Static sieve size would be size " << sieve_size << " using product of primes up to " << p << '\n';
 				if (sieve_size > 1'000'000'000) return;
 			}
-			std::cout << "(no suitable sieve size found)\n";
 		}
 	}
 }

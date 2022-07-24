@@ -1,6 +1,7 @@
 #pragma once
 
 #include "config.hpp"
+#include "utility.hpp"
 
 namespace mbp
 {

@@ -27,7 +27,11 @@ Boston, MA 02110-1301, USA.
 #include "mpir.h"
 #include "gmp-impl.h"
 #include "longlong.h"
-#pragma warning(pop)
+#pragma warning(pop, 0)
+
+#include "math.hpp"
+
+#pragma warning(push, 0)
 
 namespace franken
 {
@@ -995,3 +999,5 @@ unsigned char __clz_tab[129] =
   9
 };
 #endif
+
+#pragma warning(pop)

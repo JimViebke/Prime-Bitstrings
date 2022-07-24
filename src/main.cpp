@@ -8,14 +8,12 @@
 #include <cassert>
 #include <bitset>
 
-#include "utility.hpp"
+#include "config.hpp"
+#include "franken_mpir.hpp"
 #include "math.hpp"
 #include "multibase_div_tests.hpp"
-#include "config.hpp"
 #include "sandbox.hpp"
-#pragma warning(push, 0)
-#include "franken_mpir.hpp"
-#pragma warning(pop)
+#include "utility.hpp"
 
 
 namespace mbp
@@ -99,11 +97,11 @@ namespace mbp
 		std::cout << std::setfill(' ') << std::setw(2) << ((now.tm_hour % 12 == 0) ? 12 : now.tm_hour % 12) << ':' << std::setfill('0') << std::setw(2) << now.tm_min << '\t';
 	}
 
-	// suppress "unreachable" warning while in benchmark mode
-#pragma warning(push)
-#pragma warning(disable: 4702)
 	void log_result(const mpz_class& n, size_t up_to_base)
 	{
+		// suppress "unreachable" warning while in benchmark mode
+#pragma warning(push)
+#pragma warning(disable: 4702)
 		log_time();
 
 		std::stringstream ss;
@@ -115,8 +113,8 @@ namespace mbp
 
 		std::ofstream ofs(results_path, std::ofstream::app);
 		ofs << ss.str();
-	}
 #pragma warning(pop)
+	}
 
 
 
