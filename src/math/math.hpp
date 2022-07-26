@@ -41,9 +41,20 @@ namespace mbp
 			std::vector<sieve_prime_t> primes;
 			primes.push_back(2);
 
-			for (size_t i = 3; i < sieve_primes_cap; i += 2)
-				if (brute_force_is_prime(i))
-					primes.push_back(sieve_prime_t(i));
+			std::vector<uint8_t> sieve(sieve_primes_cap + 1, true);
+
+			for (size_t i = 3; i < sieve.size(); i += 2)
+			{
+				if (!sieve[i]) continue;
+
+				primes.push_back(sieve_prime_t(i));
+
+				// mark off all odd multiples of i, except for i
+				for (size_t j = 3 * i; j < sieve.size(); j += 2 * i)
+				{
+					sieve[j] = false;
+				}
+			}
 
 			return primes;
 		}

@@ -52,12 +52,10 @@ namespace mbp
 
 			// Start is always odd. Therefore, if n is odd, it is pointing to the next even multiple of p.
 			// -- increase by p
+			if (n % 2 == 1)
+				n += p;
 			// However, if n is even, it is pointing to the next odd multiple of p.
 			// -- do nothing
-
-			// if (n % 2 == 1) // branchful
-			//	n += p;
-			n += p & -(n % 2 == 1); // branchless
 
 			// We now have the distance to the next odd multiple of p.
 			// Divide by 2 to store the *index* of the next odd multiple of p.
@@ -90,9 +88,7 @@ namespace mbp
 
 
 
-#pragma warning(push)
-#pragma warning(disable: 26450)
-	constexpr std::array<size_t, 64> generate_bitmask_lookup()
+	constexpr auto generate_bitmask_lookup()
 	{
 		std::array<size_t, 64> bitmasks = { 0 };
 
@@ -110,7 +106,6 @@ namespace mbp
 		return bitmasks;
 	}
 	constexpr std::array<size_t, 64> bitmask_lookup = generate_bitmask_lookup();
-#pragma warning(pop)
 
 	namespace div_test
 	{

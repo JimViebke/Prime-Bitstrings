@@ -66,6 +66,7 @@
       <AdditionalOptions>/constexpr:steps4194304 %(AdditionalOptions)</AdditionalOptions>
       <StringPooling>true</StringPooling>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
