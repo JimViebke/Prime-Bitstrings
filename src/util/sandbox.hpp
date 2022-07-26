@@ -7,8 +7,8 @@
 #include "mpirxx.h"
 #pragma warning(pop)
 
-#include "franken_mpir.hpp"
-#include "math.hpp"
+#include "math/franken_mpir.hpp"
+#include "math/math.hpp"
 #include "utility.hpp"
 
 namespace mbp

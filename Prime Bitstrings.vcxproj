@@ -111,7 +111,8 @@
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\franken_boost.hpp" />
+    <ClInclude Include="src\io\io.hpp" />
+    <ClInclude Include="src\math\boost_sqrt.hpp" />
     <ClInclude Include="lib\mpir\dll\x64\Debug\config.h" />
     <ClInclude Include="lib\mpir\dll\x64\Debug\gmp-impl.h" />
     <ClInclude Include="lib\mpir\dll\x64\Debug\gmp-mparam.h" />
@@ -177,13 +178,13 @@
     <ClInclude Include="lib\mpir\msvc\vs17\lib_mpir_gc\x64\Release\mpir.h" />
     <ClInclude Include="lib\mpir\msvc\vs17\lib_mpir_gc\x64\Release\mpirxx.h" />
     <ClInclude Include="src\config.hpp" />
-    <ClInclude Include="src\franken_mpir.hpp" />
+    <ClInclude Include="src\math\franken_mpir.hpp" />
     <ClInclude Include="src\multibase_div_tests.hpp" />
-    <ClInclude Include="src\pk_prime.hpp" />
-    <ClInclude Include="src\math.hpp" />
-    <ClInclude Include="src\sandbox.hpp" />
-    <ClInclude Include="src\types.hpp" />
-    <ClInclude Include="src\utility.hpp" />
+    <ClInclude Include="src\math\pk_prime.hpp" />
+    <ClInclude Include="src\math\math.hpp" />
+    <ClInclude Include="src\util\sandbox.hpp" />
+    <ClInclude Include="src\util\types.hpp" />
+    <ClInclude Include="src\util\utility.hpp" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="doc\additional benchmark notes.txt" />

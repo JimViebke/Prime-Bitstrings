@@ -2,8 +2,8 @@
 
 #include <vector>
 
-#include "pk_prime.hpp"
-#include "math.hpp"
+#include "math/math.hpp"
+#include "math/pk_prime.hpp"
 
 /*
 To determine if a bitstring has a small prime divisor in base b, we can do better than converting the bitstring to base b, then calculating bistring % smallprime == 0.
@@ -80,7 +80,7 @@ namespace mbp::div_test
 
 					if (base == 12 && p == 13) continue; // base 12^n % 13 unused
 
-					// If two div tests are identical, remove one
+					// If two div tests are effectively identical, remove one
 					if (base == 8 && p == 5) continue; //  base  8^n % 5 is congruent to 3^n % 5
 					if (base == 10 && p == 7) continue; // base 10^n % 7 is congruent to 3^n % 7
 					if (base == 11 && p == 7) continue; // base 11^n % 7 is congruent to 4^n % 7 

@@ -30,10 +30,12 @@ Boston, MA 02110-1301, USA.
 #pragma warning(pop, 0)
 
 #include "math.hpp"
+#include "../config.hpp"
 
+// This file is all MPIR or customized MPIR code - suppress all warnings
 #pragma warning(push, 0)
 
-namespace franken
+namespace mbp::franken
 {
 
 #define D_BITS 53
@@ -986,6 +988,7 @@ namespace franken
 	{
 		return bool(mpir_likely_prime(n.get_mpz_t(), gmp_random::r.get_randstate_t(), div_p_idx));
 	}
+
 }
 
 #ifdef COUNT_LEADING_ZEROS_NEED_CLZ_TAB
