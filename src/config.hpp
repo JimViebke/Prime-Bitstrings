@@ -30,6 +30,9 @@ namespace mbp
 	// The size of the static sieve is the product of these numbers. Exercise caution.
 	constexpr std::array static_sieve_primes{ 3ull, 5ull, 7ull, 11ull, 13ull };
 
+	// The size of the factorization wheel sieve is the product of these numbers. Exercise caution.
+	constexpr std::array wheel_primes{ 2ull, 3ull, 5ull, 7ull, 11ull, 13ull };
+
 	const size_t sieve_primes_cap = 2200; // default: 2200
 
 	namespace div_test // trial division tests

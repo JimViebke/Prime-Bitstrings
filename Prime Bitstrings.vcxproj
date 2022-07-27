@@ -239,6 +239,7 @@
     <ClInclude Include="src\util\sandbox.hpp" />
     <ClInclude Include="src\util\types.hpp" />
     <ClInclude Include="src\util\utility.hpp" />
+    <ClInclude Include="src\math\wheel_factorization.hpp" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="doc\additional benchmark notes.txt" />

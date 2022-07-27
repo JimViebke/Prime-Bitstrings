@@ -239,6 +239,9 @@
     <ClInclude Include="src\util\types.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\math\wheel_factorization.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="src\io\io.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
