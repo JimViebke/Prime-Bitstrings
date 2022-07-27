@@ -56,11 +56,13 @@ ideas:
 - Let the full sieve be larger than (ie, a multiple of) the static sieve
 	- The above was slower - instead, store a larger, repeating static sieve
 - Compare sieving with wheel factorization
+	- Where exactly? b2 already has sieving, and it's expensive to convert into higher bases
 - Run profile-guided optimization
 - Check against multiple sieve values at once
 - Disable buffer security check
 - Use Flint2
 	- In particular, Flint may have a cheaper weak prime test that could be more optimal with fewer div tests
+- Since we're searching linearly, shouldn't the popcount follow a sawtooth-like pattern?
 
 
 
