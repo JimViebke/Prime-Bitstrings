@@ -32,12 +32,18 @@ namespace mbp::div_test
 #endif
 		prime_idx_t prime_idx = 0;
 		n_of_remainders_t n_of_remainders = 0; // is also the index of the req'd bitmask
+
+#if USE_UNCACHED
+#else
+		bool is_first_with_n_remainders = false;
+#endif
+
 		std::array<remainder_t, max_remainders> remainders{ 0 };
 	};
 
 	namespace detail
 	{
-		constexpr std::vector<div_test_t> generate_div_tests_impl()
+		consteval std::vector<div_test_t> generate_div_tests_impl()
 		{
 			std::vector<div_test_t> div_tests;
 
@@ -134,6 +140,22 @@ namespace mbp::div_test
 							  size_t(b.n_of_remainders) * small_primes_lookup[b.prime_idx];
 					  });
 
+#if USE_UNCACHED
+#else
+			// Mark each div test that is the first test with N remainders
+			for (size_t i = 0; i <= max_remainders; ++i)
+			{
+				for (auto& div_test : div_tests)
+				{
+					if (div_test.n_of_remainders == i)
+					{
+						div_test.is_first_with_n_remainders = true;
+						break;
+					}
+				}
+			}
+#endif
+
 			//for (auto& dt : div_tests)
 			//	std::cout << "b" << size_t(dt.base) << " % " << small_primes_lookup[dt.prime_idx] << " \t" << size_t(dt.n_of_terms) << " terms\n";
 
@@ -144,7 +166,7 @@ namespace mbp::div_test
 		template<size_t base, size_t prime>
 		struct bitmask_for
 		{
-			static constexpr size_t val = []
+			static consteval size_t f()
 			{
 				size_t i = 0;
 				for (; i < 64; ++i) // calculate base^i MOD prime
@@ -161,7 +183,8 @@ namespace mbp::div_test
 				}
 
 				return bitmask;
-			}();
+			}
+			static constexpr size_t val = f();
 		};
 
 		// calculate a^b mod m
@@ -174,26 +197,28 @@ namespace mbp::div_test
 		template<size_t bitmask>
 		struct period_of
 		{
-			static constexpr size_t val = []
+			static consteval size_t f()
 			{
 				for (size_t i = 1; i < 64; ++i)
 					if ((bitmask >> i) & 1)
 						return i;
-			}();
+			}
+			static constexpr size_t val = f();
 		};
 
 		template<size_t prime>
 		struct get_prime_index
 		{
-			static constexpr size_t idx = []
+			static consteval size_t f()
 			{
 				for (size_t i = 0; i < 64; ++i)
 					if (small_primes_lookup[i] == prime)
 						return i;
-			}();
+			}
+			static constexpr size_t idx = f();
 		};
 
-		constexpr size_t calculate_prime_factor_lookup_size()
+		consteval size_t calculate_prime_factor_lookup_size()
 		{
 			const auto div_tests = generate_div_tests_impl();
 
@@ -254,7 +279,7 @@ namespace mbp::div_test
 	// looping, sorted div tests:
 
 	constexpr size_t div_tests_size = detail::generate_div_tests_impl().size();
-	constexpr std::array<div_test_t, div_tests_size> generate_div_tests()
+	consteval std::array<div_test_t, div_tests_size> generate_div_tests()
 	{
 		std::array<div_test_t, div_tests_size> div_tests;
 		const auto x = detail::generate_div_tests_impl();
@@ -270,7 +295,6 @@ namespace mbp::div_test
 	struct in_base
 	{
 		static constexpr size_t val = base;
-		static constexpr bool is(size_t b) { return b == base; }
 	};
 
 	// Suppress warnings about bitmasks having upper bits moved

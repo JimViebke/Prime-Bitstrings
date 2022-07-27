@@ -36,7 +36,7 @@ namespace mbp
 	{
 		using namespace mbp;
 
-		constexpr std::vector<sieve_prime_t> build_small_primes_lookup_impl()
+		consteval std::vector<sieve_prime_t> build_small_primes_lookup_impl()
 		{
 			std::vector<sieve_prime_t> primes;
 			primes.push_back(2);
@@ -60,7 +60,7 @@ namespace mbp
 		}
 
 		constexpr size_t n_of_small_primes = build_small_primes_lookup_impl().size();
-		constexpr std::array<sieve_prime_t, n_of_small_primes> build_small_primes_lookup()
+		consteval std::array<sieve_prime_t, n_of_small_primes> build_small_primes_lookup()
 		{
 			decltype(build_small_primes_lookup()) primes{};
 			const auto x = build_small_primes_lookup_impl();
@@ -100,7 +100,7 @@ namespace mbp
 		return _mm_popcnt_u64(n);
 	}
 
-	constexpr uint64_t build_tiny_primes_lookup()
+	consteval uint64_t build_tiny_primes_lookup()
 	{
 		// Generate a 64 bit lookup, where the prime-numbered bits are set high
 		// 2 | 3 | 5 | 7 | 11 | 13 | 17 | 19 | 23 | 29 | 31 | 37 | 41 | 43 | 47 | 53 | 59 | 61
@@ -137,7 +137,7 @@ namespace mbp
 		return gcd(b, a % b);
 	}
 
-	constexpr size_t build_gcd_lookup()
+	consteval size_t build_gcd_lookup()
 	{
 		size_t lookup = 0;
 

@@ -58,3 +58,11 @@ namespace mbp
 
 #define analyze_div_tests 0
 #define suppress_extra_div_tests 1
+
+#define USE_UNCACHED 1 // cache popcounts?
+
+#if analyze_div_tests
+#define use_constexpr
+#else
+#define use_constexpr constexpr
+#endif

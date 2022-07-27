@@ -8,7 +8,7 @@ namespace pk
 	// Copyright 2014 Peter Knight
 	// This code is released under GPLv2 license.
 
-	constexpr uint64_t mulMod(uint64_t a, uint64_t b, uint64_t m)
+	consteval uint64_t mulMod(uint64_t a, uint64_t b, uint64_t m)
 	{
 		/* Calculate ab (mod m)
 		**
@@ -31,7 +31,7 @@ namespace pk
 		return r;
 	}
 
-	constexpr uint64_t powMod(uint64_t a, uint64_t b, uint64_t m)
+	consteval uint64_t powMod(uint64_t a, uint64_t b, uint64_t m)
 	{
 		/* Calculate a^b (mod m)
 		**

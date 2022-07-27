@@ -88,7 +88,7 @@ namespace mbp
 
 
 
-	constexpr auto generate_bitmask_lookup()
+	consteval auto generate_bitmask_lookup()
 	{
 		std::array<size_t, 64> bitmasks = { 0 };
 
@@ -109,14 +109,12 @@ namespace mbp
 
 	namespace div_test
 	{
-#if analyze_div_tests
 		using div_tests_t = std::array<div_test_t, div_tests_size>;
-#else
-		using div_tests_t = const std::array<div_test_t, div_tests_size>;
-#endif
 	}
 
-	static div_test::div_tests_t div_tests = div_test::generate_div_tests();
+	static use_constexpr div_test::div_tests_t div_tests = div_test::generate_div_tests(); // intellisense false positive
+
+#if USE_UNCACHED
 
 	__forceinline bool has_small_divisor(const size_t number)
 	{
@@ -162,6 +160,77 @@ namespace mbp
 		return false;
 #endif
 	}
+
+#else
+
+	// takes N^2 memory, even though we only need (N^2) / 2
+	static std::array<mbp::aligned64, 64> popcounts{};
+
+	__forceinline bool has_small_divisor_cached(const size_t number)
+	{
+		using namespace div_test;
+
+		if (recursive_is_divisible_by<5, in_base<3>>(number)) return true;
+
+		if (recursive_is_divisible_by<7, in_base<3>>(number)) return true;
+		if (recursive_is_divisible_by<7, in_base<4>>(number)) return true;
+		if (recursive_is_divisible_by<7, in_base<5>>(number)) return true;
+
+#if analyze_div_tests
+		bool found_div = false;
+
+		for (auto& div_test : div_tests)
+#else
+		for (const auto& div_test : div_tests)
+#endif
+		{
+			size_t rem = 0;
+
+			const size_t n_of_rems = div_test.n_of_remainders;
+
+			if (div_test.is_first_with_n_remainders)
+			{
+				// Perform the first popcount here, because first shift is always 0 and first rem is always 1
+				rem = pop_count(number & bitmask_lookup[n_of_rems]);
+				popcounts[n_of_rems][0] = uint8_t(rem);
+
+				for (size_t i = 1; i < n_of_rems; ++i)
+				{
+					const auto pc = pop_count(number & (bitmask_lookup[n_of_rems] << i));
+					popcounts[n_of_rems][i] = uint8_t(pc);
+					rem += pc * div_test.remainders[i];
+				}
+			}
+			else
+			{
+				rem = popcounts[n_of_rems][0]; // first rem is always 1
+
+				for (size_t i = 1; i < n_of_rems; ++i)
+				{
+					rem += size_t(popcounts[n_of_rems][i]) * div_test.remainders[i];
+				}
+			}
+
+			if (has_small_prime_factor(rem, div_test.prime_idx))
+			{
+#if analyze_div_tests
+				div_test.hits++;
+				found_div = true;
+				return true;
+#else
+				return true;
+#endif
+			}
+		}
+
+#if analyze_div_tests
+		return found_div;
+#else
+		return false;
+#endif
+	}
+
+#endif
 
 	void print_div_test_analysis()
 	{
@@ -263,7 +332,11 @@ namespace mbp
 				if ((gcd_lookup & (1ull << abs(pca - pcb))) == 0) continue;
 
 				// Run cheap trial division tests across multiple bases
+#if USE_UNCACHED
 				if (has_small_divisor(number)) continue;
+#else
+				if (has_small_divisor_cached(number)) continue;
+#endif
 
 
 
@@ -325,8 +398,11 @@ namespace mbp
 		std::cout << "Finished. " << current_time_in_ms() - start << " ms elapsed\n";
 	}
 
+
+
 	void find_multibase_primes_permute()
 	{
+#if USE_UNCACHED
 		gmp_random::r.seed(mpir_ui(0xdeadbeef));
 
 		size_t number = benchmark_mode ? bm_start : load_from_results();
@@ -411,6 +487,7 @@ namespace mbp
 #endif
 
 		std::cout << "Finished. " << current_time_in_ms() - start << " ms elapsed\n";
+#endif
 	}
 
 } // namespace mbp

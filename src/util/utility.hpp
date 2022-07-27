@@ -24,7 +24,7 @@ namespace mbp
 	namespace util_detail
 	{
 		template<size_t n_bits>
-		constexpr auto narrowest_uint_for_n_bits()
+		consteval auto narrowest_uint_for_n_bits()
 		{
 			if constexpr (n_bits <= 8) return uint8_t(0);
 			else if constexpr (n_bits <= 16) return uint16_t(0);
@@ -33,7 +33,7 @@ namespace mbp
 		}
 
 		template<uint64_t val>
-		constexpr auto narrowest_uint_for_val()
+		consteval auto narrowest_uint_for_val()
 		{
 			if constexpr (val <= std::numeric_limits<uint8_t>::max()) return uint8_t(0);
 			else if constexpr (val <= std::numeric_limits<uint16_t>::max()) return uint16_t(0);
