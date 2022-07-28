@@ -37,8 +37,8 @@ namespace mbp
 
 	namespace div_test // trial division tests
 	{
-		const size_t n_of_primes = 32; // default: 32
-		const size_t up_to_base = 11; // default: 11
+		constexpr size_t n_of_primes = 32; // default: 32
+		constexpr size_t up_to_base = 11; // default: 11
 
 		constexpr size_t max_remainders = 42; // default: 42
 

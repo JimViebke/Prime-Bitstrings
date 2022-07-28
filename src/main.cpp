@@ -109,12 +109,8 @@ namespace mbp
 	}
 	constexpr std::array<size_t, 64> bitmask_lookup = generate_bitmask_lookup();
 
-	namespace div_test
-	{
-		using div_tests_t = std::array<div_test_t, div_tests_size>;
-	}
-
-	static use_constexpr div_test::div_tests_t div_tests = div_test::generate_div_tests(); // intellisense false positive
+	using div_tests_t = std::array<div_test::div_test_t, div_test::div_tests_size>;
+	static div_test_constexpr div_tests_t div_tests = div_test::generate_div_tests(); // intellisense false positive
 
 #if USE_UNCACHED
 
