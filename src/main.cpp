@@ -67,6 +67,8 @@ namespace mbp
 	{
 		static_assert(static_sieve_size > sieve_primes_cap);
 
+		const sieve_offset_t sieve_size = sieve_offset_t(sieve.size());
+
 		// Start with the first prime not in the static sieve
 		for (size_t i = static_sieve_primes.size() + 1; i < small_primes_lookup.size(); ++i)
 		{
@@ -76,7 +78,7 @@ namespace mbp
 			sieve_offset_t j = sieve_offsets_cache[i];
 
 			// Mark false each (implicitly odd) multiple of p
-			for (; j < sieve.size(); j += p)
+			for (; j < sieve_size; j += p)
 			{
 				sieve[j] = false;
 			}

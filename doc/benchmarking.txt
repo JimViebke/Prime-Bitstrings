@@ -45,6 +45,8 @@ Calculate change: 1 - (  /  )
 10986 ms : Overhaul datatypes and re-tune many knobs in config (~18% faster)
 10384 ms : Skip six additional unused div tests (~5% faster)
 10148 ms : Skip three div tests that are congruent with others (~2% faster)
+ 9810 ms : Use Profile-Guided Optimization (~3% faster)
+ 9398 ms : Cache sieve size during partial sieve (~4% faster)
 
 
 
