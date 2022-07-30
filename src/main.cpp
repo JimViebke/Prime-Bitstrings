@@ -112,55 +112,6 @@ namespace mbp
 	using div_tests_t = std::array<div_test::div_test_t, div_test::div_tests_size>;
 	static div_test_constexpr div_tests_t div_tests = div_test::generate_div_tests(); // intellisense false positive
 
-#if USE_UNCACHED
-
-	__forceinline bool has_small_divisor(const size_t number)
-	{
-		using namespace div_test;
-
-		if (recursive_is_divisible_by<5, in_base<3>>(number)) return true;
-
-		if (recursive_is_divisible_by<7, in_base<3>>(number)) return true;
-		if (recursive_is_divisible_by<7, in_base<4>>(number)) return true;
-		if (recursive_is_divisible_by<7, in_base<5>>(number)) return true;
-
-#if analyze_div_tests
-		bool found_div = false;
-
-		for (auto& div_test : div_tests)
-#else
-		for (const auto& div_test : div_tests)
-#endif
-		{
-			// Perform the first popcount here, because first shift is always 0 and first rem is always 1
-			size_t rem = pop_count(number & bitmask_lookup[div_test.n_of_remainders]);
-
-			for (size_t i = 1; i < div_test.n_of_remainders; ++i)
-			{
-				rem += pop_count(number & (bitmask_lookup[div_test.n_of_remainders] << i)) * div_test.remainders[i];
-			}
-
-			if (has_small_prime_factor(rem, div_test.prime_idx))
-			{
-#if analyze_div_tests
-				div_test.hits++;
-				found_div = true;
-				return true;
-#else
-				return true;
-#endif
-			}
-		}
-
-#if analyze_div_tests
-		return found_div;
-#else
-		return false;
-#endif
-	}
-
-#else
-
 	// takes N^2 memory, even though we only need (N^2) / 2
 	static std::array<mbp::aligned64, 64> popcounts{};
 
@@ -227,8 +178,6 @@ namespace mbp
 		return false;
 #endif
 	}
-
-#endif
 
 	void print_div_test_analysis()
 	{
@@ -330,11 +279,7 @@ namespace mbp
 				if ((gcd_lookup & (1ull << abs(pca - pcb))) == 0) continue;
 
 				// Run cheap trial division tests across multiple bases
-#if USE_UNCACHED
-				if (has_small_divisor(number)) continue;
-#else
 				if (has_small_divisor_cached(number)) continue;
-#endif
 
 
 
