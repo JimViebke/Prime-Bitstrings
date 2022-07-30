@@ -60,3 +60,6 @@ Vectorized/SIMD div tests were prohibitively expensive due to the lack of a SIMD
 - Searching permutations of bits was slower, presumably because it's hard to beat sieving
 - The small amounts of duplicate MPIR code aren't going anywhere unless MPIR's .c files are compiled as part of the project
 - Unrolling div tests to any N > 1 made the code slower. Presumably because a large portion of div tests fail early. IE, optimizations should target a faster failure case, rather than (theoretical) faster parsing of the tests overall.
+
+- /favor:INTEL64 produced identical asm
+- The second inner div test loop is too small for OpenMP to vectorize
