@@ -33,10 +33,7 @@ namespace mbp::div_test
 		prime_idx_t prime_idx = 0;
 		n_of_remainders_t n_of_remainders = 0; // is also the index of the req'd bitmask
 
-#if USE_UNCACHED
-#else
 		bool is_first_with_n_remainders = false;
-#endif
 
 		std::array<remainder_t, max_remainders> remainders{ 0 };
 	};
@@ -140,8 +137,6 @@ namespace mbp::div_test
 							  size_t(b.n_of_remainders) * small_primes_lookup[b.prime_idx];
 					  });
 
-#if USE_UNCACHED
-#else
 			// Mark each div test that is the first test with N remainders
 			for (size_t i = 0; i <= max_remainders; ++i)
 			{
@@ -154,7 +149,6 @@ namespace mbp::div_test
 					}
 				}
 			}
-#endif
 
 			//for (auto& dt : div_tests)
 			//	std::cout << "b" << size_t(dt.base) << " % " << small_primes_lookup[dt.prime_idx] << " \t" << size_t(dt.n_of_terms) << " terms\n";

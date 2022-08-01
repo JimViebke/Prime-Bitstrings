@@ -392,7 +392,6 @@ namespace mbp
 
 	void find_multibase_primes_permute()
 	{
-#if USE_UNCACHED
 		gmp_random::r.seed(mpir_ui(0xdeadbeef));
 
 		size_t number = benchmark_mode ? bm_start : load_from_results();
@@ -423,7 +422,7 @@ namespace mbp
 			// if (b2_has_small_divisor<32>(number)) continue;
 
 			// Run cheap trial division tests across multiple bases
-			if (has_small_divisor(number)) continue;
+			if (has_small_divisor_cached(number)) continue;
 
 			// Run cheap trial division tests in base 2
 			// if (b2_has_small_divisor<100, 32 + 1>(number)) continue;
@@ -477,7 +476,6 @@ namespace mbp
 #endif
 
 		std::cout << "Finished. " << current_time_in_ms() - start << " ms elapsed\n";
-#endif
 	}
 
 } // namespace mbp
