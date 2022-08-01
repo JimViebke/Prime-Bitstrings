@@ -47,6 +47,7 @@ Calculate change: 1 - (  /  )
 10148 ms : Skip three div tests that are congruent with others (~2% faster)
  9810 ms : Use Profile-Guided Optimization (~3% faster)
  9398 ms : Cache sieve size during partial sieve (~4% faster)
+ 9063 ms : Unroll second inner div test loop (~4% faster)
 
 
 
@@ -63,6 +64,9 @@ ideas:
 - Use Flint2
 	- In particular, Flint may have a cheaper weak prime test that could be more optimal with fewer div tests
 - Since we're searching linearly, shouldn't the popcount follow a sawtooth-like pattern?
+- Try the jump table with more or less than 42 possible terms
+- Round the n of number of remainders up (perhaps to a factor of 4?) to coalesce branches into the jump table
+- Convert other div test inner loop into a jump table
 
 
 

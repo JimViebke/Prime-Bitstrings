@@ -152,11 +152,58 @@ namespace mbp
 			}
 			else
 			{
-				rem = popcounts[n_of_rems][0]; // first rem is always 1
+				const auto& my_pcs = popcounts[n_of_rems];
+				const auto& my_rems = div_test.remainders;
 
-				for (size_t i = 1; i < n_of_rems; ++i)
+				// for switch (42), run cases 41 through 0
+				constexpr size_t start = __LINE__ + 5;
+#define IDX(n) (max_remainders - (n - start)) - 1
+#define CASE(n) case(IDX(n) + 1): rem += size_t(my_pcs[IDX(n)]) * my_rems[IDX(n)];
+				switch (n_of_rems)
 				{
-					rem += size_t(popcounts[n_of_rems][i]) * div_test.remainders[i];
+					CASE(__LINE__); // max - 1
+					CASE(__LINE__); // max - 2
+					CASE(__LINE__); // max - 3
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__); // max - max
+					static_assert(start + max_remainders == __LINE__);
 				}
 			}
 
