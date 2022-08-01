@@ -60,8 +60,17 @@ namespace mbp
 #define suppress_extra_div_tests 1
 
 
-#if analyze_div_tests
+
+#ifdef __INTELLISENSE__
 #define use_constexpr
+#define use_consteval
 #else
 #define use_constexpr constexpr
+#define use_consteval consteval
+#endif
+
+#if analyze_div_tests
+#define div_test_constexpr
+#else
+#define div_test_constexpr use_constexpr
 #endif
