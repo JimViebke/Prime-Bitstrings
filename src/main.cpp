@@ -125,13 +125,11 @@ namespace mbp
 		if (recursive_is_divisible_by<7, in_base<4>>(number)) return true;
 		if (recursive_is_divisible_by<7, in_base<5>>(number)) return true;
 
-#if analyze_div_tests
+	#if analyze_div_tests
 		bool found_div = false;
+	#endif
 
-		for (auto& div_test : div_tests)
-#else
-		for (const auto& div_test : div_tests)
-#endif
+		for (div_test_const auto& div_test : div_tests)
 		{
 			size_t rem = 0;
 
@@ -148,8 +146,8 @@ namespace mbp
 
 				// for switch (n), run cases n through 1, where the index is n-1 through 0
 				constexpr size_t start = __LINE__ + 10;
-#define IDX(n) ((max_remainders - (n - start)) - 1)
-#define CASE(n) [[fallthrough]]; case(IDX(n) + 1): \
+			#define IDX(n) ((max_remainders - (n - start)) - 1)
+			#define CASE(n) [[fallthrough]]; case(IDX(n) + 1): \
 				{ \
 				const auto pc = pop_count(number & (my_bitmask << IDX(n))); \
 					my_pcs[IDX(n)] = uint8_t(pc); \
@@ -204,8 +202,8 @@ namespace mbp
 				default:
 					__assume(false);
 				}
-#undef CASE
-#undef IDX
+			#undef CASE
+			#undef IDX
 			}
 			else
 			{
@@ -213,8 +211,8 @@ namespace mbp
 
 				// for switch (n), run cases n through 1, where the index is n-1 through 0
 				constexpr size_t start = __LINE__ + 5;
-#define IDX(n) ((max_remainders - (n - start)) - 1)
-#define CASE(n) [[fallthrough]]; case(IDX(n) + 1): rem += size_t(my_pcs[IDX(n)]) * my_rems[IDX(n)];
+			#define IDX(n) ((max_remainders - (n - start)) - 1)
+			#define CASE(n) [[fallthrough]]; case(IDX(n) + 1): rem += size_t(my_pcs[IDX(n)]) * my_rems[IDX(n)];
 				switch (n_of_rems)
 				{
 					CASE(__LINE__); // case (max)
@@ -264,32 +262,32 @@ namespace mbp
 				default:
 					__assume(false);
 				}
-#undef CASE
-#undef IDX
+			#undef CASE
+			#undef IDX
 			}
 
 			if (has_small_prime_factor(rem, div_test.prime_idx))
 			{
-#if analyze_div_tests
+			#if analyze_div_tests
 				div_test.hits++;
 				found_div = true;
 				return true;
-#else
+			#else
 				return true;
-#endif
+			#endif
 			}
 		}
 
-#if analyze_div_tests
+	#if analyze_div_tests
 		return found_div;
-#else
+	#else
 		return false;
-#endif
+	#endif
 	}
 
 	void print_div_test_analysis()
 	{
-#if analyze_div_tests
+	#if analyze_div_tests
 		//std::sort(div_tests.begin(), div_tests.end(), [] (const auto& a, const auto& b)
 		//		  {
 		//			  //return a.hits < b.hits;
@@ -335,7 +333,7 @@ namespace mbp
 			}
 			std::cout << '\n';
 		}
-#endif
+	#endif
 	}
 
 
@@ -434,17 +432,17 @@ namespace mbp
 
 			} // end hot loop
 
-#if analyze_div_tests
+		#if analyze_div_tests
 			for (const auto& dt : div_tests)
 				if (dt.hits >= 1'000'000)
 					goto div_test_summaries;
-#endif
+		#endif
 		} // end sieve loop
 
-#if analyze_div_tests
+	#if analyze_div_tests
 		div_test_summaries :
 		print_div_test_analysis();
-#endif
+	#endif
 
 		std::cout << "Finished. " << current_time_in_ms() - start << " ms elapsed\n";
 	}
@@ -532,9 +530,9 @@ namespace mbp
 			if (!mpir_is_prime(mpz_number)) { log_result(number, 12); continue; }
 		}
 
-#if analyze_div_tests
+	#if analyze_div_tests
 		print_div_test_analysis();
-#endif
+	#endif
 
 		std::cout << "Finished. " << current_time_in_ms() - start << " ms elapsed\n";
 	}

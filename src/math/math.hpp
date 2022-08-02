@@ -178,10 +178,10 @@ namespace mbp
 		_BitScanForward64(&idx, n);
 
 		// suppress "warning C4146 : unary minus operator applied to unsigned type, result still unsigned"
-#pragma warning (push)
-#pragma warning (disable: 4146)
+	#pragma warning (push)
+	#pragma warning (disable: 4146)
 		n = (t + 1) | (((~t & -~t) - 1) >> (idx + 1));
-#pragma warning (pop)
+	#pragma warning (pop)
 	}
 
 }

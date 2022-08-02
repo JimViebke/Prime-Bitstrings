@@ -23,8 +23,8 @@ namespace mbp
 
 	const bool benchmark_mode = false;
 
-	const size_t bm_size = 5'000'000'000;
 	const size_t bm_start = p11; // default: p11
+	const size_t bm_size = 5'000'000'000;
 	const size_t bm_stop = bm_start + bm_size;
 
 	// The size of the static sieve is the product of these numbers. Exercise caution.
@@ -70,7 +70,15 @@ namespace mbp
 #endif
 
 #if analyze_div_tests
+#define div_test_const
 #define div_test_constexpr
 #else
+#define div_test_const const
 #define div_test_constexpr use_constexpr
+#endif
+
+#if analyze_div_tests
+#define analysis_only(n) n
+#else
+#define analysis_only(n)
 #endif

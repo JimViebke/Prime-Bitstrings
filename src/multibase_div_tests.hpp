@@ -25,11 +25,11 @@ namespace mbp::div_test
 	class div_test_t
 	{
 	public:
-#if analyze_div_tests
+	#if analyze_div_tests
 		bool used = false;
 		base_t base = 0;
 		uint32_t hits = 0;
-#endif
+	#endif
 		prime_idx_t prime_idx = 0;
 		n_of_remainders_t n_of_remainders = 0; // is also the index of the req'd bitmask
 
@@ -57,7 +57,7 @@ namespace mbp::div_test
 					if (base == 4 && p == 7) continue;
 					if (base == 5 && p == 7) continue;
 
-#if !analyze_div_tests or suppress_extra_div_tests
+				#if !analyze_div_tests or suppress_extra_div_tests
 					if (base == 2 && p == 3) continue;
 
 					if (base == 4 && p == 3) continue; //  base  4^n % 3 unused
@@ -96,13 +96,13 @@ namespace mbp::div_test
 
 					// removed for being unused (due to ordering)
 					if (base == 9 && p == 73) continue; //   base  9^n %  73:   -       6 remainders : 1   9   8  72  64  65
-#endif
+				#endif
 
-#if analyze_div_tests
+				#if analyze_div_tests
 					div_test_t dt{ .base = base_t(base), .prime_idx = prime_idx_t(i) };
-#else
+				#else
 					div_test_t dt{ .prime_idx = prime_idx_t(i) };
-#endif
+				#endif
 
 					// calculate base^j mod prime, where j is the place value
 					for (size_t j = 0; j < max_remainders; ++j)

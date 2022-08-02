@@ -52,7 +52,7 @@ namespace mbp::franken
 	{
 		mp_limb_t res, is;
 
-#if GMP_LIMB_BITS == 32
+	#if GMP_LIMB_BITS == 32
 		float x, z;
 		union
 		{
@@ -91,7 +91,7 @@ namespace mbp::franken
 			res = res + ((sq <= r2) && !((sq ^ r2) & GMP_LIMB_HIGHBIT));
 			return res;
 		}
-#else
+	#else
 
 		double x, z;
 		union
@@ -132,7 +132,7 @@ namespace mbp::franken
 			res = res + ((sq <= r2) && !((sq ^ r2) & GMP_LIMB_HIGHBIT));
 			return res;
 		}
-#endif
+	#endif
 	}
 
 	static
