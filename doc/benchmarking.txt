@@ -49,6 +49,7 @@ Calculate change: 1 - (  /  )
  9398 ms : Cache sieve size during partial sieve (~4% faster)
  9063 ms : Replace second inner div test loop with jump table (~4% faster)
  8878 ms : Replace two branches with __assume intrinsics (~2% faster)
+ 8733 ms : Replace first inner div test loop with jump table (~1.5% faster)
 
 
 

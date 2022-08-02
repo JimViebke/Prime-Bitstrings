@@ -139,34 +139,85 @@ namespace mbp
 			__assume(n_of_rems > 0);
 			__assume(n_of_rems <= max_remainders);
 
+			const auto& my_rems = div_test.remainders;
+
 			if (div_test.is_first_with_n_remainders)
 			{
-				// Perform the first popcount here, because first shift is always 0 and first rem is always 1
-				rem = pop_count(number & bitmask_lookup[n_of_rems]);
-				popcounts[n_of_rems][0] = uint8_t(rem);
+				const size_t my_bitmask = bitmask_lookup[n_of_rems];
+				auto& my_pcs = popcounts[n_of_rems];
 
-				for (size_t i = 1; i < n_of_rems; ++i)
-				{
-					const auto pc = pop_count(number & (bitmask_lookup[n_of_rems] << i));
-					popcounts[n_of_rems][i] = uint8_t(pc);
-					rem += pc * div_test.remainders[i];
+				// for switch (n), run cases n through 1, where the index is n-1 through 0
+				constexpr size_t start = __LINE__ + 10;
+#define IDX(n) ((max_remainders - (n - start)) - 1)
+#define CASE(n) [[fallthrough]]; case(IDX(n) + 1): \
+				{ \
+				const auto pc = pop_count(number & (my_bitmask << IDX(n))); \
+					my_pcs[IDX(n)] = uint8_t(pc); \
+					rem += pc * my_rems[IDX(n)]; \
 				}
+				switch (n_of_rems) // handle cases N through 1
+				{
+					CASE(__LINE__); // case (max)
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__); // case (1)
+					static_assert(start + max_remainders == __LINE__);
+					break;
+				default:
+					__assume(false);
+				}
+#undef CASE
+#undef IDX
 			}
 			else
 			{
 				const auto& my_pcs = popcounts[n_of_rems];
-				const auto& my_rems = div_test.remainders;
 
 				// for switch (n), run cases n through 1, where the index is n-1 through 0
 				constexpr size_t start = __LINE__ + 5;
-#define IDX(n) (max_remainders - (n - start)) - 1
-#define CASE(n) case(IDX(n) + 1): rem += size_t(my_pcs[IDX(n)]) * my_rems[IDX(n)];
+#define IDX(n) ((max_remainders - (n - start)) - 1)
+#define CASE(n) [[fallthrough]]; case(IDX(n) + 1): rem += size_t(my_pcs[IDX(n)]) * my_rems[IDX(n)];
 				switch (n_of_rems)
 				{
-					CASE(__LINE__); // max
-					CASE(__LINE__); // max - 1
-					CASE(__LINE__); // max - 2
-					CASE(__LINE__); // max - 3
+					CASE(__LINE__); // case (max)
 					CASE(__LINE__);
 					CASE(__LINE__);
 					CASE(__LINE__);
@@ -202,11 +253,19 @@ namespace mbp
 					CASE(__LINE__);
 					CASE(__LINE__);
 					CASE(__LINE__);
-					CASE(__LINE__); // 3
-					CASE(__LINE__); // 2
-					CASE(__LINE__); // 1
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__); // case (1)
 					static_assert(start + max_remainders == __LINE__);
+					break;
+				default:
+					__assume(false);
 				}
+#undef CASE
+#undef IDX
 			}
 
 			if (has_small_prime_factor(rem, div_test.prime_idx))
