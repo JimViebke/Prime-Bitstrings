@@ -118,6 +118,14 @@ namespace mbp::div_test
 						dt.remainders[j] = rem;
 						dt.n_of_remainders++;
 					}
+
+					// Special case where we maxed out our terms without finding a repeat.
+					// Save this div test if and only if the next term is 1 (ie, a repeat)
+					if (dt.n_of_remainders == max_remainders &&
+						pk::powMod(base, max_remainders, small_primes_lookup[i]) == 1)
+					{
+						div_tests.push_back(dt);
+					}
 				}
 			}
 
