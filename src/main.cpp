@@ -157,12 +157,13 @@ namespace mbp
 				const auto& my_pcs = popcounts[n_of_rems];
 				const auto& my_rems = div_test.remainders;
 
-				// for switch (42), run cases 41 through 0
+				// for switch (n), run cases n through 1, where the index is n-1 through 0
 				constexpr size_t start = __LINE__ + 5;
 #define IDX(n) (max_remainders - (n - start)) - 1
 #define CASE(n) case(IDX(n) + 1): rem += size_t(my_pcs[IDX(n)]) * my_rems[IDX(n)];
 				switch (n_of_rems)
 				{
+					CASE(__LINE__); // max
 					CASE(__LINE__); // max - 1
 					CASE(__LINE__); // max - 2
 					CASE(__LINE__); // max - 3
@@ -201,10 +202,9 @@ namespace mbp
 					CASE(__LINE__);
 					CASE(__LINE__);
 					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__); // max - max
+					CASE(__LINE__); // 3
+					CASE(__LINE__); // 2
+					CASE(__LINE__); // 1
 					static_assert(start + max_remainders == __LINE__);
 				}
 			}

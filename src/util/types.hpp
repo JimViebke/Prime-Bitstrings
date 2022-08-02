@@ -13,7 +13,7 @@ namespace mbp
 		uint8_t& operator[](size_t i) { return data[i]; }
 		const uint8_t& operator[](size_t i) const { return data[i]; }
 	private:
-		std::array<uint8_t, 64> data;
+		std::array<uint8_t, 64> data{};
 	};
 
 }
