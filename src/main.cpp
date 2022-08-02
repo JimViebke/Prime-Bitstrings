@@ -136,6 +136,8 @@ namespace mbp
 			size_t rem = 0;
 
 			const size_t n_of_rems = div_test.n_of_remainders;
+			__assume(n_of_rems > 0);
+			__assume(n_of_rems <= max_remainders);
 
 			if (div_test.is_first_with_n_remainders)
 			{
