@@ -247,21 +247,18 @@ namespace mbp::div_test
 		using prime_lookup_t = narrowest_uint_for_n_bits<div_test::n_of_primes>;
 		std::vector<prime_lookup_t> build_prime_factor_lookup()
 		{
-			std::vector<prime_lookup_t> lookup;
-			lookup.reserve(prime_factor_lookup_size);
+			std::vector<prime_lookup_t> lookup(prime_factor_lookup_size, 0);
 
-			// for every possible summation of remainders
-			for (size_t i = 0; i < prime_factor_lookup_size; ++i)
+			// for each prime
+			for (size_t i = 0; i < div_test::n_of_primes; ++i)
 			{
-				// for each prime
-				prime_lookup_t entry = 0;
-				for (prime_lookup_t p = 0; p < div_test::n_of_primes; ++p)
-				{
-					// calculate if that summation of remainders is divisible by that prime
-					entry |= (prime_lookup_t((i % small_primes_lookup[p]) == 0) << p);
-				}
+				const prime_lookup_t p = small_primes_lookup[i];
 
-				lookup.push_back(entry);
+				// mark the i-th bit of every p-th value
+				for (prime_lookup_t j = p; j < prime_factor_lookup_size; j += p)
+				{
+					lookup[j] |= (0x1 << i);
+				}
 			}
 
 			return lookup;
@@ -283,7 +280,7 @@ namespace mbp::div_test
 	constexpr size_t div_tests_size = detail::generate_div_tests_impl().size();
 	consteval std::array<div_test_t, div_tests_size> generate_div_tests()
 	{
-		std::array<div_test_t, div_tests_size> div_tests;
+		std::array<div_test_t, div_tests_size> div_tests{};
 		const auto x = detail::generate_div_tests_impl();
 		std::copy(x.begin(), x.end(), div_tests.begin());
 		return div_tests;
