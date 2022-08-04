@@ -62,3 +62,8 @@ Vectorized/SIMD div tests were prohibitively expensive due to the lack of a SIMD
 
 - /favor:INTEL64 produced identical asm
 - The second inner div test loop is too small for OpenMP to vectorize
+
+
+
+There is substantial variation in the fraction of numbers that pass the sieve, popcount, and GCD tests.
+Batches of 25 billion integers can fluctuate calls to has_small_prime_factor by up to a factor of 2.

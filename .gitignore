@@ -403,3 +403,4 @@ GPUCache/
 VTune Profiler Results/
 *.bak
 doc/scratch.txt
+*.lnk

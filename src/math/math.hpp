@@ -164,7 +164,7 @@ namespace mbp
 		into this, requiring one less instruction:
 			(lookup & (1ull << (pca + 32 - pcb))) == 0
 
-		Any runtime different was indistinguishable on my machine.
+		Any runtime difference was indistinguishable on my machine.
 		*/
 	}
 
