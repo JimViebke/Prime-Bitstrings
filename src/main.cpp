@@ -439,12 +439,12 @@ namespace mbp
 		#endif
 		} // end sieve loop
 
+		std::cout << "Finished. " << current_time_in_ms() - start << " ms elapsed\n";
+
 	#if analyze_div_tests
 		div_test_summaries :
 		print_div_test_analysis();
 	#endif
-
-		std::cout << "Finished. " << current_time_in_ms() - start << " ms elapsed\n";
 	}
 
 
