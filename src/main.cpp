@@ -285,9 +285,11 @@ namespace mbp
 	#endif
 	}
 
-	void print_div_test_analysis()
+	void print_div_tests()
 	{
 	#if analyze_div_tests
+		using namespace div_test;
+
 		//std::sort(div_tests.begin(), div_tests.end(), [] (const auto& a, const auto& b)
 		//		  {
 		//			  //return a.hits < b.hits;
@@ -311,7 +313,7 @@ namespace mbp
 		auto w = std::setw;
 		for (const auto& dt : div_tests)
 		{
-			std::cout << "   base " << std::setfill(' ') << w(2) << size_t(dt.base) << "^n % " << w(3) << size_t(small_primes_lookup[dt.prime_idx]) << ":  ";
+			std::cout << "   base " << std::setfill(' ') << w(2) << size_t(dt.base) << " % " << w(3) << size_t(small_primes_lookup[dt.prime_idx]) << ":  ";
 			if (dt.hits == 0)
 			{
 				std::cout << "       -       ";
@@ -332,6 +334,59 @@ namespace mbp
 				}
 			}
 			std::cout << '\n';
+		}
+	#endif
+	}
+
+	void run_div_test_analysis()
+	{
+	#if analyze_div_tests
+		using namespace div_test;
+
+		auto div_test_pred = [](auto a, auto b) { return a.hits < b.hits; };
+
+		if (std::is_sorted(div_tests.rbegin(), div_tests.rend(), div_test_pred))
+		{
+			std::cout << "Div tests have not changed frequency ordering\n";
+		}
+		else
+		{
+			const auto copy = div_tests;
+
+			// sort descending
+			std::sort(div_tests.rbegin(), div_tests.rend(), div_test_pred);
+
+			size_t moved = 0;
+			for (size_t i = 0; i < div_tests.size(); ++i)
+				if (div_tests[i].base != copy[i].base || div_tests[i].prime_idx != copy[i].prime_idx)
+					moved++;
+
+			// clear "firsts"
+			for (auto& dt : div_tests)
+			{
+				dt.is_first_with_n_remainders = false;
+			}
+
+			// set firsts
+			for (size_t i = 0; i <= div_test::max_remainders; ++i)
+			{
+				for (auto& div_test : div_tests)
+				{
+					if (div_test.n_of_remainders == i)
+					{
+						div_test.is_first_with_n_remainders = true;
+						break;
+					}
+				}
+			}
+
+			print_div_tests();
+
+			static std::stringstream ss;
+			ss << ' ' << moved;
+
+			std::cout << moved << " div tests changed position\n";
+			std::cout << '(' << ss.str() << ")\n";
 		}
 	#endif
 	}
@@ -360,6 +415,11 @@ namespace mbp
 
 		constexpr size_t tiny_primes_lookup = build_tiny_primes_lookup();
 		constexpr size_t gcd_lookup = build_gcd_lookup();
+
+	#if analyze_div_tests
+		const size_t div_test_log_interval = 1'000'000;
+		size_t next_div_test_checkpoint = div_test_log_interval;
+	#endif
 
 		// Start the clock after setup
 		const auto start = current_time_in_ms();
@@ -432,19 +492,21 @@ namespace mbp
 
 			} // end hot loop
 
-		#if analyze_div_tests
-			for (const auto& dt : div_tests)
-				if (dt.hits >= 1'000'000)
-					goto div_test_summaries;
-		#endif
-		} // end sieve loop
+			#if analyze_div_tests
+				for (const auto& dt : div_test::div_tests)
+				{
+					if (dt.hits >= next_div_test_checkpoint)
+					{
+						run_div_test_analysis();
+						next_div_test_checkpoint += div_test_log_interval;
+						break;
+					}
+				}
+			#endif
+
+		} // end outer loop
 
 		std::cout << "Finished. " << current_time_in_ms() - start << " ms elapsed\n";
-
-	#if analyze_div_tests
-		div_test_summaries :
-		print_div_test_analysis();
-	#endif
 	}
 
 
@@ -531,7 +593,7 @@ namespace mbp
 		}
 
 	#if analyze_div_tests
-		print_div_test_analysis();
+		run_div_test_analysis();
 	#endif
 
 		std::cout << "Finished. " << current_time_in_ms() - start << " ms elapsed\n";
