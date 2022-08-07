@@ -13,7 +13,7 @@
 #include "io/io.hpp"
 #include "math/franken_mpir.hpp"
 #include "math/math.hpp"
-#include "multibase_div_tests.hpp"
+#include "trial_division/multibase_div_tests.hpp"
 #include "util/sandbox.hpp"
 #include "util/types.hpp"
 #include "util/utility.hpp"
@@ -108,9 +108,6 @@ namespace mbp
 		return bitmasks;
 	}
 	constexpr std::array<size_t, 64> bitmask_lookup = generate_bitmask_lookup();
-
-	using div_tests_t = std::array<div_test::div_test_t, div_test::div_tests_size>;
-	static div_test_constexpr div_tests_t div_tests = div_test::generate_div_tests(); // intellisense false positive
 
 	// takes N^2 memory, even though we only need (N^2) / 2
 	static std::array<mbp::aligned64, 64> popcounts{};

@@ -1,48 +1,27 @@
 #pragma once
 
-#include <vector>
-
-#include "math/math.hpp"
-#include "math/pk_prime.hpp"
-
 /*
 To determine if a bitstring has a small prime divisor in base b, we can do better than converting the bitstring to base b, then calculating bistring % smallprime == 0.
 
-Given any bitstring in the original base 2, the value of each digit is either 0 or base^(digit position). For example, in base 3, the bits can only represent 3^0, 3^1, 3^2... respectively.
+Given any bitstring in the original base 2, the value of each digit is either 0 or base^(digit position). For example, in base 7, the bits can only represent 7^0, 7^1, 7^2...
 
-Therefore, we can easily calculate the remainder of [place value] % [smallprime]. This could result in a 64-entry lookup, however, these remainders follow a short, repetitive pattern. Therefore, instead of comparing 64 bits with 64 different remainders, we only need to grab each unique remainder. Given k unique remainders, we can use a mask k times to select every k-th bit in the original number, perform a popcount, and multiple that popcount by the remainder. Adding these k remainders together gives us a small number, not greater than perhaps 100-200.
-
-Then, cheaply determine if this sum is divisible by p. This determines if the bitstring would be divisible by p in base b.
+Therefore, for base b, place value n, and a small prime p, we can easily calculate and store b^n % p. These remainders follow a repeating pattern often shorter than the chosen n, so we only need to store k unique remainders. At runtime, for each of the k remainders, use a bitmask to select every k-th bit, run a popcount, and multiply by the k-th remainder. Adding these k results together gives us a small sum of remainders, s. If s is evenly divisible by p, the bitstring is divisible by p in base b. Discard it.
 */
+
+#include <vector>
+
+#include "../math/math.hpp"
+#include "../math/pk_prime.hpp"
+#include "types.hpp"
+#include "div_test_hits.hpp"
 
 namespace mbp::div_test
 {
-	using base_t = narrowest_uint_for_val<up_to_base>;
-	using prime_idx_t = narrowest_uint_for_val<div_test::n_of_primes>;
-	using n_of_remainders_t = narrowest_uint_for_val<div_test::max_remainders>;
-	using remainder_t = sieve_prime_t;
-
-	class div_test_t
-	{
-	public:
-	#if analyze_div_tests
-		bool used = false;
-		base_t base = 0;
-		uint32_t hits = 0;
-	#endif
-		prime_idx_t prime_idx = 0;
-		n_of_remainders_t n_of_remainders = 0; // is also the index of the req'd bitmask
-
-		bool is_first_with_n_remainders = false;
-
-		std::array<remainder_t, max_remainders> remainders{ 0 };
-	};
-
 	namespace detail
 	{
 		consteval std::vector<div_test_t> generate_div_tests_impl()
 		{
-			std::vector<div_test_t> div_tests;
+			std::vector<uncompressed_div_test_t> div_tests;
 
 			for (size_t i = 1; i < n_of_primes; ++i) // for each small prime starting from 3
 			{
@@ -98,11 +77,7 @@ namespace mbp::div_test
 					if (base == 9 && p == 73) continue; //   base  9^n %  73:   -       6 remainders : 1   9   8  72  64  65
 				#endif
 
-				#if analyze_div_tests
-					div_test_t dt{ .base = base_t(base), .prime_idx = prime_idx_t(i) };
-				#else
-					div_test_t dt{ .prime_idx = prime_idx_t(i) };
-				#endif
+					uncompressed_div_test_t dt{ .base = base_t(base), .prime_idx = prime_idx_t(i) };
 
 					// calculate base^j mod prime, where j is the place value
 					for (size_t j = 0; j < max_remainders; ++j)
@@ -129,8 +104,13 @@ namespace mbp::div_test
 				}
 			}
 
+			for (auto& dt : div_tests)
+			{
+				dt.hits = cached_hitcount_for(dt.base, small_primes_lookup[dt.prime_idx]);
+			}
+
 			// Order div tests by worthwhileness
-			std::sort(div_tests.begin(), div_tests.end(), [] (const auto& a, const auto& b)
+			std::sort(div_tests.begin(), div_tests.end(), [](const auto& a, const auto& b)
 					  {
 						  //if (a.prime_idx == b.prime_idx)
 							 // return a.n_of_remainders < b.n_of_remainders;
@@ -140,28 +120,47 @@ namespace mbp::div_test
 							 // return a.prime_idx < b.prime_idx;
 						  //return a.n_of_remainders < b.n_of_remainders;
 
+						  //return
+							 // size_t(a.n_of_remainders) * small_primes_lookup[a.prime_idx] <
+							 // size_t(b.n_of_remainders) * small_primes_lookup[b.prime_idx];
+
 						  return
-							  size_t(a.n_of_remainders) * small_primes_lookup[a.prime_idx] <
-							  size_t(b.n_of_remainders) * small_primes_lookup[b.prime_idx];
+							  double(a.n_of_remainders) * double(small_primes_lookup[a.prime_idx]) / (1. * double(a.hits)) <
+							  double(b.n_of_remainders) * double(small_primes_lookup[b.prime_idx]) / (1. * double(b.hits));
 					  });
+
+			std::vector<div_test_t> results;
+			results.reserve(div_tests.size());
+
+			for (const auto& udt : div_tests)
+			{
+				div_test_t dt{
+					.prime_idx = udt.prime_idx,
+					.n_of_remainders = udt.n_of_remainders,
+					.remainders = udt.remainders };
+
+			#if analyze_div_tests
+				// We do need to copy this if we're in analyze mode
+				dt.base = udt.base;
+			#endif
+
+				results.push_back(dt);
+			}
 
 			// Mark each div test that is the first test with N remainders
 			for (size_t i = 0; i <= max_remainders; ++i)
 			{
-				for (auto& div_test : div_tests)
+				for (auto& r : results)
 				{
-					if (div_test.n_of_remainders == i)
+					if (r.n_of_remainders == i)
 					{
-						div_test.is_first_with_n_remainders = true;
+						r.is_first_with_n_remainders = true;
 						break;
 					}
 				}
 			}
 
-			//for (auto& dt : div_tests)
-			//	std::cout << "b" << size_t(dt.base) << " % " << small_primes_lookup[dt.prime_idx] << " \t" << size_t(dt.n_of_terms) << " terms\n";
-
-			return div_tests;
+			return results;
 		}
 
 		// bitmask for all base^n mod prime
@@ -219,12 +218,35 @@ namespace mbp::div_test
 			}
 			static constexpr size_t idx = f();
 		};
+	}
 
-		consteval size_t calculate_prime_factor_lookup_size()
+	// looping, sorted div tests:
+
+	constexpr size_t div_tests_size = detail::generate_div_tests_impl().size();
+	consteval std::array<div_test_t, div_tests_size> generate_div_tests()
+	{
+		std::array<div_test_t, div_tests_size> div_tests{};
+		const auto x = detail::generate_div_tests_impl();
+		std::copy(x.begin(), x.end(), div_tests.begin());
+		return div_tests;
+	}
+
+	using div_tests_t = std::array<div_test::div_test_t, div_test::div_tests_size>;
+	static div_test_constexpr div_tests_t div_tests = generate_div_tests(); // intellisense false positive
+
+	namespace detail
+	{
+		constexpr size_t calculate_prime_factor_lookup_size()
 		{
-			const auto div_tests = generate_div_tests_impl();
-
 			size_t largest_remainders_sum = 0;
+
+		#if analyze_div_tests
+			// Gross af, but if we're in "analyze" mode, we'll need to generate our own constexpr version of div_tests
+		#pragma warning (push)
+		#pragma warning (disable: 4459)
+			constexpr div_tests_t div_tests = generate_div_tests();
+		#pragma warning (pop)
+		#endif
 
 			// for each div test
 			for (const auto& div_test : div_tests)
@@ -242,20 +264,20 @@ namespace mbp::div_test
 			// + 1 so "lookup[sum]" is always safe.
 			return largest_remainders_sum + 1;
 		}
-		constexpr size_t prime_factor_lookup_size = calculate_prime_factor_lookup_size();
 
 		using prime_lookup_t = narrowest_uint_for_n_bits<div_test::n_of_primes>;
-		std::vector<prime_lookup_t> build_prime_factor_lookup()
+		constexpr size_t prime_factor_lookup_size = calculate_prime_factor_lookup_size();
+
+		// Slower version
+		std::vector<prime_lookup_t> build_prime_factor_lookup_new()
 		{
 			std::vector<prime_lookup_t> lookup(prime_factor_lookup_size, 0);
 
-			// for each prime
 			for (size_t i = 0; i < div_test::n_of_primes; ++i)
 			{
 				const prime_lookup_t p = small_primes_lookup[i];
 
-				// mark the i-th bit of every p-th value
-				for (prime_lookup_t j = p; j < prime_factor_lookup_size; j += p)
+				for (prime_lookup_t j = 0; j < prime_factor_lookup_size; j += p)
 				{
 					lookup[j] |= (0x1 << i);
 				}
@@ -265,25 +287,12 @@ namespace mbp::div_test
 		}
 
 		// Replaces "n % prime[k] == 0" with "lookup[n] & (1 << k)"
-		const std::vector<prime_lookup_t> prime_factor_lookup = build_prime_factor_lookup();
+		const std::vector<prime_lookup_t> prime_factor_lookup = build_prime_factor_lookup_new();
 	}
 
 	__forceinline bool has_small_prime_factor(const size_t n, const prime_idx_t prime_index)
 	{
 		return (detail::prime_factor_lookup[n] & (detail::prime_lookup_t(1) << prime_index)) != 0;
-	}
-
-
-
-	// looping, sorted div tests:
-
-	constexpr size_t div_tests_size = detail::generate_div_tests_impl().size();
-	consteval std::array<div_test_t, div_tests_size> generate_div_tests()
-	{
-		std::array<div_test_t, div_tests_size> div_tests{};
-		const auto x = detail::generate_div_tests_impl();
-		std::copy(x.begin(), x.end(), div_tests.begin());
-		return div_tests;
 	}
 
 
