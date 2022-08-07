@@ -92,9 +92,10 @@ namespace mbp
 
 	consteval auto generate_bitmask_lookup()
 	{
-		std::array<size_t, 64> bitmasks = { 0 };
+		// +1 so bitmasks[n_of_rems] is always safe
+		std::array<size_t, div_test::max_remainders + 1> bitmasks = { 0 };
 
-		for (size_t i = 1; i < 64; ++i)
+		for (size_t i = 1; i < bitmasks.size(); ++i)
 		{
 			size_t bitmask = 0;
 			for (size_t j = 0; j < 64; j += i)
@@ -107,7 +108,7 @@ namespace mbp
 
 		return bitmasks;
 	}
-	constexpr std::array<size_t, 64> bitmask_lookup = generate_bitmask_lookup();
+	constexpr std::array<size_t, div_test::max_remainders + 1> bitmask_lookup = generate_bitmask_lookup();
 
 	// takes N^2 memory, even though we only need (N^2) / 2
 	static std::array<mbp::aligned64, 64> popcounts{};
