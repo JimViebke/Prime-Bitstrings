@@ -1,9 +1,14 @@
 :: Remove any existing PGO profiles (.pgc) and profile databases (.pgd)
 
 del /s x64\*.pgc
-@if %errorlevel% neq 0 exit /b %errorlevel%
 del /s x64\*.pgd
-@if %errorlevel% neq 0 exit /b %errorlevel%
+
+:: Clean both targets
+
+:: msbuild "Prime Bitstrings.vcxproj" -p:Configuration=Profile -p:Platform=x64 -t:Clean
+:: @if %errorlevel% neq 0 exit /b %errorlevel%
+:: msbuild "Prime Bitstrings.vcxproj" -p:Configuration=Release -p:Platform=x64 -t:Clean
+:: @if %errorlevel% neq 0 exit /b %errorlevel%
 
 :: Build profile exe
 
