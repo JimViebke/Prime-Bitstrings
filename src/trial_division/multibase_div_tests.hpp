@@ -268,6 +268,26 @@ namespace mbp::div_test
 		using prime_lookup_t = narrowest_uint_for_n_bits<div_test::n_of_primes>;
 		constexpr size_t prime_factor_lookup_size = calculate_prime_factor_lookup_size();
 
+		// Faster version
+		std::vector<prime_lookup_t> build_prime_factor_lookup_old()
+		{
+			std::vector<prime_lookup_t> lookup;
+			lookup.reserve(prime_factor_lookup_size);
+
+			for (size_t i = 0; i < prime_factor_lookup_size; ++i)
+			{
+				prime_lookup_t entry = 0;
+				for (prime_lookup_t p = 0; p < div_test::n_of_primes; ++p)
+				{
+					entry |= (prime_lookup_t((i % small_primes_lookup[p]) == 0) << p);
+				}
+
+				lookup.push_back(entry);
+			}
+
+			return lookup;
+		}
+
 		// Slower version
 		std::vector<prime_lookup_t> build_prime_factor_lookup_new()
 		{
@@ -287,7 +307,7 @@ namespace mbp::div_test
 		}
 
 		// Replaces "n % prime[k] == 0" with "lookup[n] & (1 << k)"
-		const std::vector<prime_lookup_t> prime_factor_lookup = build_prime_factor_lookup_new();
+		const std::vector<prime_lookup_t> prime_factor_lookup = build_prime_factor_lookup_old();
 	}
 
 	__forceinline bool has_small_prime_factor(const size_t n, const prime_idx_t prime_index)
