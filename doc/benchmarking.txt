@@ -1,10 +1,8 @@
-
 Notes for benchmarking
-
-Benchmark: search from from p11 to p11 + 100 million.
 
 Calculate change: 1 - (  /  )
 
+=== benchmark from p11 to p11 + 100 million ===
 30899/31213/31276 ms : Basic implementation
 16690/16602/16832 ms : Added sieve in size 1,000,000 (~46% faster)
  7045/ 6964/ 7003 ms : Check for prime-numbered popcounts of candidate p2 before doing prime checks. (~58% faster)
