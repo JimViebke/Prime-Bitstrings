@@ -193,6 +193,14 @@ namespace mbp
 					CASE(__LINE__);
 					CASE(__LINE__);
 					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
 					CASE(__LINE__); // case (1)
 					static_assert(start + max_remainders == __LINE__);
 					break;
@@ -213,6 +221,14 @@ namespace mbp
 				switch (n_of_rems)
 				{
 					CASE(__LINE__); // case (max)
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
 					CASE(__LINE__);
 					CASE(__LINE__);
 					CASE(__LINE__);

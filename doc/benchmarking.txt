@@ -64,7 +64,6 @@ ideas:
 - Use Flint2
 	- In particular, Flint may have a cheaper weak prime test that could be more optimal with fewer div tests
 - Since we're searching linearly, shouldn't the popcount follow a sawtooth-like pattern?
-- Try the jump table with more or less than 42 possible terms
 
 
 
