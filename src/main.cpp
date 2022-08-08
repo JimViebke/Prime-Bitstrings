@@ -14,6 +14,7 @@
 #include "math/franken_mpir.hpp"
 #include "math/math.hpp"
 #include "trial_division/multibase_div_tests.hpp"
+#include "util/find.hpp"
 #include "util/sandbox.hpp"
 #include "util/types.hpp"
 #include "util/utility.hpp"
@@ -445,10 +446,26 @@ namespace mbp
 			sieve = static_sieve;
 			partial_sieve(sieve);
 
+			// Safe to move this higher still? Can v1 = const_v2 ever move v1?
+			const char* end = (const char*)(sieve.data() + sieve.size());
+
 			for (size_t i = 0; i < sieve.size(); ++i, number += 2)
 			{
+				const sieve_t* current = sieve.data() + i;
+				const sieve_t* next = (const sieve_t*)util::find_avx2((const char*)current, end, 1);
+
+				if (next == nullptr)
+				{
+					number += 2 * (sieve.size() - i);
+					break; // reached end of sieve
+				}
+
+				const size_t dist = next - current;
+				number += 2 * dist;
+				i += dist;
+
 				// Bail if this number is already known to have a small prime factor
-				if (!sieve[i]) continue;
+				// if (!sieve[i]) continue;
 
 				// Bail if n does not have a prime number of bits set.
 				if ((tiny_primes_lookup & (1ull << pop_count(number))) == 0) continue;
