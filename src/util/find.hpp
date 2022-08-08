@@ -27,4 +27,27 @@ namespace mbp::util
 		return e;
 	}
 
+	// _tzcnt_u32 instead of countr_zero may save an instruction
+
+	const char* find_sse(const char* b, const char* e, char c)
+	{
+		const char* i = b;
+		__m128i q = _mm_set1_epi8(c);
+		for (; i + 16 < e; i += 16)
+		{
+			__m128i x = _mm_lddqu_si128(
+				reinterpret_cast<const __m128i*>(i));
+			__m128i r = _mm_cmpeq_epi8(x, q);
+			unsigned int z = _mm_movemask_epi8(r);
+			if (z)
+				return i + std::countr_zero(z); // or, i + __builtin_ffs(z) - 1;
+		}
+
+		for (; i < e; ++i)
+			if (*i == c)
+				return i;
+
+		return e;
+	}
+
 }
