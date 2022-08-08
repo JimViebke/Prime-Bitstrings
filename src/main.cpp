@@ -446,23 +446,18 @@ namespace mbp
 			sieve = static_sieve;
 			partial_sieve(sieve);
 
-			// Safe to move this higher still? Can v1 = const_v2 ever move v1?
-			const char* end = (const char*)(sieve.data() + sieve.size());
 
-			for (size_t i = 0; i < sieve.size(); ++i, number += 2)
+			const size_t number_before_loop = number;
+
+			// Safe to move these higher still? Can v1 = const_v2 ever move v1?
+			const char* begin = (const char*)sieve.data();
+			const char* end = begin + sieve.size();
+
+			const char* current = begin;
+
+			while ((current = util::find_avx2(current + 1, end, 1)) < end)
 			{
-				const sieve_t* current = sieve.data() + i;
-				const sieve_t* next = (const sieve_t*)util::find_avx2((const char*)current, end, 1);
-
-				if (next == nullptr)
-				{
-					number += 2 * (sieve.size() - i);
-					break; // reached end of sieve
-				}
-
-				const size_t dist = next - current;
-				number += 2 * dist;
-				i += dist;
+				number = number_before_loop + (current - begin) * 2;
 
 				// Bail if this number is already known to have a small prime factor
 				// if (!sieve[i]) continue;
@@ -522,6 +517,9 @@ namespace mbp
 				if (!mpir_is_prime(mpz_number)) { log_result(number, 12); continue; }
 
 			} // end hot loop
+
+			// This does need to run
+			number = number_before_loop + 2 * sieve.size();
 
 		#if analyze_div_tests
 			for (const auto& dt : div_test::div_tests)

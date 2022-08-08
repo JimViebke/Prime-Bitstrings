@@ -24,7 +24,7 @@ namespace mbp::util
 			if (*i == c)
 				return i;
 
-		return nullptr;
+		return e;
 	}
 
 }
