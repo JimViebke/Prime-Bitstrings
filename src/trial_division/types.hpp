@@ -32,7 +32,7 @@ namespace mbp::div_test
 		class uncompressed_div_test_t
 		{
 		public:
-			uint32_t hits = 0; 
+			uint32_t hits = 0;
 			base_t base = 0;
 
 			prime_idx_t prime_idx = 0;

@@ -506,17 +506,17 @@ namespace mbp
 
 			} // end hot loop
 
-			#if analyze_div_tests
-				for (const auto& dt : div_test::div_tests)
+		#if analyze_div_tests
+			for (const auto& dt : div_test::div_tests)
+			{
+				if (dt.hits >= next_div_test_checkpoint)
 				{
-					if (dt.hits >= next_div_test_checkpoint)
-					{
-						run_div_test_analysis();
-						next_div_test_checkpoint += div_test_log_interval;
-						break;
-					}
+					run_div_test_analysis();
+					next_div_test_checkpoint += div_test_log_interval;
+					break;
 				}
-			#endif
+			}
+		#endif
 
 		} // end outer loop
 
