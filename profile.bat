@@ -35,10 +35,10 @@ msbuild "Prime Bitstrings.vcxproj" -p:Configuration=Release -p:Platform=x64 -t:B
 :: Copy "current" -> "previous"
 :: Copy new build -> "current"
 
-echo "Copying 'current_profiled' build over 'previous_profiled' build"
-copy /B /V /Y x64\Release\current_profiled.exe x64\Release\previous_profiled.exe
+@echo Copying 'current_profiled' build over 'previous_profiled' build
+@copy /B /V /Y x64\Release\current_profiled.exe x64\Release\previous_profiled.exe
 @if %errorlevel% neq 0 exit /b %errorlevel%
 
-echo "Copying new build over 'current_profiled' build"
-copy /B /V /Y x64\Release\"Prime Bitstrings.exe" x64\Release\current_profiled.exe
+@echo Copying new build over 'current_profiled' build
+@copy /B /V /Y x64\Release\"Prime Bitstrings.exe" x64\Release\current_profiled.exe
 @if %errorlevel% neq 0 exit /b %errorlevel%
