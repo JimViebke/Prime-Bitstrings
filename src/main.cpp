@@ -634,5 +634,7 @@ namespace mbp
 
 int main()
 {
+	mbp::print_preamble();
+
 	mbp::find_multibase_primes();
 }

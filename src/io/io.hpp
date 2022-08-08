@@ -9,6 +9,11 @@
 
 namespace mbp
 {
+	void print_preamble()
+	{
+		std::cout << "Version " __DATE__ " " __TIME__ << ((mbp::benchmark_mode) ? "... " : "\n");
+	}
+
 	static std::filesystem::path results_path;
 
 	void set_up_results_path()
