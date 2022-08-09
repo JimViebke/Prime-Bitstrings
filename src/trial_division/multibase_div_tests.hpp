@@ -68,11 +68,6 @@ namespace mbp::div_test
 					if (base == 11 && p == 7) continue; // base 11^n % 7 is congruent to 4^n % 7 
 					if (base == 12 && p == 7) continue; // base 12^n % 7 is congruent to 5^n % 7
 
-					// removed for performance (may be due to ordering)
-					// if (base == 8 && p == 73) continue; //   base  8^n %  73:  11 hits  3 remainders : 1   8  64
-					// if (base == 7 && p == 43) continue; //   base  7^n %  43: 155 hits  6 remainders : 1   7   6  42  36  37
-					// if (base == 10 && p == 101) continue; // base 10^n % 101:   4 hits  4 remainders : 1  10 100  91
-
 					// removed for being unused (due to ordering)
 					if (base == 9 && p == 73) continue; //   base  9^n %  73:   -       6 remainders : 1   9   8  72  64  65
 				#endif

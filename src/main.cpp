@@ -446,7 +446,6 @@ namespace mbp
 			sieve = static_sieve;
 			partial_sieve(sieve);
 
-
 			const size_t number_before_loop = number;
 
 			// Safe to move these higher still? Can v1 = const_v2 ever move v1?
