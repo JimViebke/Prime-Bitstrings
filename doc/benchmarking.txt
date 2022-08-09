@@ -48,7 +48,8 @@ Calculate change: 1 - (  /  )
  9063 ms : Replace second inner div test loop with jump table (~4% faster)
  8878 ms : Replace two branches with __assume intrinsics (~2% faster)
  8733 ms : Replace first inner div test loop with jump table (~1.5% faster)
- 7464 ms : Jump to the next set byte in the sieve (~15% faster)
+ 8621 ms : Evaluate hit counts when sorting div tests (~1.2% faster) 
+ 7464 ms : Jump to the next set byte in the sieve (~13% faster)
  7304 ms : Simplify loop structure for jumping to next set byte (~2% faster)
 
 
