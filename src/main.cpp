@@ -114,7 +114,7 @@ namespace mbp
 	// takes N^2 memory, even though we only need (N^2) / 2
 	static std::array<mbp::aligned64, 64> popcounts{};
 
-	__forceinline bool has_small_divisor_cached(const size_t number)
+	__forceinline bool has_small_divisor(const size_t number)
 	{
 		using namespace div_test;
 
@@ -470,7 +470,7 @@ namespace mbp
 				if ((gcd_lookup & (1ull << abs(pca - pcb))) == 0) continue;
 
 				// Run cheap trial division tests across multiple bases
-				if (has_small_divisor_cached(number)) continue;
+				if (has_small_divisor(number)) continue;
 
 
 
@@ -571,7 +571,7 @@ namespace mbp
 			// if (b2_has_small_divisor<32>(number)) continue;
 
 			// Run cheap trial division tests across multiple bases
-			if (has_small_divisor_cached(number)) continue;
+			if (has_small_divisor(number)) continue;
 
 			// Run cheap trial division tests in base 2
 			// if (b2_has_small_divisor<100, 32 + 1>(number)) continue;
