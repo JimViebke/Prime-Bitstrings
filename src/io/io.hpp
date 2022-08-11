@@ -93,12 +93,12 @@ namespace mbp
 		std::cout << std::setfill(' ') << std::setw(2) << ((now.tm_hour % 12 == 0) ? 12 : now.tm_hour % 12) << ':' << std::setfill('0') << std::setw(2) << now.tm_min << '\t';
 	}
 
-	void log_result(const mpz_class& n, size_t up_to_base)
+	void log_result(const size_t n, const size_t up_to_base)
 	{
 		log_time();
 
 		std::stringstream ss;
-		ss << bin_to_base(n, 10) << " is a p" << up_to_base << " (" << n << ")\n";
+		ss << std::bitset<64>(n).to_string().c_str() + std::countl_zero(n) << " is a p" << up_to_base << " (" << n << ")\n";
 
 		std::cout << ss.str();
 
