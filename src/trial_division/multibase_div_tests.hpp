@@ -246,9 +246,9 @@ namespace mbp::div_test
 			// for each div test
 			for (const auto& div_test : div_tests)
 			{
-				// calculate the sum of having every possible bit set, regardless of max_n_of_remainders
+				// calculate the sum of having every bit set
 				size_t remainders_sum = 0;
-				for (size_t i = 0; i < max_pn_bitwidth; ++i)
+				for (size_t i = 0; i < 64; ++i)
 					remainders_sum += div_test.remainders[i % div_test.n_of_remainders];
 
 				// keep track of the largest sum

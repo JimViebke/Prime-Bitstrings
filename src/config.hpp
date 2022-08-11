@@ -41,11 +41,6 @@ namespace mbp
 		constexpr size_t up_to_base = 12; // default: 12
 
 		constexpr size_t max_remainders = 50; // default: 50
-
-		// Probably don't touch
-		constexpr size_t max_pn_bitwidth = 50;
-		static_assert(max_pn_bitwidth > std::bit_width(p11) &&
-					  max_pn_bitwidth <= std::numeric_limits<size_t>::digits);
 	}
 
 	namespace prime_test

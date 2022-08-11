@@ -1,11 +1,11 @@
 #pragma once
 
 #include <filesystem>
-#include <iostream>
 #include <fstream>
+#include <iostream>
 
-#include "../math/math.hpp"
 #include "../config.hpp"
+#include "../math/math.hpp"
 
 namespace mbp
 {
@@ -72,12 +72,6 @@ namespace mbp
 
 			if (v > number)
 				number = v;
-		}
-
-		if (div_test::max_pn_bitwidth <= std::bit_width(number))
-		{
-			std::cout << "error: max_pn_bitwidth should be larger than std::bit_width(number)\n";
-			exit(EXIT_FAILURE);
 		}
 
 		std::cout << "Loaded " << number << " from " << results_path.generic_string() << '\n';
