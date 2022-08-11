@@ -19,6 +19,9 @@ namespace mbp
 		{
 			const auto start = current_time_in_ms();
 
+			gmp_randclass r{ gmp_randinit_mt };
+			r.seed(mpir_ui{ 0xdeadbeef });
+
 			mpz_class mpz_number;
 
 			size_t next_base = 4;
@@ -34,7 +37,7 @@ namespace mbp
 				for (size_t base = 3; ; ++base)
 				{
 					mpz_number = bin_to_base(number, base);
-					if (!mpir_is_prime(mpz_number)) break;
+					if (!mpir_is_prime(mpz_number, r)) break;
 
 					// if this is the next P
 					if (base == next_base)

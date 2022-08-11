@@ -984,9 +984,9 @@ namespace mbp::franken
 	}
 
 	// has no factors <= primes[idx]
-	inline bool mpir_is_prime(const mpz_class& n, const size_t div_p_idx)
+	inline bool mpir_is_prime(const mpz_class& n, gmp_randclass& r, const size_t div_p_idx)
 	{
-		return bool(mpir_likely_prime(n.get_mpz_t(), gmp_random::r.get_randstate_t(), div_p_idx));
+		return bool(mpir_likely_prime(n.get_mpz_t(), r.get_randstate_t(), div_p_idx));
 	}
 
 }

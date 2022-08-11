@@ -80,14 +80,9 @@ namespace mbp
 			return (number % small_primes_lookup[p_index] == 0) ? true : b2_has_small_divisor<n_of_primes, p_index + 1>(number);
 	}
 
-	namespace gmp_random
+	bool mpir_is_prime(const mpz_class& p, gmp_randclass& r)
 	{
-		gmp_randclass r{ gmp_randinit_mt };
-	}
-
-	bool mpir_is_prime(const mpz_class& p, const size_t div = 0)
-	{
-		return bool(mpz_likely_prime_p(p.get_mpz_t(), gmp_random::r.get_randstate_t(), div));
+		return bool(mpz_likely_prime_p(p.get_mpz_t(), r.get_randstate_t(), 0));
 	}
 
 	mpz_class bin_to_base(const mpz_class& binary, const size_t base)

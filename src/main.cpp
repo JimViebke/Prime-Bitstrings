@@ -410,7 +410,8 @@ namespace mbp
 
 	void find_multibase_primes()
 	{
-		gmp_random::r.seed(mpir_ui(0xdeadbeef));
+		gmp_randclass r{ gmp_randinit_mt };
+		r.seed(mpir_ui{ 0xdeadbeef });
 
 		size_t number = benchmark_mode ? bm_start : load_from_results();
 		mpz_class mpz_number = 0ull; // it's a surprise tool that will help us later
@@ -483,37 +484,37 @@ namespace mbp
 				*result.ptr = '\0';
 
 				mpz_number.set_str(bin_str, 3);
-				if (!franken::mpir_is_prime(mpz_number, div_test::n_of_primes - 1)) continue;
+				if (!franken::mpir_is_prime(mpz_number, r, div_test::n_of_primes - 1)) continue;
 
 				mpz_number.set_str(bin_str, 4);
-				if (!franken::mpir_is_prime(mpz_number, div_test::n_of_primes - 1)) continue;
+				if (!franken::mpir_is_prime(mpz_number, r, div_test::n_of_primes - 1)) continue;
 
 				mpz_number.set_str(bin_str, 5);
-				if (!franken::mpir_is_prime(mpz_number, div_test::n_of_primes - 1)) continue;
+				if (!franken::mpir_is_prime(mpz_number, r, div_test::n_of_primes - 1)) continue;
 
 				mpz_number.set_str(bin_str, 6);
-				if (!franken::mpir_is_prime(mpz_number, div_test::n_of_primes - 1)) continue;
+				if (!franken::mpir_is_prime(mpz_number, r, div_test::n_of_primes - 1)) continue;
 
 				mpz_number.set_str(bin_str, 7);
-				if (!franken::mpir_is_prime(mpz_number, div_test::n_of_primes - 1)) continue;
+				if (!franken::mpir_is_prime(mpz_number, r, div_test::n_of_primes - 1)) continue;
 
 				mpz_number.set_str(bin_str, 8);
-				if (!franken::mpir_is_prime(mpz_number, div_test::n_of_primes - 1)) continue;
+				if (!franken::mpir_is_prime(mpz_number, r, div_test::n_of_primes - 1)) continue;
 
 				mpz_number.set_str(bin_str, 9);
-				if (!mpir_is_prime(mpz_number)) { log_result(number, 8); continue; }
+				if (!mpir_is_prime(mpz_number, r)) { log_result(number, 8); continue; }
 
 				mpz_number.set_str(bin_str, 10);
-				if (!mpir_is_prime(mpz_number)) { log_result(number, 9); continue; }
+				if (!mpir_is_prime(mpz_number, r)) { log_result(number, 9); continue; }
 
 				mpz_number.set_str(bin_str, 11);
-				if (!mpir_is_prime(mpz_number)) { log_result(number, 10); continue; }
+				if (!mpir_is_prime(mpz_number, r)) { log_result(number, 10); continue; }
 
 				mpz_number.set_str(bin_str, 12);
-				if (!mpir_is_prime(mpz_number)) { log_result(number, 11); continue; }
+				if (!mpir_is_prime(mpz_number, r)) { log_result(number, 11); continue; }
 
 				mpz_number.set_str(bin_str, 13);
-				if (!mpir_is_prime(mpz_number)) { log_result(number, 12); continue; }
+				if (!mpir_is_prime(mpz_number, r)) { log_result(number, 12); continue; }
 
 			} // end hot loop
 
