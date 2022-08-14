@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../config.hpp"
+#include "../math/math.hpp"
 #include "../util/types.hpp"
 #include "../util/utility.hpp"
 
@@ -9,7 +10,8 @@ namespace mbp::div_test
 	using base_t = narrowest_uint_for_val<up_to_base>;
 	using prime_idx_t = narrowest_uint_for_val<div_test::n_of_primes>;
 	using n_of_remainders_t = narrowest_uint_for_val<div_test::max_remainders>;
-	using remainder_t = sieve_prime_t;
+	// using remainder_t = narrowest_uint_for_val<mbp::small_primes_lookup[div_test::n_of_primes - 1]>;
+	using remainder_t = uint16_t; // sized for SIMD instructions
 
 	class div_test_t
 	{
@@ -40,4 +42,5 @@ namespace mbp::div_test
 			std::array<remainder_t, max_remainders> remainders{ 0 };
 		};
 	}
+
 }

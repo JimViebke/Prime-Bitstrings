@@ -419,13 +419,10 @@ namespace mbp
 		const std::vector<sieve_t> static_sieve = generate_static_sieve();
 		std::vector<sieve_t> sieve = static_sieve;
 
-		/* The number must start on an odd multiple of the sieve size. To round N to the nearest odd multiple of K:
-		 * n -= k;
-		 * n -= n % 2k;
-		 * n += k; */
-		number -= static_sieve.size();
-		number -= number % (2 * static_sieve.size());
-		number += static_sieve.size();
+		// Round starting number down to the nearest odd multiple of the sieve sieze
+		number -= static_sieve.size(); // n -= k
+		number -= number % (2 * static_sieve.size()); // n -= n % 2k
+		number += static_sieve.size(); // n += k
 
 		set_up_sieve_offsets_cache(number);
 

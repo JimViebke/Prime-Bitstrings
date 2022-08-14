@@ -21,7 +21,7 @@ namespace mbp::div_test
 	{
 		consteval std::vector<div_test_t> generate_div_tests_impl()
 		{
-			std::vector<uncompressed_div_test_t> div_tests;
+			std::vector<uncompressed_div_test_t> uncompressed_dts;
 
 			for (size_t i = 1; i < n_of_primes; ++i) // for each small prime starting from 3
 			{
@@ -81,7 +81,7 @@ namespace mbp::div_test
 						if (rem == 1 && j > 0)
 						{
 							// The pattern is repeating - store what we have, then break
-							div_tests.push_back(dt);
+							uncompressed_dts.push_back(dt);
 							break;
 						}
 
@@ -94,18 +94,18 @@ namespace mbp::div_test
 					if (dt.n_of_remainders == max_remainders &&
 						pk::powMod(base, max_remainders, small_primes_lookup[i]) == 1)
 					{
-						div_tests.push_back(dt);
+						uncompressed_dts.push_back(dt);
 					}
 				}
 			}
 
-			for (auto& dt : div_tests)
+			for (auto& dt : uncompressed_dts)
 			{
 				dt.hits = cached_hitcount_for(dt.base, small_primes_lookup[dt.prime_idx]);
 			}
 
 			// Order div tests by worthwhileness
-			std::sort(div_tests.begin(), div_tests.end(), [](const auto& a, const auto& b)
+			std::sort(uncompressed_dts.begin(), uncompressed_dts.end(), [](const auto& a, const auto& b)
 					  {
 						  //if (a.prime_idx == b.prime_idx)
 							 // return a.n_of_remainders < b.n_of_remainders;
@@ -124,10 +124,10 @@ namespace mbp::div_test
 							  double(b.n_of_remainders) * double(small_primes_lookup[b.prime_idx]) / (1. * double(b.hits));
 					  });
 
-			std::vector<div_test_t> results;
-			results.reserve(div_tests.size());
+			std::vector<div_test_t> div_tests;
+			div_tests.reserve(uncompressed_dts.size());
 
-			for (const auto& udt : div_tests)
+			for (const auto& udt : uncompressed_dts)
 			{
 				div_test_t dt{
 					.prime_idx = udt.prime_idx,
@@ -139,23 +139,23 @@ namespace mbp::div_test
 				dt.base = udt.base;
 			#endif
 
-				results.push_back(dt);
+				div_tests.push_back(dt);
 			}
 
 			// Mark each div test that is the first test with N remainders
 			for (size_t i = 0; i <= max_remainders; ++i)
 			{
-				for (auto& r : results)
+				for (auto& dt : div_tests)
 				{
-					if (r.n_of_remainders == i)
+					if (dt.n_of_remainders == i)
 					{
-						r.is_first_with_n_remainders = true;
+						dt.is_first_with_n_remainders = true;
 						break;
 					}
 				}
 			}
 
-			return results;
+			return div_tests;
 		}
 
 		// bitmask for all base^n mod prime
