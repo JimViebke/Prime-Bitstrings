@@ -215,6 +215,158 @@ namespace mbp::div_test
 		};
 	}
 
+	namespace compressed
+	{
+		class new_div_test_t
+		{
+		public:
+			prime_idx_t prime_index = 0;
+			n_of_remainders_t number_of_remainders = 0;
+			bool is_first_with_n_remainders = false;
+
+			uint16_t remainders_start_idx = 0;
+		};
+
+		class div_tests_compressed
+		{
+		public:
+			std::vector<remainder_t> remainders;
+
+			std::vector<new_div_test_t> div_tests;
+		};
+
+		consteval div_tests_compressed build_compressed_div_tests()
+		{
+			std::vector<detail::uncompressed_div_test_t> div_tests;
+
+			for (size_t i = 1; i < n_of_primes; ++i) // for each small prime starting from 3
+			{
+				for (size_t base = 3; base <= up_to_base; ++base) // for each base 3..n
+				{
+					const auto p = small_primes_lookup[i];
+
+					// Always suppress hardcoded div tests
+					if (base == 3 && p == 5) continue;
+
+					if (base == 3 && p == 7) continue;
+					if (base == 4 && p == 7) continue;
+					if (base == 5 && p == 7) continue;
+
+				#if !analyze_div_tests or suppress_extra_div_tests
+					if (base == 2 && p == 3) continue;
+
+					if (base == 4 && p == 3) continue; //  base  4^n % 3 unused
+					if (base == 5 && p == 3) continue; //  base  5^n % 3 unused
+					if (base == 7 && p == 3) continue; //  base  7^n % 3 unused
+					if (base == 8 && p == 3) continue; //  base  8^n % 3 unused
+					if (base == 10 && p == 3) continue; // base 10^n % 3 unused
+					if (base == 11 && p == 3) continue; // base 11^n % 3 unused
+
+					if (base == 4 && p == 5) continue; //  base  4^n % 5 unused
+					if (base == 6 && p == 5) continue; //  base  6^n % 5 unused
+					if (base == 7 && p == 5) continue; //  base  7^n % 5 unused
+					if (base == 9 && p == 5) continue; //  base  9^n % 5 unused
+					if (base == 11 && p == 5) continue; // base 11^n % 5 unused
+					if (base == 12 && p == 5) continue; // base 12^n % 5 unused
+
+					if (base == 6 && p == 7) continue; //  base  6^n % 7 unused
+					if (base == 8 && p == 7) continue; //  base  8^n % 7 unused
+					if (base == 9 && p == 7) continue; //  base  9^n % 7 unused
+
+					if (base == 10 && p == 11) continue; // base 10^n % 11 unused
+					if (base == 12 && p == 11) continue; // base 12^n % 11 unused
+
+					if (base == 12 && p == 13) continue; // base 12^n % 13 unused
+
+					// If two div tests are effectively identical, remove one
+					if (base == 8 && p == 5) continue; //  base  8^n % 5 is congruent to 3^n % 5
+					if (base == 10 && p == 7) continue; // base 10^n % 7 is congruent to 3^n % 7
+					if (base == 11 && p == 7) continue; // base 11^n % 7 is congruent to 4^n % 7 
+					if (base == 12 && p == 7) continue; // base 12^n % 7 is congruent to 5^n % 7
+
+					// removed for being unused (due to ordering)
+					if (base == 9 && p == 73) continue; //   base  9^n %  73:   -       6 remainders : 1   9   8  72  64  65
+				#endif
+
+					detail::uncompressed_div_test_t dt{ .base = base_t(base), .prime_idx = prime_idx_t(i) };
+
+					// calculate base^j mod prime, where j is the place value
+					for (size_t j = 0; j < max_remainders; ++j)
+					{
+						remainder_t rem = remainder_t(pk::powMod(base, j, small_primes_lookup[i]));
+						if (rem == 1 && j > 0)
+						{
+							// The pattern is repeating - store what we have, then break
+							div_tests.push_back(dt);
+							break;
+						}
+
+						dt.remainders[j] = rem;
+						dt.n_of_remainders++;
+					}
+
+					// Special case where we maxed out our terms without finding a repeat.
+					// Save this div test if and only if the next term is 1 (ie, a repeat)
+					if (dt.n_of_remainders == max_remainders &&
+						pk::powMod(base, max_remainders, small_primes_lookup[i]) == 1)
+					{
+						div_tests.push_back(dt);
+					}
+				} // end for each base
+			} // end for each prime
+
+			for (auto& dt : div_tests)
+			{
+				dt.hits = cached_hitcount_for(dt.base, small_primes_lookup[dt.prime_idx]);
+			}
+
+			// Order div tests by worthwhileness
+			std::sort(div_tests.begin(), div_tests.end(), [](const auto& a, const auto& b)
+					  {
+						  return
+							  double(a.n_of_remainders) * double(small_primes_lookup[a.prime_idx]) / (1. * double(a.hits)) <
+							  double(b.n_of_remainders) * double(small_primes_lookup[b.prime_idx]) / (1. * double(b.hits));
+					  });
+
+			// We now have the sorted div tests, containg their remainders.
+			// This must be processed into two structures: a compressed vector containing all
+			// remainders, and a vector of div tests, each with an index into the list of remainders
+
+			div_tests_compressed results;
+
+			// for each uncompressed div test
+			for (auto& dt : div_tests)
+			{
+				results.div_tests.push_back(new_div_test_t{
+						.prime_index = dt.prime_idx,
+						.number_of_remainders = dt.n_of_remainders,
+						.remainders_start_idx = uint16_t(results.remainders.size()) });
+
+				// for each remainder within a test
+				for (size_t i = 0; i < dt.n_of_remainders; ++i)
+				{
+					results.remainders.push_back(dt.remainders[i]);
+				}
+			}
+
+			for (size_t i = 0; i <= max_remainders; ++i)
+			{
+				for (auto& r : results.div_tests)
+				{
+					if (r.number_of_remainders == i)
+					{
+						r.is_first_with_n_remainders = true;
+						break;
+					}
+				}
+			}
+
+			return results;
+		}
+	}
+
+
+
 	// looping, sorted div tests:
 
 	constexpr size_t div_tests_size = detail::generate_div_tests_impl().size();
@@ -228,6 +380,29 @@ namespace mbp::div_test
 
 	using div_tests_t = std::array<div_test::div_test_t, div_test::div_tests_size>;
 	static div_test_constexpr div_tests_t div_tests = generate_div_tests(); // intellisense false positive
+
+
+
+	constexpr size_t compressed_div_tests_size = compressed::build_compressed_div_tests().div_tests.size();
+	constexpr size_t compressed_remainders_size = compressed::build_compressed_div_tests().remainders.size();
+	consteval std::array<compressed::new_div_test_t, compressed_div_tests_size> generate_compressed_div_tests()
+	{
+		std::array<compressed::new_div_test_t, compressed_div_tests_size> compressed_div_tests{};
+		const auto x = compressed::build_compressed_div_tests().div_tests;
+		std::copy(x.begin(), x.end(), compressed_div_tests.begin());
+		return compressed_div_tests;
+	}
+	consteval std::array<remainder_t, compressed_remainders_size> generate_compressed_remainders()
+	{
+		std::array<remainder_t, compressed_remainders_size> compressed_remainders{};
+		const auto x = compressed::build_compressed_div_tests().remainders;
+		std::copy(x.begin(), x.end(), compressed_remainders.begin());
+		return compressed_remainders;
+	}
+	static constexpr std::array<compressed::new_div_test_t, compressed_div_tests_size> compressed_div_tests = generate_compressed_div_tests();
+	static constexpr std::array<remainder_t, compressed_remainders_size> compressed_remainders = generate_compressed_remainders();
+
+
 
 	namespace detail
 	{
@@ -244,12 +419,12 @@ namespace mbp::div_test
 		#endif
 
 			// for each div test
-			for (const auto& div_test : div_tests)
+			for (const auto& div_test : compressed_div_tests)
 			{
 				// calculate the sum of having every bit set
 				size_t remainders_sum = 0;
 				for (size_t i = 0; i < 64; ++i)
-					remainders_sum += div_test.remainders[i % div_test.n_of_remainders];
+					remainders_sum += *(compressed_remainders.data() + div_test.remainders_start_idx + (i % div_test.number_of_remainders));
 
 				// keep track of the largest sum
 				if (remainders_sum > largest_remainders_sum)

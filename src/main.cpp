@@ -300,6 +300,192 @@ namespace mbp
 	#endif
 	}
 
+	__forceinline bool has_small_divisor_compressed(const size_t number)
+	{
+		using namespace div_test;
+
+		if (recursive_is_divisible_by<5, in_base<3>>(number)) return true;
+
+		if (recursive_is_divisible_by<7, in_base<3>>(number)) return true;
+		if (recursive_is_divisible_by<7, in_base<4>>(number)) return true;
+		if (recursive_is_divisible_by<7, in_base<5>>(number)) return true;
+
+	#if analyze_div_tests
+		bool found_div = false;
+	#endif
+
+		for (div_test_const auto& div_test : compressed_div_tests)
+		{
+			size_t rem = 0;
+
+			const size_t n_of_rems = div_test.number_of_remainders;
+			__assume(n_of_rems > 0);
+			__assume(n_of_rems <= max_remainders);
+
+			const auto& my_rems = compressed_remainders.data() + div_test.remainders_start_idx;
+
+			if (div_test.is_first_with_n_remainders)
+			{
+				const size_t my_bitmask = bitmask_lookup[n_of_rems];
+				auto& my_pcs = popcounts[n_of_rems];
+
+				// for switch (n), run cases n through 1, where the index is n-1 through 0
+				constexpr size_t start = __LINE__ + 10;
+			#define IDX(n) ((max_remainders - (n - start)) - 1)
+			#define CASE(n) [[fallthrough]]; case(IDX(n) + 1): \
+				{ \
+				const auto pc = pop_count(number & (my_bitmask << IDX(n))); \
+					my_pcs[IDX(n)] = uint8_t(pc); \
+					rem += pc * my_rems[IDX(n)]; \
+				}
+				switch (n_of_rems) // handle cases N through 1
+				{
+					CASE(__LINE__); // case (max)
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__); // case (1)
+					static_assert(start + max_remainders == __LINE__);
+					break;
+				default:
+					__assume(false);
+				}
+			#undef CASE
+			#undef IDX
+			}
+			else
+			{
+				const auto& my_pcs = popcounts[n_of_rems];
+
+				// for switch (n), run cases n through 1, where the index is n-1 through 0
+				constexpr size_t start = __LINE__ + 5;
+			#define IDX(n) ((max_remainders - (n - start)) - 1)
+			#define CASE(n) [[fallthrough]]; case(IDX(n) + 1): rem += size_t(my_pcs[IDX(n)]) * my_rems[IDX(n)];
+				switch (n_of_rems)
+				{
+					CASE(__LINE__); // case (max)
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__); // case (1)
+					static_assert(start + max_remainders == __LINE__);
+					break;
+				default:
+					__assume(false);
+				}
+			#undef CASE
+			#undef IDX
+			}
+
+			if (has_small_prime_factor(rem, div_test.prime_index))
+			{
+			#if analyze_div_tests
+				div_test.hits++;
+				found_div = true;
+				return true;
+			#else
+				return true;
+			#endif
+			}
+		}
+
+	#if analyze_div_tests
+		return found_div;
+	#else
+		return false;
+	#endif
+	}
+
 	void print_div_tests()
 	{
 	#if analyze_div_tests
