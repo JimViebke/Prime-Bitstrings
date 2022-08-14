@@ -66,7 +66,6 @@ ideas:
 - Disable buffer security check
 - Use Flint2
 	- In particular, Flint may have a cheaper weak prime test that could be more optimal with fewer div tests
-- Since we're searching linearly, we may be able to skip ahead to the next bitstring with a prime popcount
 
 
 
