@@ -27,6 +27,9 @@ namespace mbp
 	const size_t bm_size = 5'000'000'000; // default 5'000'000'000
 	const size_t bm_stop = bm_start + bm_size;
 
+	constexpr size_t num_threads = 1; // could be passed by command line instead
+	constexpr size_t block_size = 1'000'000'000;
+
 	// The size of the static sieve is the product of these numbers. Exercise caution.
 	constexpr std::array static_sieve_primes{ 3ull, 5ull, 7ull, 11ull, 13ull };
 
