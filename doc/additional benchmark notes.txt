@@ -67,3 +67,10 @@ Vectorized/SIMD div tests were prohibitively expensive due to the lack of a SIMD
 
 There is substantial variation in the fraction of numbers that pass the sieve, popcount, and GCD tests.
 Batches of 25 billion integers can fluctuate calls to has_small_prime_factor by up to a factor of 2.
+
+
+
+Loading the mask constant (01010101...) inside or outside of the avx2 find loop did not produce a noticeable difference.
+
+
+
