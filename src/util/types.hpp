@@ -11,8 +11,6 @@ namespace mbp
 	class alignas(64) aligned64
 	{
 	public:
-		using value_type = T;
-
 		T& operator[](size_t i) { return data[i]; }
 		const T& operator[](size_t i) const { return data[i]; }
 	private:
