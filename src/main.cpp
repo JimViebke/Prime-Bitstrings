@@ -205,6 +205,8 @@ namespace mbp
 					CASE(__LINE__);
 					CASE(__LINE__);
 					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
 					CASE(__LINE__); // case (1)
 					static_assert(start + max_remainders == __LINE__);
 					break;
@@ -271,6 +273,8 @@ namespace mbp
 					CASE(__LINE__);
 					CASE(__LINE__);
 					CASE(__LINE__);
+					CASE(__LINE__);
+					CASE(__LINE__);
 					CASE(__LINE__); // case (1)
 					static_assert(start + max_remainders == __LINE__);
 					break;
@@ -299,174 +303,6 @@ namespace mbp
 		return false;
 	#endif
 	}
-
-	__forceinline bool has_small_divisor_simd(const size_t number)
-	{
-		using namespace div_test;
-
-		if (recursive_is_divisible_by<5, in_base<3>>(number)) return true;
-
-		if (recursive_is_divisible_by<7, in_base<3>>(number)) return true;
-		if (recursive_is_divisible_by<7, in_base<4>>(number)) return true;
-		if (recursive_is_divisible_by<7, in_base<5>>(number)) return true;
-
-	#if analyze_div_tests
-		bool found_div = false;
-	#endif
-
-		for (div_test_const auto& div_test : div_tests)
-		{
-			size_t rem = 0;
-
-			const size_t n_of_rems = div_test.n_of_remainders;
-			__assume(n_of_rems > 0);
-			__assume(n_of_rems <= max_remainders);
-
-			const auto& my_rems = div_test.remainders;
-
-			if (div_test.is_first_with_n_remainders)
-			{
-				const size_t my_bitmask = bitmask_lookup[n_of_rems];
-				auto& my_pcs = popcounts[n_of_rems];
-
-				// for switch (n), run cases n through 1, where the index is n-1 through 0
-				constexpr size_t start = __LINE__ + 10;
-			#define IDX(n) ((max_remainders - (n - start)) - 1)
-			#define CASE(n) [[fallthrough]]; case(IDX(n) + 1): \
-				{ \
-				const auto pc = pop_count(number & (my_bitmask << IDX(n))); \
-					my_pcs[IDX(n)] = popcount_t(pc); \
-					rem += pc * my_rems[IDX(n)]; \
-				}
-				switch (n_of_rems) // handle cases N through 1
-				{
-					CASE(__LINE__); // case (max)
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__); // case (1)
-					static_assert(start + max_remainders == __LINE__);
-					break;
-				default:
-					__assume(false);
-				}
-			#undef CASE
-			#undef IDX
-			}
-			else
-			{
-				const auto& my_pcs = popcounts[n_of_rems];
-				size_t i = 0;
-
-				static_assert(sizeof(my_rems[0]) == 2);
-				static_assert(sizeof(my_pcs[0]) == 2);
-
-				if (n_of_rems >= 32)
-				{
-					vcl::Vec16us rems_in_simd{}, pops_in_simd{};
-					rems_in_simd.load(&my_rems[0]);
-					pops_in_simd.load_a(&my_pcs[0]);
-
-					vcl::Vec16us rems_1{}, pops_1{};
-					rems_1.load(&my_rems[16]);
-					pops_1.load_a(&my_pcs[16]);
-
-					//rem = vcl::horizontal_add((rems_in_simd * pops_in_simd) + (rems_1 * pops_1));
-
-					auto a = (rems_in_simd * pops_in_simd) + (rems_1 * pops_1);
-					__m128i sum1 = _mm_add_epi16(_mm256_extracti128_si256(a, 1), _mm256_castsi256_si128(a));
-					__m128i sum2 = _mm_add_epi16(sum1, _mm_unpackhi_epi64(sum1, sum1));
-					__m128i sum3 = _mm_add_epi16(sum2, _mm_shuffle_epi32(sum2, 1));
-					__m128i sum4 = _mm_add_epi16(sum3, _mm_shufflelo_epi16(sum3, 1));
-					rem = (int16_t)_mm_cvtsi128_si32(sum4);
-
-					i = 32;
-				}
-				else if (n_of_rems >= 16)
-				{
-					vcl::Vec16us rems_in_simd{}, pops_in_simd{};
-					rems_in_simd.load(&my_rems[0]);
-					pops_in_simd.load_a(&my_pcs[0]);
-
-					//rem = vcl::horizontal_add(rems_in_simd * pops_in_simd);
-
-					auto a = (rems_in_simd * pops_in_simd);
-					__m128i sum1 = _mm_add_epi16(_mm256_extracti128_si256(a, 1), _mm256_castsi256_si128(a));
-					__m128i sum2 = _mm_add_epi16(sum1, _mm_unpackhi_epi64(sum1, sum1));
-					__m128i sum3 = _mm_add_epi16(sum2, _mm_shuffle_epi32(sum2, 1));
-					__m128i sum4 = _mm_add_epi16(sum3, _mm_shufflelo_epi16(sum3, 1));
-					rem = (int16_t)_mm_cvtsi128_si32(sum4);
-
-					i = 16;
-				}
-
-				for (; i < n_of_rems; ++i)
-				{
-					rem += size_t(my_pcs[i]) * my_rems[i];
-				}
-			}
-
-			if (has_small_prime_factor(rem, div_test.prime_idx))
-			{
-			#if analyze_div_tests
-				div_test.hits++;
-				found_div = true;
-				return true;
-			#else
-				return true;
-			#endif
-		}
-	}
-
-	#if analyze_div_tests
-		return found_div;
-	#else
-		return false;
-	#endif
-}
 
 	void print_div_tests()
 	{
@@ -636,16 +472,8 @@ namespace mbp
 				if ((gcd_lookup & (1ull << abs(pca - pcb))) == 0) continue;
 
 				// Run cheap trial division tests across multiple bases
-				// if (has_small_divisor(number)) continue;
-				if (has_small_divisor_simd(number)) continue;
+				if (has_small_divisor(number)) continue;
 
-				//bool a = has_small_divisor(number);
-				//bool b = has_small_divisor_simd(number);
-				//if (a != b)
-				//{
-				//	std::cout << "uhoh ";
-				//}
-				//if (a) continue;
 
 
 
