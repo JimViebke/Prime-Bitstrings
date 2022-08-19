@@ -71,24 +71,31 @@ namespace mbp
 	{
 		static_assert(static_sieve_size > sieve_primes_cap);
 
-		const sieve_offset_t sieve_size = sieve_offset_t(sieve.size());
+		sieve_t* begin = sieve.data();
+		const sieve_t* end = begin + sieve.size();
+
+		sieve_prime_t* cache_ptr = sieve_offsets_cache.data() + static_sieve_primes.size() + 1;
 
 		// Start with the first prime not in the static sieve
-		for (size_t i = static_sieve_primes.size() + 1; i < small_primes_lookup.size(); ++i)
+		for (const sieve_prime_t* prime_ptr = small_primes_lookup.data() + static_sieve_primes.size() + 1;
+			 prime_ptr < small_primes_lookup.data() + small_primes_lookup.size();
+			 ++prime_ptr, ++cache_ptr)
 		{
-			const sieve_prime_t p = small_primes_lookup[i];
+			// Get the next prime
+			const size_t p = *prime_ptr;
 
 			// Get the index of the next odd multiple of p
-			sieve_offset_t j = sieve_offsets_cache[i];
+			sieve_t* j = begin + *cache_ptr;
 
 			// Mark false each (implicitly odd) multiple of p
-			for (; j < sieve_size; j += p)
+			do
 			{
-				sieve[j] = false;
-			}
+				*j = false;
+				j += p;
+			} while (j < end);
 
 			// Update the cache for the next sieving
-			sieve_offsets_cache[i] = j - static_sieve_size;
+			*cache_ptr = sieve_prime_t(j - end);
 		}
 	}
 
