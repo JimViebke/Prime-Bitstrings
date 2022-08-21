@@ -73,4 +73,13 @@ Batches of 25 billion integers can fluctuate calls to has_small_prime_factor by 
 Loading the mask constant (01010101...) inside or outside of the avx2 find loop did not produce a noticeable difference.
 
 
+Using the following to save a multiply on the last iteration of a jump table causes a performance regression
+	case(IDX(n) + 1):
+		if constexpr (IDX(n) != 0)
+			rem += size_t(my_pcs[IDX(n)]) * my_rems[IDX(n)];
+		else
+			rem += size_t(my_pcs[IDX(n)]);
+
+
+
 
