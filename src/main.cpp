@@ -467,16 +467,14 @@ namespace mbp
 			{
 				number = number_before_loop + (current - begin) * 2;
 
-				// Bail if this number is already known to have a small prime factor
-				// if (!sieve[i]) continue;
 
 				// Bail if n does not have a prime number of bits set.
-				if ((tiny_primes_lookup & (1ull << pop_count(number))) == 0) continue;
+				const auto pc = pop_count(number);
+				if ((tiny_primes_lookup & (1ull << pc)) == 0) continue;
 
-				// Bail if gcd(abs(alternating sums), 1155) is not equal to one.
+				// Bail if gcd(abs(alternating sums), 15015) is not equal to one.
 				const auto pca = pop_count(number & 0xAAAAAAAAAAAAAAAA);
-				const auto pcb = pop_count(number & 0x5555555555555555);
-				if ((gcd_lookup & (1ull << abs(pca - pcb))) == 0) continue;
+				if ((gcd_lookup & (1ull << abs(pca - (pc - pca)))) == 0) continue;
 
 				// Run cheap trial division tests across multiple bases
 				if (has_small_divisor(number)) continue;
@@ -527,7 +525,6 @@ namespace mbp
 
 			} // end hot loop
 
-			// This does need to run
 			number = number_before_loop + 2 * sieve.size();
 
 		#if analyze_div_tests

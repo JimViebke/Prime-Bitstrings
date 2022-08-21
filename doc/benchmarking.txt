@@ -52,6 +52,7 @@ Calculate change: 1 - (  /  )
  7464 ms : Jump to the next set byte in the sieve (~13% faster)
  7304 ms : Simplify loop structure for jumping to next set byte (~2% faster)
  7089 ms : Use native types and pointers in incremental sieve (~3% faster)
+ 7057 ms : Use one popcount instead of two for GCD test (<1% faster)
 
 
 
