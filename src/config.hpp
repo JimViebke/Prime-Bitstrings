@@ -74,9 +74,3 @@ namespace mbp
 #define div_test_const const
 #define div_test_constexpr use_constexpr
 #endif
-
-#if analyze_div_tests
-#define analysis_only(n) n
-#else
-#define analysis_only(n)
-#endif
