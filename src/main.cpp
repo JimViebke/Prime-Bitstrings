@@ -457,26 +457,27 @@ namespace mbp
 
 			const size_t number_before_loop = number;
 
-			// Safe to move these higher still? Can v1 = const_v2 ever move v1?
-			const char* begin = (const char*)sieve.data();
-			const char* end = begin + sieve.size();
+			// Safe to move these higher? Can v1 = const_v2 ever move v1?
+			const char* const begin = (const char*)sieve.data();
+			const char* const end = begin + sieve.size();
 
 			const char* current = begin;
 
+			// Find the next 1 in the sieve
 			while ((current = util::find_avx2(current + 1, end, 1)) < end)
 			{
 				number = number_before_loop + (current - begin) * 2;
 
 
-				// Bail if n does not have a prime number of bits set.
+				// Bail if n does not have a prime number of bits set
 				const auto pc = pop_count(number);
 				if ((tiny_primes_lookup & (1ull << pc)) == 0) continue;
 
-				// Bail if gcd(abs(alternating sums), 15015) is not equal to one.
+				// Bail if gcd(abs(alternating bitsums), 15015) is not equal to one
 				const auto pca = pop_count(number & 0xAAAAAAAAAAAAAAAA);
 				if ((gcd_lookup & (1ull << abs(pca - (pc - pca)))) == 0) continue;
 
-				// Run cheap trial division tests across multiple bases
+				// Bail if n has a small prime factor in any base
 				if (has_small_divisor(number)) continue;
 
 

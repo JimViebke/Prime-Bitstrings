@@ -102,7 +102,7 @@ namespace mbp
 
 		uint64_t lookup = 0;
 
-		// We don't care about tiny pNs, therefore leave out the smallest of the primes.
+		// The popcount of a p12 can't be divisible by 2, 3, 5, 7 or 11
 		//lookup |= (1ull << 2);
 		//lookup |= (1ull << 3);
 		//lookup |= (1ull << 5);
@@ -134,10 +134,15 @@ namespace mbp
 
 	consteval size_t build_gcd_lookup()
 	{
+		/*
+		The second arg to gcd() is a product of primes 3 through 13.
+		This technically should be 2 through 13, but the alternating bitsum can't be 2 anyway:
+		If a + b == (a prime number >11), then abs(a - b) is odd and never has 2 as a factor.
+		*/
+
 		size_t lookup = 0;
 
-		// set bit i high if the GCD of (i, n) is 1
-		// original n = { 3 * 5 * 7 * 11 }
+		// set bit i high if the GCD of (i, [product of primes]) is 1
 		for (size_t i = 0; i < 32; ++i)
 		{
 			lookup |= size_t(gcd(i, size_t(3 * 5 * 7 * 11 * 13)) == 1ull) << i;
