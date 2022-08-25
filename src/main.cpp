@@ -29,9 +29,12 @@ namespace mbp
 														 static_sieve_primes.end(), size_t(1), std::multiplies());
 
 	using sieve_t = uint8_t;
-	const std::vector<sieve_t> generate_static_sieve()
+	using sieve_container = std::vector<sieve_t>;
+	// using sieve_container = std::array<sieve_t, static_sieve_size>;
+	const sieve_container generate_static_sieve()
 	{
-		std::vector<sieve_t> sieve(static_sieve_size, true);
+		sieve_container sieve(static_sieve_size, true);
+		// sieve_container sieve{}; std::fill(begin(sieve), end(sieve), true);
 
 		// for each prime, mark off all multiples
 		for (const auto p : static_sieve_primes)
@@ -40,6 +43,7 @@ namespace mbp
 
 		return sieve;
 	}
+	const sieve_container static_sieve = generate_static_sieve();
 
 	using sieve_offset_t = narrowest_uint_for_val<static_sieve_size>;
 	std::vector<sieve_offset_t> sieve_offsets_cache(small_primes_lookup.size());
@@ -67,7 +71,7 @@ namespace mbp
 		}
 	}
 
-	void partial_sieve(std::vector<sieve_t>& sieve)
+	void partial_sieve(sieve_container& sieve)
 	{
 		static_assert(static_sieve_size > sieve_primes_cap);
 
@@ -427,8 +431,7 @@ namespace mbp
 		size_t number = benchmark_mode ? bm_start : load_from_results();
 		mpz_class mpz_number = 0ull; // it's a surprise tool that will help us later
 
-		const std::vector<sieve_t> static_sieve = generate_static_sieve();
-		std::vector<sieve_t> sieve = static_sieve;
+		sieve_container sieve = static_sieve;
 
 		// Round starting number down to the nearest odd multiple of the sieve sieze
 		number -= static_sieve.size(); // n -= k
