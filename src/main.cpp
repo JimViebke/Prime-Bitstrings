@@ -432,6 +432,7 @@ namespace mbp
 		mpz_class mpz_number = 0ull; // it's a surprise tool that will help us later
 
 		sieve_container sieve = static_sieve;
+		if ((size_t)sieve.data() % 8 != 0) { std::cout << "unaligned!"; std::cin.ignore(); }
 
 		// Round starting number down to the nearest odd multiple of the sieve sieze
 		number -= static_sieve.size(); // n -= k
@@ -476,15 +477,45 @@ namespace mbp
 			// Safe to move these higher? Can v1 = const_v2 ever move v1?
 			const char* const begin = (const char*)sieve.data();
 			const char* const end = begin + sieve.size();
+			const char* const rounded_end = end - (sieve.size() % 8);
 
 			const char* current = begin;
 
 			size_t* sieve_candidates = scratch;
+			for (; current < rounded_end; current += 8, number += 16)
+			{
+				*sieve_candidates = number;
+				sieve_candidates += *current;
+
+				*sieve_candidates = number + 2;
+				sieve_candidates += *(current + 1);
+
+				*sieve_candidates = number + 4;
+				sieve_candidates += *(current + 2);
+
+				*sieve_candidates = number + 6;
+				sieve_candidates += *(current + 3);
+
+				*sieve_candidates = number + 8;
+				sieve_candidates += *(current + 4);
+
+				*sieve_candidates = number + 10;
+				sieve_candidates += *(current + 5);
+
+				*sieve_candidates = number + 12;
+				sieve_candidates += *(current + 6);
+
+				*sieve_candidates = number + 14;
+				sieve_candidates += *(current + 7);
+			}
+
+			// copy final 7
 			for (; current < end; ++current, number += 2)
 			{
-				*sieve_candidates = number; // always write number
-				sieve_candidates += *current; // increment the write pointer if the sieve byte is set
+				*sieve_candidates = number;
+				sieve_candidates += *current;
 			}
+
 
 			for (size_t* n = scratch; n < sieve_candidates; ++n)
 			{
