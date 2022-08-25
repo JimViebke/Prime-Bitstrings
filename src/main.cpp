@@ -448,8 +448,18 @@ namespace mbp
 		size_t next_div_test_checkpoint = div_test_log_interval;
 	#endif
 
+		constexpr size_t scratch_size = [] {
+			double cleared = 0.0;
+			for (size_t i = 1; i < small_primes_lookup.size(); ++i)
+				cleared += ((1.0 - cleared) * (1.0 / small_primes_lookup[i]));
+			return size_t((1.0 - cleared) * double(static_sieve_size) * 1.1);
+		}();
+		static size_t scratch[scratch_size]{};
+
 		// Start the clock after setup
 		const auto start = current_time_in_ms();
+
+
 
 		count_passes(size_t a, b, c, d);
 		count_passes(a = b = c = d = 0);
@@ -469,10 +479,16 @@ namespace mbp
 
 			const char* current = begin;
 
-			// Find the next 1 in the sieve
-			while ((current = util::find_avx2(current + 1, end, 1)) < end)
+			size_t* sieve_candidates = scratch;
+			for (; current < end; ++current, number += 2)
 			{
-				number = number_before_loop + (current - begin) * 2;
+				*sieve_candidates = number; // always write number
+				sieve_candidates += *current; // increment the write pointer if the sieve byte is set
+			}
+
+			for (size_t* n = scratch; n < sieve_candidates; ++n)
+			{
+				number = *n;
 
 				count_passes(++a);
 
