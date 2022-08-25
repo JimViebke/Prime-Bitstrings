@@ -65,5 +65,47 @@ namespace mbp
 				if (sieve_size > 1'000'000'000) return;
 			}
 		}
+
+		void playing_with_sieves()
+		{
+			std::vector<size_t> numbers;
+			for (size_t i = 0; i <= 100; ++i)
+			{
+				numbers.push_back(i);
+			}
+			numbers[1] = 0;
+
+			// print
+			for (auto n : numbers)
+				if (n != 0)
+					std::cout << n << ' ';
+				else
+					std::cout << ". ";
+			std::cout << "\n\n";
+
+			// zero the twos
+			for (size_t i = 2 * 2; i < numbers.size(); i += 2)
+				numbers[i] = 0;
+
+			// print
+			for (auto n : numbers)
+				if (n != 0)
+					std::cout << n << ' ';
+				else
+					std::cout << ". ";
+			std::cout << "\n\n";
+
+			// zero every other three
+			for (size_t i = 3 * 3; i < numbers.size(); i += (2 * 3))
+				numbers[i] = 0;
+
+			// print
+			for (auto n : numbers)
+				if (n != 0)
+					std::cout << n << ' ';
+				else
+					std::cout << ". ";
+			std::cout << "\n\n";
+		}
 	}
 }
