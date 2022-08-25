@@ -74,3 +74,9 @@ namespace mbp
 #define div_test_const const
 #define div_test_constexpr use_constexpr
 #endif
+
+#if 0 // accumulate and print pass counts
+#define count_passes(...) __VA_ARGS__
+#else
+#define count_passes(...)
+#endif

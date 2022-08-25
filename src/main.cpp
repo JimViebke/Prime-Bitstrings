@@ -451,6 +451,9 @@ namespace mbp
 		// Start the clock after setup
 		const auto start = current_time_in_ms();
 
+		count_passes(size_t a, b, c, d);
+		count_passes(a = b = c = d = 0);
+
 		// (condition optimizes out when not benchmarking)
 		while (benchmark_mode ? number < bm_stop : true)
 		{
@@ -471,18 +474,24 @@ namespace mbp
 			{
 				number = number_before_loop + (current - begin) * 2;
 
+				count_passes(++a);
 
 				// Bail if n does not have a prime number of bits set
 				const auto pc = pop_count(number);
 				if ((tiny_primes_lookup & (1ull << pc)) == 0) continue;
 
+				count_passes(++b);
+
 				// Bail if gcd(abs(alternating bitsums), 15015) is not equal to one
 				const auto pca = pop_count(number & 0xAAAAAAAAAAAAAAAA);
 				if ((gcd_lookup & (1ull << abs(pca - (pc - pca)))) == 0) continue;
 
+				count_passes(++c);
+
 				// Bail if n has a small prime factor in any base
 				if (has_small_divisor(number)) continue;
 
+				count_passes(++d);
 
 
 
@@ -531,6 +540,8 @@ namespace mbp
 
 			number = number_before_loop + 2 * sieve.size();
 
+
+
 		#if analyze_div_tests
 			for (const auto& dt : div_test::div_tests)
 			{
@@ -547,6 +558,10 @@ namespace mbp
 
 		std::cout << "Finished. " << current_time_in_ms() - start << " ms elapsed\n";
 
+		count_passes(std::cout << "Passed sieve:      " << std::setw(9) << a << '\n');
+		count_passes(std::cout << "Passed prime test: " << std::setw(9) << b << '\n');
+		count_passes(std::cout << "Passed GCD test:   " << std::setw(9) << c << '\n');
+		count_passes(std::cout << "Passed div tests:  " << std::setw(9) << d << '\n');
 	}
 
 } // namespace mbp
