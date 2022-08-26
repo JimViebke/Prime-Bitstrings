@@ -475,45 +475,45 @@ namespace mbp
 			const size_t number_before_loop = number;
 
 			// Safe to move these higher? Can v1 = const_v2 ever move v1?
-			const char* const begin = (const char*)sieve.data();
-			const char* const end = begin + sieve.size();
-			const char* const rounded_end = end - (sieve.size() % 8);
+			const char* const sieve_begin = (const char*)sieve.data();
+			const char* const sieve_end = sieve_begin + sieve.size();
+			const char* const sieve_end_rounded = sieve_end - (sieve.size() % 8);
 
-			const char* current = begin;
+			const char* sieve_ptr = sieve_begin;
 
 			size_t* sieve_candidates = scratch;
-			for (; current < rounded_end; current += 8, number += 16)
+			for (; sieve_ptr < sieve_end_rounded; sieve_ptr += 8, number += 16)
 			{
 				*sieve_candidates = number;
-				sieve_candidates += *current;
+				sieve_candidates += *sieve_ptr;
 
 				*sieve_candidates = number + 2;
-				sieve_candidates += *(current + 1);
+				sieve_candidates += *(sieve_ptr + 1);
 
 				*sieve_candidates = number + 4;
-				sieve_candidates += *(current + 2);
+				sieve_candidates += *(sieve_ptr + 2);
 
 				*sieve_candidates = number + 6;
-				sieve_candidates += *(current + 3);
+				sieve_candidates += *(sieve_ptr + 3);
 
 				*sieve_candidates = number + 8;
-				sieve_candidates += *(current + 4);
+				sieve_candidates += *(sieve_ptr + 4);
 
 				*sieve_candidates = number + 10;
-				sieve_candidates += *(current + 5);
+				sieve_candidates += *(sieve_ptr + 5);
 
 				*sieve_candidates = number + 12;
-				sieve_candidates += *(current + 6);
+				sieve_candidates += *(sieve_ptr + 6);
 
 				*sieve_candidates = number + 14;
-				sieve_candidates += *(current + 7);
+				sieve_candidates += *(sieve_ptr + 7);
 			}
 
-			// copy final 7
-			for (; current < end; ++current, number += 2)
+			// handle remaining
+			for (; sieve_ptr < sieve_end; ++sieve_ptr, number += 2)
 			{
 				*sieve_candidates = number;
-				sieve_candidates += *current;
+				sieve_candidates += *sieve_ptr;
 			}
 
 
