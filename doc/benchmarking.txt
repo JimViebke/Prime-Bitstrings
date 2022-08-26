@@ -55,6 +55,7 @@ Calculate change: 1 - (  /  )
  7057 ms : Use one popcount instead of two for GCD test (<1% faster)
  6438 ms : Gather candidates between sieving and main loop (~8% faster)
  6128 ms : Unroll "gather" loop by 8 (~5% faster)
+ 5562 ms : Gather candidates with prime popcounts in unrolled loop (~9% faster)
 
 
 

@@ -516,22 +516,59 @@ namespace mbp
 				sieve_candidates += *sieve_ptr;
 			}
 
+			count_passes(a += (sieve_candidates - scratch)); // How many ints passed the sieve?
 
-			for (size_t* n = scratch; n < sieve_candidates; ++n)
+
+
+			const size_t* const candidates_end = sieve_candidates; // already points one past the end
+			const size_t* const candidates_end_rounded = candidates_end - ((candidates_end - scratch) % 4);
+			const size_t* candidate_ptr = scratch;
+
+			size_t* passed_pc_test_ptr = scratch;
+
+			for (; candidate_ptr < candidates_end_rounded; candidate_ptr += 4)
+			{
+				const size_t c0 = *candidate_ptr;
+				const size_t c1 = *(candidate_ptr + 1);
+				const size_t c2 = *(candidate_ptr + 2);
+				const size_t c3 = *(candidate_ptr + 3);
+
+				const size_t pc_c0 = pop_count(c0);
+				const size_t pc_c1 = pop_count(c1);
+				const size_t pc_c2 = pop_count(c2);
+				const size_t pc_c3 = pop_count(c3);
+
+				*passed_pc_test_ptr = c0;
+				passed_pc_test_ptr += bool(tiny_primes_lookup & (1ull << pc_c0));
+
+				*passed_pc_test_ptr = c1;
+				passed_pc_test_ptr += bool(tiny_primes_lookup & (1ull << pc_c1));
+
+				*passed_pc_test_ptr = c2;
+				passed_pc_test_ptr += bool(tiny_primes_lookup & (1ull << pc_c2));
+
+				*passed_pc_test_ptr = c3;
+				passed_pc_test_ptr += bool(tiny_primes_lookup & (1ull << pc_c3));
+			}
+
+			// handle remaining
+			for (; candidate_ptr < candidates_end; ++candidate_ptr)
+			{
+				const size_t c1 = *candidate_ptr;
+				*passed_pc_test_ptr = c1;
+				passed_pc_test_ptr += bool(tiny_primes_lookup & (1ull << pop_count(c1)));
+			}
+
+			for (size_t* n = scratch; n < passed_pc_test_ptr; ++n)
 			{
 				number = *n;
-
-				count_passes(++a);
-
-				// Bail if n does not have a prime number of bits set
-				const auto pc = pop_count(number);
-				if ((tiny_primes_lookup & (1ull << pc)) == 0) continue;
 
 				count_passes(++b);
 
 				// Bail if gcd(abs(alternating bitsums), 15015) is not equal to one
 				const auto pca = pop_count(number & 0xAAAAAAAAAAAAAAAA);
-				if ((gcd_lookup & (1ull << abs(pca - (pc - pca)))) == 0) continue;
+				const auto pcb = pop_count(number & 0x5555555555555555);
+				if ((gcd_lookup & (1ull << abs(pca - pcb))) == 0) continue;
 
 				count_passes(++c);
 
