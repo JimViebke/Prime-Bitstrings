@@ -56,6 +56,7 @@ Calculate change: 1 - (  /  )
  6438 ms : Gather candidates between sieving and main loop (~8% faster)
  6128 ms : Unroll "gather" loop by 8 (~5% faster)
  5562 ms : Gather candidates with prime popcounts in unrolled loop (~9% faster)
+ 5527 ms : Gather GCD candidates in unrolled loop (<1% faster)
 
 
 

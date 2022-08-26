@@ -145,7 +145,9 @@ namespace mbp
 		// set bit i high if the GCD of (i, [product of primes]) is 1
 		for (size_t i = 0; i < 32; ++i)
 		{
-			lookup |= size_t(gcd(i, size_t(3 * 5 * 7 * 11 * 13)) == 1ull) << i;
+			// lookup |= size_t(gcd(i, size_t(3 * 5 * 7 * 11 * 13)) == 1ull) << i;
+			lookup |= size_t(gcd(i, size_t(3 * 5 * 7 * 11 * 13)) == 1ull) << (32 - i);
+			lookup |= size_t(gcd(i, size_t(3 * 5 * 7 * 11 * 13)) == 1ull) << (32 + i);
 		}
 
 		return lookup;

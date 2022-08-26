@@ -474,6 +474,10 @@ namespace mbp
 
 			const size_t number_before_loop = number;
 
+
+
+			// 1. Collect candidates that have not been marked composite by the sieve.
+
 			// Safe to move these higher? Can v1 = const_v2 ever move v1?
 			const char* const sieve_begin = (const char*)sieve.data();
 			const char* const sieve_end = sieve_begin + sieve.size();
@@ -509,7 +513,7 @@ namespace mbp
 				sieve_candidates += *(sieve_ptr + 7);
 			}
 
-			// handle remaining
+			// handle last few elements
 			for (; sieve_ptr < sieve_end; ++sieve_ptr, number += 2)
 			{
 				*sieve_candidates = number;
@@ -520,12 +524,13 @@ namespace mbp
 
 
 
+			// 2. Collect candidates that have a prime number of bits set
+
 			const size_t* const candidates_end = sieve_candidates; // already points one past the end
 			const size_t* const candidates_end_rounded = candidates_end - ((candidates_end - scratch) % 4);
 			const size_t* candidate_ptr = scratch;
 
 			size_t* passed_pc_test_ptr = scratch;
-
 			for (; candidate_ptr < candidates_end_rounded; candidate_ptr += 4)
 			{
 				const size_t c0 = *candidate_ptr;
@@ -551,24 +556,68 @@ namespace mbp
 				passed_pc_test_ptr += bool(tiny_primes_lookup & (1ull << pc_c3));
 			}
 
-			// handle remaining
+			// handle last few elements
 			for (; candidate_ptr < candidates_end; ++candidate_ptr)
 			{
-				const size_t c1 = *candidate_ptr;
-				*passed_pc_test_ptr = c1;
-				passed_pc_test_ptr += bool(tiny_primes_lookup & (1ull << pop_count(c1)));
+				const size_t c0 = *candidate_ptr;
+				*passed_pc_test_ptr = c0;
+				passed_pc_test_ptr += bool(tiny_primes_lookup & (1ull << pop_count(c0)));
 			}
 
-			for (size_t* n = scratch; n < passed_pc_test_ptr; ++n)
+			count_passes(b += (passed_pc_test_ptr - scratch));
+
+
+
+			// 3. Collect candidates with an alternating bitsum that shares a GCD of 1 with a product of primes
+
+			const size_t* const gcd_candidates_end = passed_pc_test_ptr;
+			const size_t* const gcd_candidates_end_rounded = gcd_candidates_end - ((gcd_candidates_end - scratch) % 4);
+			candidate_ptr = scratch; // reset
+
+			size_t* passed_gcd_test_ptr = scratch;
+			for (; candidate_ptr < gcd_candidates_end_rounded; candidate_ptr += 4)
+			{
+				const size_t n0 = *candidate_ptr;
+				const size_t n0_pca = pop_count(n0 & 0xAAAAAAAAAAAAAAAA);
+				const size_t n0_pcb = pop_count(n0 & 0x5555555555555555);
+				*passed_gcd_test_ptr = n0;
+				if (gcd_lookup & (1ull << (n0_pca + 32 - n0_pcb))) ++passed_gcd_test_ptr;
+
+				const size_t n1 = *(candidate_ptr + 1);
+				const size_t n1_pca = pop_count(n1 & 0xAAAAAAAAAAAAAAAA);
+				const size_t n1_pcb = pop_count(n1 & 0x5555555555555555);
+				*passed_gcd_test_ptr = n1;
+				if (gcd_lookup & (1ull << (n1_pca + 32 - n1_pcb))) ++passed_gcd_test_ptr;
+
+				const size_t n2 = *(candidate_ptr + 2);
+				const size_t n2_pca = pop_count(n2 & 0xAAAAAAAAAAAAAAAA);
+				const size_t n2_pcb = pop_count(n2 & 0x5555555555555555);
+				*passed_gcd_test_ptr = n2;
+				if (gcd_lookup & (1ull << (n2_pca + 32 - n2_pcb))) ++passed_gcd_test_ptr;
+
+				const size_t n3 = *(candidate_ptr + 3);
+				const size_t n3_pca = pop_count(n3 & 0xAAAAAAAAAAAAAAAA);
+				const size_t n3_pcb = pop_count(n3 & 0x5555555555555555);
+				*passed_gcd_test_ptr = n3;
+				if (gcd_lookup & (1ull << (n3_pca + 32 - n3_pcb))) ++passed_gcd_test_ptr;
+			}
+
+			// handle last few elements
+			for (; candidate_ptr < gcd_candidates_end; ++candidate_ptr)
+			{
+				const size_t n0 = *candidate_ptr;
+				const auto n0_pca = pop_count(n0 & 0xAAAAAAAAAAAAAAAA);
+				const auto n0_pcb = pop_count(n0 & 0x5555555555555555);
+
+				*passed_gcd_test_ptr = n0;
+				passed_gcd_test_ptr += bool(gcd_lookup & (1ull << (n0_pca + 32 - n0_pcb)));
+			}
+
+
+
+			for (size_t* n = scratch; n < passed_gcd_test_ptr; ++n)
 			{
 				number = *n;
-
-				count_passes(++b);
-
-				// Bail if gcd(abs(alternating bitsums), 15015) is not equal to one
-				const auto pca = pop_count(number & 0xAAAAAAAAAAAAAAAA);
-				const auto pcb = pop_count(number & 0x5555555555555555);
-				if ((gcd_lookup & (1ull << abs(pca - pcb))) == 0) continue;
 
 				count_passes(++c);
 
