@@ -143,20 +143,29 @@ namespace mbp
 		bool found_div = false;
 	#endif
 
+		bool which_way_boss = div_tests.begin()->is_first_with_n_remainders;
+		n_of_remainders_t n_of_rems_boss = div_tests.begin()->n_of_remainders;
+
 		for (div_test_const auto& div_test : div_tests)
 		{
 			size_t rem = 0;
 
-			const size_t n_of_rems = div_test.n_of_remainders;
-			__assume(n_of_rems > 0);
-			__assume(n_of_rems <= max_remainders);
+			//const size_t n_of_rems = div_test.n_of_remainders;
+			//__assume(n_of_rems > 0);
+			//__assume(n_of_rems <= max_remainders);
 
 			const auto& my_rems = div_test.remainders;
 
-			if (div_test.is_first_with_n_remainders)
+			__assume(n_of_rems_boss > 0);
+			__assume(n_of_rems_boss <= max_remainders);
+
+
+			if (which_way_boss)
 			{
-				const size_t my_bitmask = bitmask_lookup[n_of_rems];
-				auto& my_pcs = popcounts[n_of_rems];
+				which_way_boss = *((&div_test.is_first_with_n_remainders) + sizeof(div_test));
+
+				const size_t my_bitmask = bitmask_lookup[n_of_rems_boss];
+				auto& my_pcs = popcounts[n_of_rems_boss];
 
 				// for switch (n), run cases n through 1, where the index is n-1 through 0
 				constexpr size_t start = __LINE__ + 10;
@@ -167,7 +176,7 @@ namespace mbp
 					my_pcs[IDX(n)] = popcount_t(pc); \
 					rem += pc * my_rems[IDX(n)]; \
 				}
-				switch (n_of_rems) // handle cases N through 1
+				switch (n_of_rems_boss) // handle cases N through 1
 				{
 					CASE(__LINE__); // case (max)
 					CASE(__LINE__);
@@ -229,13 +238,15 @@ namespace mbp
 			}
 			else
 			{
-				const auto& my_pcs = popcounts[n_of_rems];
+				which_way_boss = *((&div_test.is_first_with_n_remainders) + sizeof(div_test));
+
+				const auto& my_pcs = popcounts[n_of_rems_boss];
 
 				// for switch (n), run cases n through 1, where the index is n-1 through 0
 				constexpr size_t start = __LINE__ + 5;
 			#define IDX(n) ((max_remainders - (n - start)) - 1)
 			#define CASE(n) [[fallthrough]]; case(IDX(n) + 1): rem += size_t(my_pcs[IDX(n)]) * my_rems[IDX(n)];
-				switch (n_of_rems)
+				switch (n_of_rems_boss)
 				{
 					CASE(__LINE__); // case (max)
 					CASE(__LINE__);
@@ -295,6 +306,8 @@ namespace mbp
 			#undef CASE
 			#undef IDX
 			}
+
+			n_of_rems_boss = *((&div_test.n_of_remainders) + sizeof(div_test));
 
 			if (has_small_prime_factor(rem, div_test.prime_idx))
 			{
