@@ -53,15 +53,15 @@ namespace mbp
 		// Start with the first prime not in the static sieve.
 		for (size_t i = static_sieve_primes.size() + 1; i < small_primes_lookup.size(); ++i)
 		{
-			const sieve_prime_t p = small_primes_lookup[i];
+			const sieve_prime_t p_times_3 = small_primes_lookup[i] * 3;
 
 			// Find out how far it is to the next multiple of p.
-			sieve_prime_t n = p - (start % p);
+			sieve_prime_t n = p_times_3 - (start % p_times_3);
 
 			// Start is always odd. Therefore, if n is odd, it is pointing to the next even multiple of p.
 			// -- increase by p
 			if (n % 2 == 1)
-				n += p;
+				n += p_times_3;
 			// However, if n is even, it is pointing to the next odd multiple of p.
 			// -- do nothing
 
@@ -73,10 +73,10 @@ namespace mbp
 
 	void partial_sieve(sieve_container& sieve)
 	{
-		static_assert(static_sieve_size > sieve_primes_cap);
+		static_assert(static_sieve_size > sieve_primes_cap * 3);
 
 		sieve_t* begin = sieve.data();
-		const sieve_t* end = begin + sieve.size();
+		const sieve_t* const end = begin + sieve.size();
 
 		sieve_prime_t* cache_ptr = sieve_offsets_cache.data() + static_sieve_primes.size() + 1;
 
@@ -87,18 +87,38 @@ namespace mbp
 		{
 			// Get the next prime
 			const size_t p = *prime_ptr;
+			// For readability:
+			const size_t two_p = p * 2;
+			const size_t three_p = p * 3;
 
 			// Get the index of the next odd multiple of p
 			sieve_t* j = begin + *cache_ptr;
 
-			// Mark false each (implicitly odd) multiple of p
+			// j is aligned to a multiple of 3, so we have 0, 1, or 2 multiples of p *behind* j that must be crossed off.
+			// Use two branchless writes to j-p and j-2p if they exist, falling back to a write to j in both cases
+			*(((j - p) >= begin) ? (j - p) : j) = false;
+			*(((j - two_p) >= begin) ? (j - two_p) : j) = false;
+
+			// Stop marking 3p early, then handle cleanup after the loop.
+			const sieve_t* const padded_end = end - three_p;
+
+			// Each iteration, j points to an (already marked) multiple of p and 3.
+			// Only mark j + p and j + 2p.
 			do
 			{
-				*j = false;
-				j += p;
-			} while (j < end);
+				*(j + p) = false;
+				*(j + two_p) = false;
+				j += three_p;
+			} while (j < padded_end);
 
-			// Update the cache for the next sieving
+			// Same as above, we have 0, 1, or 2 remaining writes to perform, and j must be advanced for caching
+			*(((j + p) < end) ? (j + p) : j) = false;
+			*(((j + two_p) < end) ? (j + two_p) : j) = false;
+
+			// Finally, push j past the end of the sieve, then calculate the offset...
+			j += three_p;
+
+			// ...and update the cache for the next sieving
 			*cache_ptr = sieve_prime_t(j - end);
 		}
 	}
