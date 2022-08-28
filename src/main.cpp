@@ -547,34 +547,33 @@ namespace mbp
 			for (; candidate_ptr < candidates_end_rounded; candidate_ptr += 4)
 			{
 				const size_t c0 = *candidate_ptr;
-				const size_t c1 = *(candidate_ptr + 1);
-				const size_t c2 = *(candidate_ptr + 2);
-				const size_t c3 = *(candidate_ptr + 3);
-
 				const size_t pc_c0 = pop_count(c0);
-				const size_t pc_c1 = pop_count(c1);
-				const size_t pc_c2 = pop_count(c2);
-				const size_t pc_c3 = pop_count(c3);
-
 				*passed_pc_test_ptr = c0;
-				passed_pc_test_ptr += bool(tiny_primes_lookup & (1ull << pc_c0));
+				if (tiny_primes_lookup & (1ull << pc_c0)) ++passed_pc_test_ptr;
 
+				const size_t c1 = *(candidate_ptr + 1);
+				const size_t pc_c1 = pop_count(c1);
 				*passed_pc_test_ptr = c1;
-				passed_pc_test_ptr += bool(tiny_primes_lookup & (1ull << pc_c1));
+				if (tiny_primes_lookup & (1ull << pc_c1)) ++passed_pc_test_ptr;
 
+				const size_t c2 = *(candidate_ptr + 2);
+				const size_t pc_c2 = pop_count(c2);
 				*passed_pc_test_ptr = c2;
-				passed_pc_test_ptr += bool(tiny_primes_lookup & (1ull << pc_c2));
+				if (tiny_primes_lookup & (1ull << pc_c2)) ++passed_pc_test_ptr;
 
+				const size_t c3 = *(candidate_ptr + 3);
+				const size_t pc_c3 = pop_count(c3);
 				*passed_pc_test_ptr = c3;
-				passed_pc_test_ptr += bool(tiny_primes_lookup & (1ull << pc_c3));
+				if (tiny_primes_lookup & (1ull << pc_c3)) ++passed_pc_test_ptr;
 			}
 
 			// handle last few elements
 			for (; candidate_ptr < candidates_end; ++candidate_ptr)
 			{
 				const size_t c0 = *candidate_ptr;
+				const size_t pc_c0 = pop_count(c0);
 				*passed_pc_test_ptr = c0;
-				passed_pc_test_ptr += bool(tiny_primes_lookup & (1ull << pop_count(c0)));
+				if (tiny_primes_lookup & (1ull << pc_c0)) ++passed_pc_test_ptr;
 			}
 
 			count_passes(b += (passed_pc_test_ptr - scratch));
