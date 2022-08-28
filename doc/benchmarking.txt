@@ -59,6 +59,7 @@ Calculate change: 1 - (  /  )
  5527 ms : Gather GCD candidates in unrolled loop (<1% faster)
  5493 ms : Use bt and cmov in prime popcount test (<1% faster)
  5289 ms : Skip re-marking multiples of 3 during sieving (~4% faster)
+ 4989 ms : Skip every 3rd and 5th entry when gathering sieve results (~6% faster)
 
 
 

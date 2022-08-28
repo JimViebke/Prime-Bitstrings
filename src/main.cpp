@@ -73,7 +73,7 @@ namespace mbp
 
 	void partial_sieve(sieve_container& sieve)
 	{
-		static_assert(static_sieve_size > sieve_primes_cap * 3);
+		static_assert(static_sieve_size > small_primes_lookup.back() * 3);
 
 		sieve_t* begin = sieve.data();
 		const sieve_t* const end = begin + sieve.size();
@@ -514,15 +514,19 @@ namespace mbp
 			// Safe to move these higher? Can v1 = const_v2 ever move v1?
 			const char* const sieve_begin = (const char*)sieve.data();
 			const char* const sieve_end = sieve_begin + sieve.size();
-			const char* const sieve_end_rounded = sieve_end - (sieve.size() % 8);
 
 			const char* sieve_ptr = sieve_begin;
 
+			static_assert(static_sieve_size % 15 == 0);
 			size_t* sieve_candidates = scratch;
-			for (; sieve_ptr < sieve_end_rounded; sieve_ptr += 8, number += 16)
+			for (; sieve_ptr < sieve_end; sieve_ptr += 15, number += 30)
 			{
-				*sieve_candidates = number;
-				sieve_candidates += *sieve_ptr;
+				// By working in iterations of 15, we know every 3rd and every 5th value is false.
+				// Don't check those ones.
+				// 
+				// 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14   <-- offset
+				//    x  x     x        x  x        x     x  x   <-- values to check
+				// x        x     x  x        x  x     x         <-- values to ignore
 
 				*sieve_candidates = number + 2;
 				sieve_candidates += *(sieve_ptr + 1);
@@ -530,27 +534,23 @@ namespace mbp
 				*sieve_candidates = number + 4;
 				sieve_candidates += *(sieve_ptr + 2);
 
-				*sieve_candidates = number + 6;
-				sieve_candidates += *(sieve_ptr + 3);
-
 				*sieve_candidates = number + 8;
 				sieve_candidates += *(sieve_ptr + 4);
 
-				*sieve_candidates = number + 10;
-				sieve_candidates += *(sieve_ptr + 5);
-
-				*sieve_candidates = number + 12;
-				sieve_candidates += *(sieve_ptr + 6);
-
 				*sieve_candidates = number + 14;
 				sieve_candidates += *(sieve_ptr + 7);
-			}
 
-			// handle last few elements
-			for (; sieve_ptr < sieve_end; ++sieve_ptr, number += 2)
-			{
-				*sieve_candidates = number;
-				sieve_candidates += *sieve_ptr;
+				*sieve_candidates = number + 16;
+				sieve_candidates += *(sieve_ptr + 8);
+
+				*sieve_candidates = number + 22;
+				sieve_candidates += *(sieve_ptr + 11);
+
+				*sieve_candidates = number + 26;
+				sieve_candidates += *(sieve_ptr + 13);
+
+				*sieve_candidates = number + 28;
+				sieve_candidates += *(sieve_ptr + 14);
 			}
 
 			count_passes(a += (sieve_candidates - scratch)); // How many ints passed the sieve?
