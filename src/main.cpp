@@ -51,12 +51,15 @@ namespace mbp
 	// an optimization to pass (larger) small primes through the stepped loop. This threshold is calculated at
 	// compile time, based on requiring primes to make at least (sieve_size / X) number of writes, where X
 	// is a tuneable knob.
-	constexpr sieve_prime_t last_prime_for_stepping_by_threes = []() consteval {
+	consteval sieve_prime_t get_threshold(const size_t X)
+	{
 		for (size_t i = 1; i < small_primes_lookup.size(); ++i)
-			if (small_primes_lookup[i] > (static_sieve_size / 16))
+			if (small_primes_lookup[i] > (static_sieve_size / X))
 				return small_primes_lookup[i - 1];
 		// compile-time error if we don't find a valid answer
-	}();
+	}
+	constexpr sieve_prime_t last_prime_for_stepping_by_fifteen = get_threshold((5 + 1) * 15);
+	constexpr sieve_prime_t last_prime_for_stepping_by_threes = get_threshold(16);
 
 	using sieve_offset_t = narrowest_uint_for_val<static_sieve_size>;
 	std::vector<sieve_offset_t> sieve_offsets_cache(small_primes_lookup.size());
@@ -68,8 +71,12 @@ namespace mbp
 		{
 			sieve_prime_t p = small_primes_lookup[i];
 
-			// p has stricter "alignment" requirements when sieving in steps of p*3
-			if (p <= last_prime_for_stepping_by_threes)
+			// p has stricter "alignment" requirements when sieving in steps of p*n
+			if (p <= last_prime_for_stepping_by_fifteen)
+			{
+				p *= 15;
+			}
+			else if (p <= last_prime_for_stepping_by_threes)
 			{
 				p *= 3;
 			}
@@ -92,8 +99,10 @@ namespace mbp
 
 	void partial_sieve(sieve_container& sieve)
 	{
-		// 3 for our step size, and *2 because we always take at least one step, and still need 3*p padding
-		static_assert(static_sieve_size / (3 * 2) > last_prime_for_stepping_by_threes);
+		// *2 because we always take at least one step, and still need step*p padding
+		static_assert(last_prime_for_stepping_by_fifteen < static_sieve_size / (15 * 2));
+		static_assert(last_prime_for_stepping_by_fifteen < last_prime_for_stepping_by_threes);
+		static_assert(last_prime_for_stepping_by_threes < static_sieve_size / (3 * 2));
 
 		sieve_t* sieve_begin = sieve.data();
 		const sieve_t* const sieve_end = sieve_begin + sieve.size();
@@ -101,6 +110,72 @@ namespace mbp
 		// Start with the first prime not in the static sieve
 		const sieve_prime_t* prime_ptr = small_primes_lookup.data() + static_sieve_primes.size() + 1;
 		sieve_prime_t* cache_ptr = sieve_offsets_cache.data() + static_sieve_primes.size() + 1;
+
+		for (;;)
+		{
+			// 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14   <-- offset
+			//    x  x     x        x  x        x     x  x   <-- values to mark composite/false
+			// x        x     x  x        x  x     x         <-- values to ignore
+
+			// Get the next prime
+			const size_t p = *prime_ptr;
+
+			const size_t fifteen_p = p * 15;
+
+			// Get the index of the next odd multiple of p*3
+			sieve_t* j = sieve_begin + *cache_ptr;
+
+			*(((j - (14 * p)) >= sieve_begin) ? (j - (14 * p)) : j) = false;
+			*(((j - (13 * p)) >= sieve_begin) ? (j - (13 * p)) : j) = false;
+			*(((j - (11 * p)) >= sieve_begin) ? (j - (11 * p)) : j) = false;
+			*(((j - (8 * p)) >= sieve_begin) ? (j - (8 * p)) : j) = false;
+			*(((j - (7 * p)) >= sieve_begin) ? (j - (7 * p)) : j) = false;
+			*(((j - (4 * p)) >= sieve_begin) ? (j - (4 * p)) : j) = false;
+			*(((j - (2 * p)) >= sieve_begin) ? (j - (2 * p)) : j) = false;
+			*(((j - p) >= sieve_begin) ? (j - p) : j) = false;
+
+			// Stop marking 15p early, then handle cleanup after the loop.
+			const sieve_t* const padded_end = sieve_end - fifteen_p;
+
+			do
+			{
+				// skip +0
+				*(j + p) = false;
+				*(j + (2 * p)) = false;
+				// skip three
+				*(j + (4 * p)) = false;
+				// skip five
+				// skip six
+				*(j + (7 * p)) = false;
+				*(j + (8 * p)) = false;
+				// skip nine
+				// skip 10
+				*(j + (11 * p)) = false;
+				// skip 12
+				*(j + (13 * p)) = false;
+				*(j + (14 * p)) = false;
+
+				j += fifteen_p;
+			} while (j < padded_end);
+
+			// Same as above, perform any remaining writes
+			*(((j + p) < sieve_end) ? (j + p) : j) = false;
+			*(((j + (2 * p)) < sieve_end) ? (j + (2 * p)) : j) = false;
+			*(((j + (4 * p)) < sieve_end) ? (j + (4 * p)) : j) = false;
+			*(((j + (7 * p)) < sieve_end) ? (j + (7 * p)) : j) = false;
+			*(((j + (8 * p)) < sieve_end) ? (j + (8 * p)) : j) = false;
+			*(((j + (11 * p)) < sieve_end) ? (j + (11 * p)) : j) = false;
+			*(((j + (13 * p)) < sieve_end) ? (j + (13 * p)) : j) = false;
+			*(((j + (14 * p)) < sieve_end) ? (j + (14 * p)) : j) = false;
+
+			// Calculate the offset and update the cache for the next sieving
+			*cache_ptr = sieve_prime_t((j + fifteen_p) - sieve_end);
+
+			++prime_ptr;
+			++cache_ptr;
+
+			if (p == last_prime_for_stepping_by_fifteen) break;
+		}
 
 		for (;;)
 		{
@@ -130,7 +205,7 @@ namespace mbp
 				j += three_p;
 			} while (j < padded_end);
 
-			// Same as above, we have 0, 1, or 2 remaining writes to perform, and j must be advanced for caching
+			// Same as above, we have 0, 1, or 2 remaining writes to perform
 			*(((j + p) < sieve_end) ? (j + p) : j) = false;
 			*(((j + two_p) < sieve_end) ? (j + two_p) : j) = false;
 
