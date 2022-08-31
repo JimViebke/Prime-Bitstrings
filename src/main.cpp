@@ -244,6 +244,138 @@ namespace mbp
 
 
 
+	tests_are_inlined const size_t* const gather_sieve_results(size_t* sieve_candidates,
+															   const sieve_t* sieve_ptr, const sieve_t* const sieve_end,
+															   size_t number)
+	{
+		static_assert(static_sieve_size % 15 == 0);
+		for (; sieve_ptr < sieve_end; sieve_ptr += 15, number += 30)
+		{
+			// By working in iterations of 15, we know every 3rd and every 5th value is false.
+			// Don't check those ones.
+			// 
+			// 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14   <-- offset
+			//    x  x     x        x  x        x     x  x   <-- values to check
+			// x        x     x  x        x  x     x         <-- values to ignore
+
+			*sieve_candidates = number + 2; // number + offset*2
+			sieve_candidates += *(sieve_ptr + 1);
+
+			*sieve_candidates = number + 4;
+			sieve_candidates += *(sieve_ptr + 2);
+
+			*sieve_candidates = number + 8;
+			sieve_candidates += *(sieve_ptr + 4);
+
+			*sieve_candidates = number + 14;
+			sieve_candidates += *(sieve_ptr + 7);
+
+			*sieve_candidates = number + 16;
+			sieve_candidates += *(sieve_ptr + 8);
+
+			*sieve_candidates = number + 22;
+			sieve_candidates += *(sieve_ptr + 11);
+
+			*sieve_candidates = number + 26;
+			sieve_candidates += *(sieve_ptr + 13);
+
+			*sieve_candidates = number + 28;
+			sieve_candidates += *(sieve_ptr + 14);
+		}
+
+		return sieve_candidates;
+	}
+
+	tests_are_inlined const size_t* const prime_popcount_test(size_t* passed_pc_test_ptr,
+															  const size_t* const candidates_end,
+															  const size_t& tiny_primes_lookup)
+	{
+		const size_t* const candidates_end_rounded = candidates_end - (size_t(candidates_end - passed_pc_test_ptr) & 0b11);
+		const size_t* candidate_ptr = passed_pc_test_ptr;
+
+		for (; candidate_ptr < candidates_end_rounded; candidate_ptr += 4)
+		{
+			const size_t c0 = *candidate_ptr;
+			const size_t pc_c0 = pop_count(c0);
+			*passed_pc_test_ptr = c0;
+			if (tiny_primes_lookup & (1ull << pc_c0)) ++passed_pc_test_ptr;
+
+			const size_t c1 = *(candidate_ptr + 1);
+			const size_t pc_c1 = pop_count(c1);
+			*passed_pc_test_ptr = c1;
+			if (tiny_primes_lookup & (1ull << pc_c1)) ++passed_pc_test_ptr;
+
+			const size_t c2 = *(candidate_ptr + 2);
+			const size_t pc_c2 = pop_count(c2);
+			*passed_pc_test_ptr = c2;
+			if (tiny_primes_lookup & (1ull << pc_c2)) ++passed_pc_test_ptr;
+
+			const size_t c3 = *(candidate_ptr + 3);
+			const size_t pc_c3 = pop_count(c3);
+			*passed_pc_test_ptr = c3;
+			if (tiny_primes_lookup & (1ull << pc_c3)) ++passed_pc_test_ptr;
+		}
+
+		// handle last few elements
+		for (; candidate_ptr < candidates_end; ++candidate_ptr)
+		{
+			const size_t c0 = *candidate_ptr;
+			const size_t pc_c0 = pop_count(c0);
+			*passed_pc_test_ptr = c0;
+			if (tiny_primes_lookup & (1ull << pc_c0)) ++passed_pc_test_ptr;
+		}
+
+		return passed_pc_test_ptr;
+	}
+
+	tests_are_inlined const size_t* const gcd_test(size_t* passed_gcd_test_ptr,
+												   const size_t* const candidates_end,
+												   const size_t& gcd_lookup)
+	{
+		const size_t* const candidates_end_rounded = candidates_end - (size_t(candidates_end - passed_gcd_test_ptr) & 0b11);
+		const size_t* candidate_ptr = passed_gcd_test_ptr;
+
+		for (; candidate_ptr < candidates_end_rounded; candidate_ptr += 4)
+		{
+			const size_t n0 = *candidate_ptr;
+			const size_t n0_pca = pop_count(n0 & 0xAAAAAAAAAAAAAAAA);
+			const size_t n0_pcb = pop_count(n0 & 0x5555555555555555);
+			*passed_gcd_test_ptr = n0;
+			if (gcd_lookup & (1ull << (n0_pca + 32 - n0_pcb))) ++passed_gcd_test_ptr;
+
+			const size_t n1 = *(candidate_ptr + 1);
+			const size_t n1_pca = pop_count(n1 & 0xAAAAAAAAAAAAAAAA);
+			const size_t n1_pcb = pop_count(n1 & 0x5555555555555555);
+			*passed_gcd_test_ptr = n1;
+			if (gcd_lookup & (1ull << (n1_pca + 32 - n1_pcb))) ++passed_gcd_test_ptr;
+
+			const size_t n2 = *(candidate_ptr + 2);
+			const size_t n2_pca = pop_count(n2 & 0xAAAAAAAAAAAAAAAA);
+			const size_t n2_pcb = pop_count(n2 & 0x5555555555555555);
+			*passed_gcd_test_ptr = n2;
+			if (gcd_lookup & (1ull << (n2_pca + 32 - n2_pcb))) ++passed_gcd_test_ptr;
+
+			const size_t n3 = *(candidate_ptr + 3);
+			const size_t n3_pca = pop_count(n3 & 0xAAAAAAAAAAAAAAAA);
+			const size_t n3_pcb = pop_count(n3 & 0x5555555555555555);
+			*passed_gcd_test_ptr = n3;
+			if (gcd_lookup & (1ull << (n3_pca + 32 - n3_pcb))) ++passed_gcd_test_ptr;
+		}
+
+		// handle last few elements
+		for (; candidate_ptr < candidates_end; ++candidate_ptr)
+		{
+			const size_t n0 = *candidate_ptr;
+			const auto n0_pca = pop_count(n0 & 0xAAAAAAAAAAAAAAAA);
+			const auto n0_pcb = pop_count(n0 & 0x5555555555555555);
+
+			*passed_gcd_test_ptr = n0;
+			passed_gcd_test_ptr += bool(gcd_lookup & (1ull << (n0_pca + 32 - n0_pcb)));
+		}
+
+		return passed_gcd_test_ptr;
+	}
+
 	consteval auto generate_bitmask_lookup()
 	{
 		// +1 so bitmasks[n_of_rems] is always safe
@@ -268,7 +400,7 @@ namespace mbp
 	using popcount_t = uint16_t;
 	static std::array<mbp::aligned64<popcount_t, 64>, 64> popcounts{};
 
-	__forceinline bool has_small_divisor(const size_t number)
+	tests_are_inlined bool has_small_divisor(const size_t number)
 	{
 		using namespace div_test;
 
@@ -624,153 +756,28 @@ namespace mbp
 			sieve = static_sieve;
 			partial_sieve(sieve);
 
-			const size_t number_before_loop = number;
+			const size_t number_before_tests = number;
 
 
 
 			// 1. Collect candidates that have not been marked composite by the sieve.
+			const size_t* const sieve_candidates = gather_sieve_results(scratch, sieve.data(), sieve.data() + sieve.size(), number);
 
-			// Safe to move these higher? Can v1 = const_v2 ever move v1?
-			const char* const sieve_begin = (const char*)sieve.data();
-			const char* const sieve_end = sieve_begin + sieve.size();
-
-			const char* sieve_ptr = sieve_begin;
-
-			static_assert(static_sieve_size % 15 == 0);
-			size_t* sieve_candidates = scratch;
-			for (; sieve_ptr < sieve_end; sieve_ptr += 15, number += 30)
-			{
-				// By working in iterations of 15, we know every 3rd and every 5th value is false.
-				// Don't check those ones.
-				// 
-				// 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14   <-- offset
-				//    x  x     x        x  x        x     x  x   <-- values to check
-				// x        x     x  x        x  x     x         <-- values to ignore
-
-				*sieve_candidates = number + 2;
-				sieve_candidates += *(sieve_ptr + 1);
-
-				*sieve_candidates = number + 4;
-				sieve_candidates += *(sieve_ptr + 2);
-
-				*sieve_candidates = number + 8;
-				sieve_candidates += *(sieve_ptr + 4);
-
-				*sieve_candidates = number + 14;
-				sieve_candidates += *(sieve_ptr + 7);
-
-				*sieve_candidates = number + 16;
-				sieve_candidates += *(sieve_ptr + 8);
-
-				*sieve_candidates = number + 22;
-				sieve_candidates += *(sieve_ptr + 11);
-
-				*sieve_candidates = number + 26;
-				sieve_candidates += *(sieve_ptr + 13);
-
-				*sieve_candidates = number + 28;
-				sieve_candidates += *(sieve_ptr + 14);
-			}
-
-			count_passes(a += (sieve_candidates - scratch)); // How many ints passed the sieve?
-
-
+			count_passes(a += (sieve_candidates - scratch));
 
 			// 2. Collect candidates that have a prime number of bits set
-
-			const size_t* const candidates_end = sieve_candidates; // already points one past the end
-			const size_t* const candidates_end_rounded = candidates_end - ((candidates_end - scratch) % 4);
-			const size_t* candidate_ptr = scratch;
-
-			size_t* passed_pc_test_ptr = scratch;
-			for (; candidate_ptr < candidates_end_rounded; candidate_ptr += 4)
-			{
-				const size_t c0 = *candidate_ptr;
-				const size_t pc_c0 = pop_count(c0);
-				*passed_pc_test_ptr = c0;
-				if (tiny_primes_lookup & (1ull << pc_c0)) ++passed_pc_test_ptr;
-
-				const size_t c1 = *(candidate_ptr + 1);
-				const size_t pc_c1 = pop_count(c1);
-				*passed_pc_test_ptr = c1;
-				if (tiny_primes_lookup & (1ull << pc_c1)) ++passed_pc_test_ptr;
-
-				const size_t c2 = *(candidate_ptr + 2);
-				const size_t pc_c2 = pop_count(c2);
-				*passed_pc_test_ptr = c2;
-				if (tiny_primes_lookup & (1ull << pc_c2)) ++passed_pc_test_ptr;
-
-				const size_t c3 = *(candidate_ptr + 3);
-				const size_t pc_c3 = pop_count(c3);
-				*passed_pc_test_ptr = c3;
-				if (tiny_primes_lookup & (1ull << pc_c3)) ++passed_pc_test_ptr;
-			}
-
-			// handle last few elements
-			for (; candidate_ptr < candidates_end; ++candidate_ptr)
-			{
-				const size_t c0 = *candidate_ptr;
-				const size_t pc_c0 = pop_count(c0);
-				*passed_pc_test_ptr = c0;
-				if (tiny_primes_lookup & (1ull << pc_c0)) ++passed_pc_test_ptr;
-			}
+			const size_t* const passed_pc_test_ptr = prime_popcount_test(scratch, sieve_candidates, tiny_primes_lookup);
 
 			count_passes(b += (passed_pc_test_ptr - scratch));
 
-
-
 			// 3. Collect candidates with an alternating bitsum that shares a GCD of 1 with a product of primes
+			const size_t* const passed_gcd_test_ptr = gcd_test(scratch, passed_pc_test_ptr, gcd_lookup);
 
-			const size_t* const gcd_candidates_end = passed_pc_test_ptr;
-			const size_t* const gcd_candidates_end_rounded = gcd_candidates_end - ((gcd_candidates_end - scratch) % 4);
-			candidate_ptr = scratch; // reset
-
-			size_t* passed_gcd_test_ptr = scratch;
-			for (; candidate_ptr < gcd_candidates_end_rounded; candidate_ptr += 4)
-			{
-				const size_t n0 = *candidate_ptr;
-				const size_t n0_pca = pop_count(n0 & 0xAAAAAAAAAAAAAAAA);
-				const size_t n0_pcb = pop_count(n0 & 0x5555555555555555);
-				*passed_gcd_test_ptr = n0;
-				if (gcd_lookup & (1ull << (n0_pca + 32 - n0_pcb))) ++passed_gcd_test_ptr;
-
-				const size_t n1 = *(candidate_ptr + 1);
-				const size_t n1_pca = pop_count(n1 & 0xAAAAAAAAAAAAAAAA);
-				const size_t n1_pcb = pop_count(n1 & 0x5555555555555555);
-				*passed_gcd_test_ptr = n1;
-				if (gcd_lookup & (1ull << (n1_pca + 32 - n1_pcb))) ++passed_gcd_test_ptr;
-
-				const size_t n2 = *(candidate_ptr + 2);
-				const size_t n2_pca = pop_count(n2 & 0xAAAAAAAAAAAAAAAA);
-				const size_t n2_pcb = pop_count(n2 & 0x5555555555555555);
-				*passed_gcd_test_ptr = n2;
-				if (gcd_lookup & (1ull << (n2_pca + 32 - n2_pcb))) ++passed_gcd_test_ptr;
-
-				const size_t n3 = *(candidate_ptr + 3);
-				const size_t n3_pca = pop_count(n3 & 0xAAAAAAAAAAAAAAAA);
-				const size_t n3_pcb = pop_count(n3 & 0x5555555555555555);
-				*passed_gcd_test_ptr = n3;
-				if (gcd_lookup & (1ull << (n3_pca + 32 - n3_pcb))) ++passed_gcd_test_ptr;
-			}
-
-			// handle last few elements
-			for (; candidate_ptr < gcd_candidates_end; ++candidate_ptr)
-			{
-				const size_t n0 = *candidate_ptr;
-				const auto n0_pca = pop_count(n0 & 0xAAAAAAAAAAAAAAAA);
-				const auto n0_pcb = pop_count(n0 & 0x5555555555555555);
-
-				*passed_gcd_test_ptr = n0;
-				passed_gcd_test_ptr += bool(gcd_lookup & (1ull << (n0_pca + 32 - n0_pcb)));
-			}
-
-
+			count_passes(c += (passed_gcd_test_ptr - scratch));
 
 			for (size_t* n = scratch; n < passed_gcd_test_ptr; ++n)
 			{
 				number = *n;
-
-				count_passes(++c);
 
 				// Bail if n has a small prime factor in any base
 				if (has_small_divisor(number)) continue;
@@ -817,12 +824,10 @@ namespace mbp
 				mpz_number.set_str(bin_str, 12);
 				if (!mpir_is_prime(mpz_number, r)) { log_result(number, 11); continue; }
 
-				mpz_number.set_str(bin_str, 13);
-				if (!mpir_is_prime(mpz_number, r)) { log_result(number, 12); continue; }
+				log_result(number, 12);
+			}
 
-			} // end hot loop
-
-			number = number_before_loop + 2 * sieve.size();
+			number = number_before_tests + 2 * sieve.size();
 
 
 
@@ -838,7 +843,7 @@ namespace mbp
 			}
 		#endif
 
-		} // end outer loop
+		} // end main loop
 
 		std::cout << "Finished. " << current_time_in_ms() - start << " ms elapsed\n";
 

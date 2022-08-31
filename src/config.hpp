@@ -80,3 +80,9 @@ namespace mbp
 #else
 #define count_passes(...)
 #endif
+
+#if 1 // toggle inlining on sieve, popcount, GCD, and div tests
+#define tests_are_inlined __forceinline
+#else
+#define tests_are_inlined __declspec(noinline)
+#endif
