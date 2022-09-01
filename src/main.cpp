@@ -776,9 +776,9 @@ namespace mbp
 
 			count_passes(c += (passed_gcd_test_ptr - scratch));
 
-			for (size_t* n = scratch; n < passed_gcd_test_ptr; ++n)
+			for (size_t* candidate = scratch; candidate < passed_gcd_test_ptr; )
 			{
-				number = *n;
+				number = *candidate++;
 
 				// Bail if n has a small prime factor in any base
 				if (has_small_divisor(number)) continue;
