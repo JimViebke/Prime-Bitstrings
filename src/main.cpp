@@ -338,27 +338,27 @@ namespace mbp
 		for (; candidate_ptr < candidates_end_rounded; candidate_ptr += 4)
 		{
 			const size_t n0 = *candidate_ptr;
+			*passed_gcd_test_ptr = n0;
 			const size_t n0_pca = pop_count(n0 & 0xAAAAAAAAAAAAAAAA);
 			const size_t n0_pcb = pop_count(n0 & 0x5555555555555555);
-			*passed_gcd_test_ptr = n0;
 			if (gcd_lookup & (1ull << (n0_pca + 32 - n0_pcb))) ++passed_gcd_test_ptr;
 
 			const size_t n1 = *(candidate_ptr + 1);
+			*passed_gcd_test_ptr = n1;
 			const size_t n1_pca = pop_count(n1 & 0xAAAAAAAAAAAAAAAA);
 			const size_t n1_pcb = pop_count(n1 & 0x5555555555555555);
-			*passed_gcd_test_ptr = n1;
 			if (gcd_lookup & (1ull << (n1_pca + 32 - n1_pcb))) ++passed_gcd_test_ptr;
 
 			const size_t n2 = *(candidate_ptr + 2);
+			*passed_gcd_test_ptr = n2;
 			const size_t n2_pca = pop_count(n2 & 0xAAAAAAAAAAAAAAAA);
 			const size_t n2_pcb = pop_count(n2 & 0x5555555555555555);
-			*passed_gcd_test_ptr = n2;
 			if (gcd_lookup & (1ull << (n2_pca + 32 - n2_pcb))) ++passed_gcd_test_ptr;
 
 			const size_t n3 = *(candidate_ptr + 3);
+			*passed_gcd_test_ptr = n3;
 			const size_t n3_pca = pop_count(n3 & 0xAAAAAAAAAAAAAAAA);
 			const size_t n3_pcb = pop_count(n3 & 0x5555555555555555);
-			*passed_gcd_test_ptr = n3;
 			if (gcd_lookup & (1ull << (n3_pca + 32 - n3_pcb))) ++passed_gcd_test_ptr;
 		}
 
