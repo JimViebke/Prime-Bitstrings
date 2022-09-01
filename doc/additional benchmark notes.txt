@@ -52,33 +52,28 @@ Div testing does not need to check against 2.
 - Letting the full sieve be a multiple of the static sieve ended up being slower
 
 
-
-Vectorized/SIMD div tests were prohibitively expensive due to the lack of a SIMD hardware popcount in AVX2 (added in AVX512). The vectorized software popcount used required several constants taking up precious SIMD registers (the four different 0x consts, plus the 1, 2, 4, and 24 used for bitshifting).
-
-
-
 - Searching permutations of bits was slower, presumably because it's hard to beat sieving
 - The small amounts of duplicate MPIR code aren't going anywhere unless MPIR's .c files are compiled as part of the project
 
 - /favor:INTEL64 produced identical asm
-- The second inner div test loop is too small for OpenMP to vectorize
-
 
 
 There is substantial variation in the fraction of numbers that pass the sieve, popcount, and GCD tests.
 Batches of 25 billion integers can fluctuate calls to has_small_prime_factor by up to a factor of 2.
 
 
+Using a constexpr check to save a multiply on the last iteration of a jump table caused a performance regression.
 
-Loading the mask constant (01010101...) inside or outside of the avx2 find loop did not produce a noticeable difference.
+
+partial_sieve() is slower when inlined.
+gather_sieve_results(), prime_popcount_test(), gcd_test(), and has_small_divisor() are slower when not inlined.
 
 
-Using the following to save a multiply on the last iteration of a jump table causes a performance regression
-	case(IDX(n) + 1):
-		if constexpr (IDX(n) != 0)
-			rem += size_t(my_pcs[IDX(n)]) * my_rems[IDX(n)];
-		else
-			rem += size_t(my_pcs[IDX(n)]);
+
+
+
+
+
 
 
 

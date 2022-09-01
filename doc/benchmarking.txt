@@ -63,6 +63,7 @@ Calculate change: 1 - (  /  )
  4970 ms : Filter which primes sieve in steps of 3 (<1% faster)
  4939 ms : Sieve smallest primes in steps of 15 (<1% faster)
  4906 ms : Copy static sieve using SIMD vectorized_copy (<1% faster)
+ 4871 ms : Don't inline the newer sieve function (<1% faster)
 
 
 

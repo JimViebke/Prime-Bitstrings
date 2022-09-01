@@ -97,7 +97,7 @@ namespace mbp
 		}
 	}
 
-	tests_are_inlined void partial_sieve(sieve_container& sieve)
+	void partial_sieve(sieve_container& sieve)
 	{
 		// *2 because we always take at least one step, and still need step*p padding
 		static_assert(last_prime_for_stepping_by_fifteen < static_sieve_size / (15 * 2));
