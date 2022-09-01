@@ -29,12 +29,12 @@ namespace mbp
 														 static_sieve_primes.end(), size_t(1), std::multiplies());
 
 	using sieve_t = uint8_t;
-	using sieve_container = std::vector<sieve_t>;
-	// using sieve_container = std::array<sieve_t, static_sieve_size>;
+	// using sieve_container = std::vector<sieve_t>;
+	using sieve_container = std::array<sieve_t, static_sieve_size>;
 	const sieve_container generate_static_sieve()
 	{
-		sieve_container sieve(static_sieve_size, true);
-		// sieve_container sieve{}; std::fill(begin(sieve), end(sieve), true);
+		// sieve_container sieve(static_sieve_size, true);
+		sieve_container sieve{}; std::fill(begin(sieve), end(sieve), true);
 
 		// for each prime, mark off all multiples
 		for (const auto p : static_sieve_primes)
@@ -43,7 +43,7 @@ namespace mbp
 
 		return sieve;
 	}
-	const sieve_container static_sieve = generate_static_sieve();
+	static alignas(sieve_alignment) const sieve_container static_sieve = generate_static_sieve();
 
 	// When sieving in steps of (some factor N) * (some prime P), we may have skipped a few multiples of P on
 	// on either end of the sieve. We handle these with a set of branchless writes on each end of the sieve.
@@ -414,8 +414,8 @@ namespace mbp
 		bool found_div = false;
 	#endif
 
-		bool which_way_boss = div_tests.begin()->is_first_with_n_remainders;
-		n_of_remainders_t n_of_rems_boss = div_tests.begin()->n_of_remainders;
+		bool which_way_boss = div_tests.front().is_first_with_n_remainders;
+		n_of_remainders_t n_of_rems_boss = div_tests.front().n_of_remainders;
 
 		for (div_test_const auto& div_test : div_tests)
 		{
@@ -715,8 +715,7 @@ namespace mbp
 		size_t number = benchmark_mode ? bm_start : load_from_results();
 		mpz_class mpz_number = 0ull; // it's a surprise tool that will help us later
 
-		sieve_container sieve = static_sieve;
-		if ((size_t)sieve.data() % 8 != 0) { std::cout << "unaligned!"; std::cin.ignore(); }
+		static alignas(sieve_alignment) sieve_container sieve = static_sieve;
 
 		// Round starting number down to the nearest odd multiple of the sieve sieze
 		number -= static_sieve.size(); // n -= k
@@ -753,14 +752,16 @@ namespace mbp
 		while (benchmark_mode ? number < bm_stop : true)
 		{
 			// Perform additional sieving on the static sieve
-			sieve = static_sieve;
+			vectorized_copy((__m256i*) sieve.data(),
+							(__m256i*) static_sieve.data(),
+							static_sieve.size());
 			partial_sieve(sieve);
 
 			const size_t number_before_tests = number;
 
 
 
-			// 1. Collect candidates that have not been marked composite by the sieve.
+			// 1. Collect candidates that have not been marked composite by the sieve
 			const size_t* const sieve_candidates = gather_sieve_results(scratch, sieve.data(), sieve.data() + sieve.size(), number);
 
 			count_passes(a += (sieve_candidates - scratch));
