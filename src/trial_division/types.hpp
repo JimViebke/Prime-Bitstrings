@@ -10,8 +10,7 @@ namespace mbp::div_test
 	using base_t = narrowest_uint_for_val<up_to_base>;
 	using prime_idx_t = narrowest_uint_for_val<div_test::n_of_primes>;
 	using n_of_remainders_t = narrowest_uint_for_val<div_test::max_remainders>;
-	// using remainder_t = narrowest_uint_for_val<mbp::small_primes_lookup[div_test::n_of_primes - 1]>;
-	using remainder_t = uint16_t; // sized for SIMD instructions
+	using remainder_t = narrowest_uint_for_val<mbp::small_primes_lookup[div_test::n_of_primes - 1]>;
 
 	class div_test_t
 	{
@@ -26,7 +25,7 @@ namespace mbp::div_test
 		n_of_remainders_t n_of_remainders = 0; // is also the index of the req'd bitmask
 		bool is_first_with_n_remainders = false;
 
-		std::array<remainder_t, max_remainders> remainders{ 0 };
+		std::array<remainder_t, 64> remainders{ 0 };
 	};
 
 	namespace detail
@@ -39,7 +38,7 @@ namespace mbp::div_test
 
 			prime_idx_t prime_idx = 0;
 			n_of_remainders_t n_of_remainders = 0;
-			std::array<remainder_t, max_remainders> remainders{ 0 };
+			std::array<remainder_t, 64> remainders{ 0 };
 		};
 	}
 

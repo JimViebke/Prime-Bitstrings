@@ -64,6 +64,7 @@ Calculate change: 1 - (  /  )
  4939 ms : Sieve smallest primes in steps of 15 (<1% faster)
  4906 ms : Copy static sieve using SIMD vectorized_copy (<1% faster)
  4871 ms : Don't inline the newer sieve function (<1% faster)
+ 3779 ms : Perf Wars: Episode III: Return of the SIMD (vectorize has_small_divisor) (~22% faster)
 
 
 

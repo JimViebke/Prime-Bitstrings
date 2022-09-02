@@ -134,6 +134,12 @@ namespace mbp::div_test
 					.n_of_remainders = udt.n_of_remainders,
 					.remainders = udt.remainders };
 
+				// Repeat the remainders so all div tests have 64 terms
+				for (size_t i = dt.n_of_remainders; i < 64; ++i)
+				{
+					dt.remainders[i] = dt.remainders[i - dt.n_of_remainders];
+				}
+
 			#if analyze_div_tests
 				// We do need to copy this if we're in analyze mode
 				dt.base = udt.base;

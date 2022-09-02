@@ -1,5 +1,10 @@
 
+// Hacky way to hide the contents of zmmintrin.h
+// For some reason MSVC always includes it from immintrin.h
+#define _ZMMINTRIN_H_INCLUDED
+
 #define VCL_NAMESPACE vcl
+#define MAX_VECTOR_SIZE 256
 #include "../lib/vcl/vectorclass.h"
 
 #include <bitset>
@@ -376,30 +381,6 @@ namespace mbp
 		return passed_gcd_test_ptr;
 	}
 
-	consteval auto generate_bitmask_lookup()
-	{
-		// +1 so bitmasks[n_of_rems] is always safe
-		std::array<size_t, div_test::max_remainders + 1> bitmasks = { 0 };
-
-		for (size_t i = 1; i < bitmasks.size(); ++i)
-		{
-			size_t bitmask = 0;
-			for (size_t j = 0; j < 64; j += i)
-			{
-				bitmask <<= i;
-				bitmask |= 1;
-			}
-			bitmasks[i] = bitmask;
-		}
-
-		return bitmasks;
-	}
-	constexpr std::array<size_t, div_test::max_remainders + 1> bitmask_lookup = generate_bitmask_lookup();
-
-	// takes N^2 memory, even though we only need (N^2) / 2
-	using popcount_t = uint16_t;
-	static std::array<mbp::aligned64<popcount_t, 64>, 64> popcounts{};
-
 	tests_are_inlined bool has_small_divisor(const size_t number)
 	{
 		using namespace div_test;
@@ -414,171 +395,21 @@ namespace mbp
 		bool found_div = false;
 	#endif
 
-		bool which_way_boss = div_tests.front().is_first_with_n_remainders;
-		n_of_remainders_t n_of_rems_boss = div_tests.front().n_of_remainders;
+		static_assert(sizeof(remainder_t) == 1);
 
-		for (div_test_const auto& div_test : div_tests)
+		// Convert each half of number to a 32-byte bitmask
+		const uint256_t mask_lower = expand_bits_to_bytes(number & uint32_t(-1));
+		const uint256_t mask_upper = expand_bits_to_bytes(number >> 32);
+
+		for (div_test_const div_test_t& div_test : div_tests)
 		{
-			size_t rem = 0;
+			uint256_t rems_lower = _mm256_loadu_si256((uint256_t*)&div_test.remainders[0]);
+			uint256_t rems_upper = _mm256_loadu_si256((uint256_t*)&div_test.remainders[32]);
 
-			//const size_t n_of_rems = div_test.n_of_remainders;
-			//__assume(n_of_rems > 0);
-			//__assume(n_of_rems <= max_remainders);
+			rems_lower = _mm256_and_si256(mask_lower, rems_lower);
+			rems_upper = _mm256_and_si256(mask_upper, rems_upper);
 
-			const auto& my_rems = div_test.remainders;
-
-			__assume(n_of_rems_boss > 0);
-			__assume(n_of_rems_boss <= max_remainders);
-
-
-			if (which_way_boss)
-			{
-				which_way_boss = *((&div_test.is_first_with_n_remainders) + sizeof(div_test));
-
-				const size_t my_bitmask = bitmask_lookup[n_of_rems_boss];
-				auto& my_pcs = popcounts[n_of_rems_boss];
-
-				// for switch (n), run cases n through 1, where the index is n-1 through 0
-				constexpr size_t start = __LINE__ + 10;
-			#define IDX(n) ((max_remainders - (n - start)) - 1)
-			#define CASE(n) [[fallthrough]]; case(IDX(n) + 1): \
-				{ \
-				const auto pc = pop_count(number & (my_bitmask << IDX(n))); \
-					my_pcs[IDX(n)] = popcount_t(pc); \
-					rem += pc * my_rems[IDX(n)]; \
-				}
-				switch (n_of_rems_boss) // handle cases N through 1
-				{
-					CASE(__LINE__); // case (max)
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__); // case (1)
-					static_assert(start + max_remainders == __LINE__);
-					break;
-				default:
-					__assume(false);
-				}
-			#undef CASE
-			#undef IDX
-			}
-			else
-			{
-				which_way_boss = *((&div_test.is_first_with_n_remainders) + sizeof(div_test));
-
-				const auto& my_pcs = popcounts[n_of_rems_boss];
-
-				// for switch (n), run cases n through 1, where the index is n-1 through 0
-				constexpr size_t start = __LINE__ + 5;
-			#define IDX(n) ((max_remainders - (n - start)) - 1)
-			#define CASE(n) [[fallthrough]]; case(IDX(n) + 1): rem += size_t(my_pcs[IDX(n)]) * my_rems[IDX(n)];
-				switch (n_of_rems_boss)
-				{
-					CASE(__LINE__); // case (max)
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__);
-					CASE(__LINE__); // case (1)
-					static_assert(start + max_remainders == __LINE__);
-					break;
-				default:
-					__assume(false);
-				}
-			#undef CASE
-			#undef IDX
-			}
-
-			n_of_rems_boss = *((&div_test.n_of_remainders) + sizeof(div_test));
+			const size_t rem = vcl_hadd2_x(rems_upper, rems_lower);
 
 			if (has_small_prime_factor(rem, div_test.prime_idx))
 			{
