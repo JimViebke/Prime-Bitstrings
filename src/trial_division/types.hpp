@@ -22,8 +22,7 @@ namespace mbp::div_test
 	#endif
 
 		prime_idx_t prime_idx = 0;
-		n_of_remainders_t n_of_remainders = 0; // is also the index of the req'd bitmask
-		bool is_first_with_n_remainders = false;
+		n_of_remainders_t n_of_remainders = 0;
 
 		std::array<remainder_t, 64> remainders{ 0 };
 	};

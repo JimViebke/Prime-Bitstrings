@@ -32,9 +32,9 @@ namespace mbp::div_test
 					// Always suppress hardcoded div tests
 					if (base == 3 && p == 5) continue;
 
-					if (base == 3 && p == 7) continue;
-					if (base == 4 && p == 7) continue;
-					if (base == 5 && p == 7) continue;
+					//if (base == 3 && p == 7) continue;
+					//if (base == 4 && p == 7) continue;
+					//if (base == 5 && p == 7) continue;
 
 				#if !analyze_div_tests or suppress_extra_div_tests
 					if (base == 2 && p == 3) continue;
@@ -104,12 +104,12 @@ namespace mbp::div_test
 				dt.hits = cached_hitcount_for(dt.base, small_primes_lookup[dt.prime_idx]);
 			}
 
-			// Order div tests by worthwhileness
+			// Order div tests by prime divisor
 			std::sort(uncompressed_dts.begin(), uncompressed_dts.end(), [](const auto& a, const auto& b)
 					  {
 						  //if (a.prime_idx == b.prime_idx)
 							 // return a.n_of_remainders < b.n_of_remainders;
-						  //return a.prime_idx < b.prime_idx;
+						  // return a.prime_idx < b.prime_idx;
 
 						  //if (a.n_of_remainders == b.n_of_remainders)
 							 // return a.prime_idx < b.prime_idx;
@@ -120,8 +120,12 @@ namespace mbp::div_test
 							 // size_t(b.n_of_remainders) * small_primes_lookup[b.prime_idx];
 
 						  return
-							  double(a.n_of_remainders) * double(small_primes_lookup[a.prime_idx]) / (1. * double(a.hits)) <
-							  double(b.n_of_remainders) * double(small_primes_lookup[b.prime_idx]) / (1. * double(b.hits));
+							  1.0 / double(a.hits) <
+							  1.0 / double(b.hits);
+
+						  //return
+							 // double(a.n_of_remainders) * double(small_primes_lookup[a.prime_idx]) / (1. * double(a.hits)) <
+							 // double(b.n_of_remainders) * double(small_primes_lookup[b.prime_idx]) / (1. * double(b.hits));
 					  });
 
 			std::vector<div_test_t> div_tests;
@@ -146,19 +150,6 @@ namespace mbp::div_test
 			#endif
 
 				div_tests.push_back(dt);
-			}
-
-			// Mark each div test that is the first test with N remainders
-			for (size_t i = 0; i <= max_remainders; ++i)
-			{
-				for (auto& dt : div_tests)
-				{
-					if (dt.n_of_remainders == i)
-					{
-						dt.is_first_with_n_remainders = true;
-						break;
-					}
-				}
 			}
 
 			return div_tests;

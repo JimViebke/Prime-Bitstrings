@@ -243,7 +243,7 @@ namespace mbp::div_test
 			}
 		}
 
-		// deliberate compile-time failure if a test doesn't have a corresponding entry
+		return uint32_t(-1);
 	}
 
 }
