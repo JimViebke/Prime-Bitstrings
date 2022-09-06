@@ -403,13 +403,16 @@ namespace mbp
 		const uint256_t mask_lower = util::expand_bits_to_bytes(number & uint32_t(-1));
 		const uint256_t mask_upper = util::expand_bits_to_bytes(number >> 32);
 
+		uint256_t ymm0 = _mm256_loadu_si256((uint256_t*)&div_tests[0].remainders[0]);
+		uint256_t ymm1 = _mm256_loadu_si256((uint256_t*)&div_tests[0].remainders[32]);
+
 		for (div_test_const div_test_t& div_test : div_tests)
 		{
-			uint256_t rems_lower = _mm256_loadu_si256((uint256_t*)&div_test.remainders[0]);
-			uint256_t rems_upper = _mm256_loadu_si256((uint256_t*)&div_test.remainders[32]);
+			const uint256_t rems_lower = _mm256_and_si256(mask_lower, ymm0);
+			const uint256_t rems_upper = _mm256_and_si256(mask_upper, ymm1);
 
-			rems_lower = _mm256_and_si256(mask_lower, rems_lower);
-			rems_upper = _mm256_and_si256(mask_upper, rems_upper);
+			ymm0 = _mm256_loadu_si256((uint256_t*)(((uint8_t*)&div_test.remainders) + sizeof(div_test_t) + 0));
+			ymm1 = _mm256_loadu_si256((uint256_t*)(((uint8_t*)&div_test.remainders) + sizeof(div_test_t) + 32));
 
 			const size_t rem = util::vcl_hadd2_x(rems_upper, rems_lower);
 
