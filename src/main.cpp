@@ -144,7 +144,7 @@ namespace mbp
 
 			do
 			{
-				// skip +0
+				// skip 0
 				*(j + p) = false;
 				*(j + (2 * p)) = false;
 				// skip three
@@ -256,7 +256,7 @@ namespace mbp
 		static_assert(static_sieve_size % 15 == 0);
 		for (; sieve_ptr < sieve_end; sieve_ptr += 15, number += 30)
 		{
-			// By working in iterations of 15, we know every 3rd and every 5th value is false.
+			// By working in steps of 15, we know every 3rd and every 5th value is false.
 			// Don't check those ones.
 			// 
 			// 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14   <-- offset
