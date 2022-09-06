@@ -232,7 +232,7 @@ namespace mbp::div_test
 
 	namespace detail
 	{
-		constexpr size_t calculate_prime_factor_lookup_size()
+		consteval size_t calculate_prime_factor_lookup_size()
 		{
 			size_t largest_remainders_sum = 0;
 

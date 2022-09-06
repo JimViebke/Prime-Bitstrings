@@ -1,7 +1,9 @@
 
 // Hacky way to hide the contents of zmmintrin.h
 // For some reason MSVC always includes it from immintrin.h
+#ifndef _ZMMINTRIN_H_INCLUDED
 #define _ZMMINTRIN_H_INCLUDED
+#endif
 
 #define VCL_NAMESPACE vcl
 #define MAX_VECTOR_SIZE 256
@@ -22,8 +24,8 @@
 #include "math/franken_mpir.hpp"
 #include "math/math.hpp"
 #include "trial_division/multibase_div_tests.hpp"
-#include "util/find.hpp"
 #include "util/sandbox.hpp"
+#include "util/simd.hpp"
 #include "util/types.hpp"
 #include "util/utility.hpp"
 
@@ -398,8 +400,8 @@ namespace mbp
 		static_assert(sizeof(remainder_t) == 1);
 
 		// Convert each half of number to a 32-byte bitmask
-		const uint256_t mask_lower = expand_bits_to_bytes(number & uint32_t(-1));
-		const uint256_t mask_upper = expand_bits_to_bytes(number >> 32);
+		const uint256_t mask_lower = util::expand_bits_to_bytes(number & uint32_t(-1));
+		const uint256_t mask_upper = util::expand_bits_to_bytes(number >> 32);
 
 		for (div_test_const div_test_t& div_test : div_tests)
 		{
@@ -409,7 +411,7 @@ namespace mbp
 			rems_lower = _mm256_and_si256(mask_lower, rems_lower);
 			rems_upper = _mm256_and_si256(mask_upper, rems_upper);
 
-			const size_t rem = vcl_hadd2_x(rems_upper, rems_lower);
+			const size_t rem = util::vcl_hadd2_x(rems_upper, rems_lower);
 
 			if (has_small_prime_factor(rem, div_test.prime_idx))
 			{
@@ -583,9 +585,9 @@ namespace mbp
 		while (benchmark_mode ? number < bm_stop : true)
 		{
 			// Perform additional sieving on the static sieve
-			vectorized_copy((__m256i*) sieve.data(),
-							(__m256i*) static_sieve.data(),
-							static_sieve.size());
+			util::vectorized_copy((__m256i*) sieve.data(),
+								  (__m256i*) static_sieve.data(),
+								  static_sieve.size());
 			partial_sieve(sieve);
 
 			const size_t number_before_tests = number;

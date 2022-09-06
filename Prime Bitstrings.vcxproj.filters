@@ -254,7 +254,7 @@
     <ClInclude Include="src\trial_division\types.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\util\find.hpp">
+    <ClInclude Include="src\util\simd.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
