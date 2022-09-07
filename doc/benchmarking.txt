@@ -68,6 +68,7 @@ Calculate change: 1 - (  /  )
  3735 ms : Sort div tests only by cached hit counts (~1% faster)
  3576 ms : Load next set of div test remainders early (~4% faster)
  3442 ms : Separate first div test into a branchless pass (~4% faster)
+ 3313 ms : Separate div tests by 7 into two branchless passes (~4% faster)
 
 
 

@@ -408,6 +408,96 @@ namespace mbp
 		return output;
 	}
 
+	tests_are_inlined const size_t* const div_by_7_base_4_test(size_t* input,
+															   const size_t* const candidates_end)
+	{
+		using namespace div_test;
+
+		size_t* output = input;
+
+		size_t next = *input;
+
+		for (; input < candidates_end; )
+		{
+			const size_t number = next;
+			++input;
+			next = *input; // load one iteration ahead
+
+			// always write
+			*output = number;
+
+			// Only advance the pointer if the number is still a candidate
+			if (!recursive_is_divisible_by<7, in_base<4>>(number)) ++output;
+		}
+
+		return output;
+	}
+
+	tests_are_inlined const size_t* const div_by_7_bases_3_and_5_test(size_t* input,
+																	  const size_t* const candidates_end)
+	{
+		using namespace div_test;
+		using namespace div_test::detail;
+
+		// Intellisense may generate a number of false positives here
+		constexpr size_t bitmask = bitmask_for<3, 7>::val;
+		static_assert(bitmask == bitmask_for<5, 7>::val);
+		static_assert(period_of<bitmask>::val == 6);
+
+		constexpr size_t bm_0 = bitmask << 0;
+		constexpr size_t bm_1 = bitmask << 1;
+		constexpr size_t bm_2 = bitmask << 2;
+		constexpr size_t bm_3 = bitmask << 3;
+		constexpr size_t bm_4 = bitmask << 4;
+		constexpr size_t bm_5 = bitmask << 5;
+
+		size_t* output = input;
+
+		size_t next = *input;
+
+		for (; input < candidates_end; )
+		{
+			const size_t number = next;
+			++input;
+			next = *input; // load one iteration ahead
+
+			// always write
+			*output = number;
+
+			const size_t pc_0 = pop_count(number & bm_0);
+			size_t b3_rem = pc_0;
+			size_t b5_rem = pc_0;
+
+			const size_t pc_1 = pop_count(number & bm_1);
+			b3_rem += pc_1 * pow_mod<3, 1, 7>::rem;
+			b5_rem += pc_1 * pow_mod<5, 1, 7>::rem;
+
+			const size_t pc_2 = pop_count(number & bm_2);
+			b3_rem += pc_2 * pow_mod<3, 2, 7>::rem;
+			b5_rem += pc_2 * pow_mod<5, 2, 7>::rem;
+
+			const size_t pc_3 = pop_count(number & bm_3);
+			b3_rem += pc_3 * pow_mod<3, 3, 7>::rem;
+			b5_rem += pc_3 * pow_mod<5, 3, 7>::rem;
+
+			const size_t pc_4 = pop_count(number & bm_4);
+			b3_rem += pc_4 * pow_mod<3, 4, 7>::rem;
+			b5_rem += pc_4 * pow_mod<5, 4, 7>::rem;
+
+			const size_t pc_5 = pop_count(number & bm_5);
+			b3_rem += pc_5 * pow_mod<3, 5, 7>::rem;
+			b5_rem += pc_5 * pow_mod<5, 5, 7>::rem;
+
+			// Only advance the pointer if the number is still a candidate
+			bool still_a_candidate = true;
+			if (has_small_prime_factor(b3_rem, get_prime_index<7>::idx)) still_a_candidate = false;
+			if (has_small_prime_factor(b5_rem, get_prime_index<7>::idx)) still_a_candidate = false;
+			output += still_a_candidate;
+		}
+
+		return output;
+	}
+
 
 
 	tests_are_inlined bool has_small_divisor(const size_t number)
@@ -644,6 +734,15 @@ namespace mbp
 
 			// Performing this div test separately makes some of the branchiest code branchless
 			candidates_end = div_by_5_test(scratch, candidates_end);
+
+
+
+
+			candidates_end = div_by_7_base_4_test(scratch, candidates_end);
+
+
+
+			candidates_end = div_by_7_bases_3_and_5_test(scratch, candidates_end);
 
 
 
