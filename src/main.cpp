@@ -383,11 +383,36 @@ namespace mbp
 		return passed_gcd_test_ptr;
 	}
 
-	tests_are_inlined bool has_small_divisor(const size_t number)
+	tests_are_inlined const size_t* const div_by_5_test(size_t* input,
+														const size_t* const candidates_end)
 	{
 		using namespace div_test;
 
-		if (recursive_is_divisible_by<5, in_base<3>>(number)) return true;
+		size_t* output = input;
+
+		size_t next = *input;
+
+		for (; input < candidates_end; )
+		{
+			const size_t number = next;
+			++input;
+			next = *input; // load one iteration ahead
+
+			// always write
+			*output = number;
+
+			// Only advance the pointer if the number is still a candidate
+			if (!recursive_is_divisible_by<5, in_base<3>>(number)) ++output;
+		}
+
+		return output;
+	}
+
+
+
+	tests_are_inlined bool has_small_divisor(const size_t number)
+	{
+		using namespace div_test;
 
 		//if (recursive_is_divisible_by<7, in_base<3>>(number)) return true;
 		//if (recursive_is_divisible_by<7, in_base<4>>(number)) return true;
@@ -598,21 +623,31 @@ namespace mbp
 
 
 			// 1. Collect candidates that have not been marked composite by the sieve
-			const size_t* const sieve_candidates = gather_sieve_results(scratch, sieve.data(), sieve.data() + sieve.size(), number);
+			const size_t* candidates_end = gather_sieve_results(scratch, sieve.data(), sieve.data() + sieve.size(), number);
 
-			count_passes(a += (sieve_candidates - scratch));
+			count_passes(a += (candidates_end - scratch));
+
+
 
 			// 2. Collect candidates that have a prime number of bits set
-			const size_t* const passed_pc_test_ptr = prime_popcount_test(scratch, sieve_candidates, tiny_primes_lookup);
+			candidates_end = prime_popcount_test(scratch, candidates_end, tiny_primes_lookup);
 
-			count_passes(b += (passed_pc_test_ptr - scratch));
+			count_passes(b += (candidates_end - scratch));
+
+
 
 			// 3. Collect candidates with an alternating bitsum that shares a GCD of 1 with a product of primes
-			const size_t* const passed_gcd_test_ptr = gcd_test(scratch, passed_pc_test_ptr, gcd_lookup);
+			candidates_end = gcd_test(scratch, candidates_end, gcd_lookup);
 
-			count_passes(c += (passed_gcd_test_ptr - scratch));
+			count_passes(c += (candidates_end - scratch));
 
-			for (size_t* candidate = scratch; candidate < passed_gcd_test_ptr; )
+
+			// Performing this div test separately makes some of the branchiest code branchless
+			candidates_end = div_by_5_test(scratch, candidates_end);
+
+
+
+			for (size_t* candidate = scratch; candidate < candidates_end; )
 			{
 				number = *candidate++;
 
