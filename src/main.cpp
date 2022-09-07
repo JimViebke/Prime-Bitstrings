@@ -5,10 +5,6 @@
 #define _ZMMINTRIN_H_INCLUDED
 #endif
 
-#define VCL_NAMESPACE vcl
-#define MAX_VECTOR_SIZE 256
-#include "../lib/vcl/vectorclass.h"
-
 #include <bitset>
 #include <cassert>
 #include <filesystem>
@@ -19,6 +15,9 @@
 #include <sstream>
 #include <vector>
 
+#define VCL_NAMESPACE vcl
+#define MAX_VECTOR_SIZE 256
+#include "../lib/vcl/vectorclass.h"
 #include "config.hpp"
 #include "io/io.hpp"
 #include "math/franken_mpir.hpp"
@@ -36,7 +35,6 @@ namespace mbp
 														 static_sieve_primes.end(), size_t(1), std::multiplies());
 
 	using sieve_t = uint8_t;
-	// using sieve_container = std::vector<sieve_t>;
 	using sieve_container = std::array<sieve_t, static_sieve_size>;
 	const sieve_container generate_static_sieve()
 	{
@@ -444,13 +442,6 @@ namespace mbp
 		static_assert(bitmask == bitmask_for<5, 7>::val);
 		static_assert(period_of<bitmask>::val == 6);
 
-		constexpr size_t bm_0 = bitmask << 0;
-		constexpr size_t bm_1 = bitmask << 1;
-		constexpr size_t bm_2 = bitmask << 2;
-		constexpr size_t bm_3 = bitmask << 3;
-		constexpr size_t bm_4 = bitmask << 4;
-		constexpr size_t bm_5 = bitmask << 5;
-
 		size_t* output = input;
 
 		size_t next = *input;
@@ -464,27 +455,27 @@ namespace mbp
 			// always write
 			*output = number;
 
-			const size_t pc_0 = pop_count(number & bm_0);
+			const size_t pc_0 = pop_count(number & (bitmask << 0));
 			size_t b3_rem = pc_0;
 			size_t b5_rem = pc_0;
 
-			const size_t pc_1 = pop_count(number & bm_1);
+			const size_t pc_1 = pop_count(number & (bitmask << 1));
 			b3_rem += pc_1 * pow_mod<3, 1, 7>::rem;
 			b5_rem += pc_1 * pow_mod<5, 1, 7>::rem;
 
-			const size_t pc_2 = pop_count(number & bm_2);
+			const size_t pc_2 = pop_count(number & (bitmask << 2));
 			b3_rem += pc_2 * pow_mod<3, 2, 7>::rem;
 			b5_rem += pc_2 * pow_mod<5, 2, 7>::rem;
 
-			const size_t pc_3 = pop_count(number & bm_3);
+			const size_t pc_3 = pop_count(number & (bitmask << 3));
 			b3_rem += pc_3 * pow_mod<3, 3, 7>::rem;
 			b5_rem += pc_3 * pow_mod<5, 3, 7>::rem;
 
-			const size_t pc_4 = pop_count(number & bm_4);
+			const size_t pc_4 = pop_count(number & (bitmask << 4));
 			b3_rem += pc_4 * pow_mod<3, 4, 7>::rem;
 			b5_rem += pc_4 * pow_mod<5, 4, 7>::rem;
 
-			const size_t pc_5 = pop_count(number & bm_5);
+			const size_t pc_5 = pop_count(number & (bitmask << 5));
 			b3_rem += pc_5 * pow_mod<3, 5, 7>::rem;
 			b5_rem += pc_5 * pow_mod<5, 5, 7>::rem;
 
@@ -696,53 +687,51 @@ namespace mbp
 
 
 
-		count_passes(size_t a, b, c, d);
-		count_passes(a = b = c = d = 0);
+		count_passes(size_t a, b, c, d, e, f, g);
+		count_passes(a = b = c = d = e = f = g = 0);
 
 		// (condition optimizes out when not benchmarking)
 		while (benchmark_mode ? number < bm_stop : true)
 		{
-			// Perform additional sieving on the static sieve
-			util::vectorized_copy((__m256i*) sieve.data(),
-								  (__m256i*) static_sieve.data(),
-								  static_sieve.size());
-			partial_sieve(sieve);
-
 			const size_t number_before_tests = number;
 
 
 
-			// 1. Collect candidates that have not been marked composite by the sieve
-			const size_t* candidates_end = gather_sieve_results(scratch, sieve.data(), sieve.data() + sieve.size(), number);
+			// Perform additional sieving on the static sieve
+			util::vectorized_copy((uint256_t*)sieve.data(),
+								  (uint256_t*)static_sieve.data(),
+								  static_sieve.size());
+			partial_sieve(sieve);
 
+
+
+			// Collect candidates that have not been marked composite by the sieve
+			const size_t* candidates_end = gather_sieve_results(scratch, sieve.data(), sieve.data() + sieve.size(), number);
 			count_passes(a += (candidates_end - scratch));
 
 
 
-			// 2. Collect candidates that have a prime number of bits set
+			// Collect candidates that have a prime number of bits set
 			candidates_end = prime_popcount_test(scratch, candidates_end, tiny_primes_lookup);
-
 			count_passes(b += (candidates_end - scratch));
 
 
 
-			// 3. Collect candidates with an alternating bitsum that shares a GCD of 1 with a product of primes
+			// Collect candidates with an alternating bitsum that shares a GCD of 1 with a product of primes
 			candidates_end = gcd_test(scratch, candidates_end, gcd_lookup);
-
 			count_passes(c += (candidates_end - scratch));
 
 
-			// Performing this div test separately makes some of the branchiest code branchless
+
+			// Perform some div tests separately to remove some of the branchiest branches
 			candidates_end = div_by_5_test(scratch, candidates_end);
-
-
-
+			count_passes(d += (candidates_end - scratch));
 
 			candidates_end = div_by_7_base_4_test(scratch, candidates_end);
-
-
+			count_passes(e += (candidates_end - scratch));
 
 			candidates_end = div_by_7_bases_3_and_5_test(scratch, candidates_end);
+			count_passes(f += (candidates_end - scratch));
 
 
 
@@ -753,7 +742,7 @@ namespace mbp
 				// Bail if n has a small prime factor in any base
 				if (has_small_divisor(number)) continue;
 
-				count_passes(++d);
+				count_passes(++g);
 
 
 
@@ -818,10 +807,16 @@ namespace mbp
 
 		std::cout << "Finished. " << current_time_in_ms() - start << " ms elapsed\n";
 
-		count_passes(std::cout << "Passed sieve:      " << std::setw(9) << a << '\n');
-		count_passes(std::cout << "Passed prime test: " << std::setw(9) << b << '\n');
-		count_passes(std::cout << "Passed GCD test:   " << std::setw(9) << c << '\n');
-		count_passes(std::cout << "Passed div tests:  " << std::setw(9) << d << '\n');
+
+
+		count_passes(auto w = std::setw);
+		count_passes(std::cout << "Passed sieve:         " << w(9) << a << " (removed ~" << w(3) << 100 - (a * 100 / bm_size) << "%)\n");
+		count_passes(std::cout << "Passed prime test:    " << w(9) << b << " (removed ~" << w(3) << 100 - (b * 100 / a) << "%)\n");
+		count_passes(std::cout << "Passed GCD test:      " << w(9) << c << " (removed ~" << w(3) << 100 - (c * 100 / b) << "%)\n");
+		count_passes(std::cout << "Passed b4 / 5 test:   " << w(9) << d << " (removed ~" << w(3) << 100 - (d * 100 / c) << "%)\n");
+		count_passes(std::cout << "Passed b4 / 7 test:   " << w(9) << e << " (removed ~" << w(3) << 100 - (e * 100 / d) << "%)\n");
+		count_passes(std::cout << "Passed b3&5 / 7 test: " << w(9) << f << " (removed ~" << w(3) << 100 - (f * 100 / e) << "%)\n");
+		count_passes(std::cout << "Passed div tests:     " << w(9) << g << " (removed ~" << w(3) << 100 - (g * 100 / f) << "%)\n");
 	}
 
 } // namespace mbp
