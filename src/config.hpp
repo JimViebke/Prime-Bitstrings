@@ -24,7 +24,7 @@ namespace mbp
 	const bool benchmark_mode = false;
 
 	const size_t bm_start = p11; // default: p11
-	const size_t bm_size = 5'000'000'000; // default 5'000'000'000
+	const size_t bm_size = 50'000'000'000; // default 50'000'000'000
 	const size_t bm_stop = bm_start + bm_size;
 
 	constexpr size_t num_threads = 1; // could be passed by command line instead

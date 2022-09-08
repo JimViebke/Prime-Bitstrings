@@ -929,13 +929,13 @@ namespace mbp
 
 
 		count_passes(auto w = std::setw);
-		count_passes(std::cout << "Passed sieve:         " << w(9) << a << " (removed ~" << w(3) << 100 - (a * 100 / bm_size) << "%)\n");
-		count_passes(std::cout << "Passed prime test:    " << w(9) << b << " (removed ~" << w(3) << 100 - (b * 100 / a) << "%)\n");
-		count_passes(std::cout << "Passed GCD test:      " << w(9) << c << " (removed ~" << w(3) << 100 - (c * 100 / b) << "%)\n");
-		count_passes(std::cout << "Passed b4 / 5 test:   " << w(9) << d << " (removed ~" << w(3) << 100 - (d * 100 / c) << "%)\n");
-		count_passes(std::cout << "Passed b4 / 7 test:   " << w(9) << e << " (removed ~" << w(3) << 100 - (e * 100 / d) << "%)\n");
-		count_passes(std::cout << "Passed b3&5 / 7 test: " << w(9) << f << " (removed ~" << w(3) << 100 - (f * 100 / e) << "%)\n");
-		count_passes(std::cout << "Passed div tests:     " << w(9) << g << " (removed ~" << w(3) << 100 - (g * 100 / f) << "%)\n");
+		count_passes(std::cout << "Passed sieve:         " << w(10) << a << " (removed ~" << w(3) << 100 - (a * 100 / bm_size) << "%)\n");
+		count_passes(std::cout << "Passed prime test:    " << w(10) << b << " (removed ~" << w(3) << 100 - (b * 100 / a) << "%)\n");
+		count_passes(std::cout << "Passed GCD test:      " << w(10) << c << " (removed ~" << w(3) << 100 - (c * 100 / b) << "%)\n");
+		count_passes(std::cout << "Passed b4 / 5 test:   " << w(10) << d << " (removed ~" << w(3) << 100 - (d * 100 / c) << "%)\n");
+		count_passes(std::cout << "Passed b4 / 7 test:   " << w(10) << e << " (removed ~" << w(3) << 100 - (e * 100 / d) << "%)\n");
+		count_passes(std::cout << "Passed b3&5 / 7 test: " << w(10) << f << " (removed ~" << w(3) << 100 - (f * 100 / e) << "%)\n");
+		count_passes(std::cout << "Passed div tests:     " << w(10) << g << " (removed ~" << w(3) << 100 - (g * 100 / f) << "%)\n");
 	}
 
 } // namespace mbp
