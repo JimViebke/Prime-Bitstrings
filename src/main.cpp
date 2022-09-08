@@ -254,38 +254,157 @@ namespace mbp
 															   size_t number)
 	{
 		static_assert(static_sieve_size % 15 == 0);
-		for (; sieve_ptr < sieve_end; sieve_ptr += 15, number += 30)
+
+		// By scanning the sieve in steps of 3*5 == 15, we know every 3rd and every 5th value is false.
+		// We can save work by never checking those ones:
+		// 
+		// 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14   <-- offset
+		//    x  x     x        x  x        x     x  x   <-- values to check
+		// x        x     x  x        x  x     x         <-- values to ignore
+		//
+		// In this case, we scan the sieve in steps of 3*5*7 == 105, which allows us to skip a few more
+		// always-composite values, and only read the remaining 48 / 105.
+
+		// "Offsets" stores the indexes that we must check, working from sieve_ptr.
+		// sieve_ptr is aligned on a multiple of 3*5*7 from the beginning of the sieve,
+		// which itself has stricter alignment on the number line.
+
+		// The offset must be multiplied by 2 when calculating the bitstring, because the sieve only represents odd values.
+		// There is a performance gotcha here: when this offset reaches 128, almost half of the encoded instructions below
+		// become slightly larger, and no longer fit in 16 bytes. We can fix this by advancing both "number" and
+		// "sieve_ptr" halfway through the loop, and then continuing with new, smaller offsets. We make these offsets smaller
+		// by subtracting offset[23], the midpoint, from each of the following 24 offsets.
+
+		constexpr std::array<size_t, 48> offsets = []() consteval {
+			std::array<size_t, 48> offsets{};
+			size_t idx = 0;
+			// Find the offsets that are not divisible by 3, 5, or 7
+			for (size_t n = 1; n <= (3ull * 5 * 7); ++n)
+				if (n % 3 != 0 && n % 5 != 0 && n % 7 != 0)
+					offsets[idx++] = n;
+
+			// Perform scaling on the second half of the offsets, per above
+			for (size_t n = 24; n < offsets.size(); ++n)
+				offsets[n] -= offsets[23];
+
+			return offsets;
+		}();
+
+		for (; sieve_ptr < sieve_end;
+			 sieve_ptr += (3ull * 5 * 7) - offsets[23],
+			 number += (3ull * 5 * 7 * 2) - (offsets[23] * 2))
 		{
-			// By working in steps of 15, we know every 3rd and every 5th value is false.
-			// Don't check those ones.
-			// 
-			// 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14   <-- offset
-			//    x  x     x        x  x        x     x  x   <-- values to check
-			// x        x     x  x        x  x     x         <-- values to ignore
+			auto it = offsets.cbegin();
 
-			*sieve_candidates = number + 2; // number + offset*2
-			sieve_candidates += *(sieve_ptr + 1);
+			*sieve_candidates = number + *it * 2; // unconditionally store number + offset*2
+			sieve_candidates += *(sieve_ptr + *it++); // conditionally increment
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++); // write #5
 
-			*sieve_candidates = number + 4;
-			sieve_candidates += *(sieve_ptr + 2);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++); // 10
 
-			*sieve_candidates = number + 8;
-			sieve_candidates += *(sieve_ptr + 4);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++); // 15
 
-			*sieve_candidates = number + 14;
-			sieve_candidates += *(sieve_ptr + 7);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++); // 20
 
-			*sieve_candidates = number + 16;
-			sieve_candidates += *(sieve_ptr + 8);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
 
-			*sieve_candidates = number + 22;
-			sieve_candidates += *(sieve_ptr + 11);
+			number += *it * 2;
+			sieve_ptr += *it++;
+			*sieve_candidates = number;
+			sieve_candidates += *(sieve_ptr); // 24 is a special case - see above
 
-			*sieve_candidates = number + 26;
-			sieve_candidates += *(sieve_ptr + 13);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++); // 25
 
-			*sieve_candidates = number + 28;
-			sieve_candidates += *(sieve_ptr + 14);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++); // 30
+
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++); // 35
+
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++); // 40
+
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++); // 45
+
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++);
+			*sieve_candidates = number + *it * 2;
+			sieve_candidates += *(sieve_ptr + *it++); // 48
 		}
 
 		return sieve_candidates;
