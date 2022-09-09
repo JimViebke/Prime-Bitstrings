@@ -72,6 +72,7 @@ Calculate change: 1 - (  /  )
  3273 ms : Skip every 7th entry when gathering sieve results (~1% faster)
  === change benchmark from p11 + 5 billion to p11 + 50 billion ===
 29705 ms : (no changes)
+28746 ms : Separate three more div tests into hardcoded branchless pass (~3% faster)
 
 
 

@@ -36,6 +36,12 @@ namespace mbp::div_test
 					if (base == 4 && p == 7) continue;
 					if (base == 5 && p == 7) continue;
 
+					// another block of hardcoded tests, ordered by their
+					// original measured hit counts
+					if (base == 8 && p == 13) continue;
+					if (base == 5 && p == 13) continue;
+					if (base == 4 && p == 17) continue;
+
 				#if !analyze_div_tests or suppress_extra_div_tests
 					if (base == 4 && p == 3) continue; //  base  4^n % 3 unused
 					if (base == 5 && p == 3) continue; //  base  5^n % 3 unused

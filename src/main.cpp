@@ -608,6 +608,66 @@ namespace mbp
 		return output;
 	}
 
+	tests_are_inlined const size_t* const div_tests_b8m13_b5m13_b4m17(size_t* input,
+																	  const size_t* const candidates_end)
+	{
+		using namespace div_test;
+		using namespace div_test::detail;
+
+		// base  8 % 13:   4 remainders: 1   8  12   5
+		// base  5 % 13:   4 remainders: 1   5  12   8
+		// base  4 % 17:   4 remainders: 1   4  16  13
+
+		// Intellisense may generate a number of false positives here
+		constexpr size_t bitmask = bitmask_for<8, 13>::val;
+		static_assert(bitmask == bitmask_for<5, 13>::val &&
+					  bitmask == bitmask_for<4, 17>::val);
+		static_assert(period_of<bitmask>::val == 4);
+
+		size_t* output = input;
+
+		size_t next = *input;
+
+		for (; input < candidates_end; )
+		{
+			const size_t number = next;
+			++input;
+			next = *input; // load one iteration ahead
+
+			// always write
+			*output = number;
+
+			const size_t pc_0 = pop_count(number & (bitmask << 0));
+			size_t b8m13_rem = pc_0;
+			size_t b5m13_rem = pc_0;
+			size_t b4m17_rem = pc_0;
+
+			const size_t pc_1 = pop_count(number & (bitmask << 1));
+			b8m13_rem += pc_1 * pow_mod<8, 1, 13>::rem;
+			b5m13_rem += pc_1 * pow_mod<5, 1, 13>::rem;
+			b4m17_rem += pc_1 * pow_mod<4, 1, 17>::rem;
+
+			const size_t pc_2 = pop_count(number & (bitmask << 2));
+			b8m13_rem += pc_2 * pow_mod<8, 2, 13>::rem;
+			b5m13_rem += pc_2 * pow_mod<5, 2, 13>::rem;
+			b4m17_rem += pc_2 * pow_mod<4, 2, 17>::rem;
+
+			const size_t pc_3 = pop_count(number & (bitmask << 3));
+			b8m13_rem += pc_3 * pow_mod<8, 3, 13>::rem;
+			b5m13_rem += pc_3 * pow_mod<5, 3, 13>::rem;
+			b4m17_rem += pc_3 * pow_mod<4, 3, 17>::rem;
+
+			// Only advance the pointer if the number is still a candidate
+			bool still_a_candidate = true;
+			if (has_small_prime_factor(b8m13_rem, get_prime_index<13>::idx)) still_a_candidate = false;
+			if (has_small_prime_factor(b5m13_rem, get_prime_index<13>::idx)) still_a_candidate = false;
+			if (has_small_prime_factor(b4m17_rem, get_prime_index<17>::idx)) still_a_candidate = false;
+			output += still_a_candidate;
+		}
+
+		return output;
+	}
+
 
 
 	tests_are_inlined bool has_small_divisor(const size_t number)
@@ -789,8 +849,8 @@ namespace mbp
 
 
 
-		count_passes(size_t a, b, c, d, e, f, g);
-		count_passes(a = b = c = d = e = f = g = 0);
+		count_passes(size_t a, b, c, d, e, f, g, h);
+		count_passes(a = b = c = d = e = f = g = h = 0);
 
 		// (condition optimizes out when not benchmarking)
 		while (benchmark_mode ? number < bm_stop : true)
@@ -835,6 +895,9 @@ namespace mbp
 			candidates_end = div_by_7_bases_3_and_5_test(scratch, candidates_end);
 			count_passes(f += (candidates_end - scratch));
 
+			candidates_end = div_tests_b8m13_b5m13_b4m17(scratch, candidates_end);
+			count_passes(g += (candidates_end - scratch));
+
 
 
 			for (size_t* candidate = scratch; candidate < candidates_end; )
@@ -844,7 +907,7 @@ namespace mbp
 				// Bail if n has a small prime factor in any base
 				if (has_small_divisor(number)) continue;
 
-				count_passes(++g);
+				count_passes(++h);
 
 
 
@@ -921,7 +984,9 @@ namespace mbp
 		count_passes(std::cout << "Passed b4 / 5 test:   " << w(10) << d << " (removed ~" << w(3) << 100 - (d * 100 / c) << "%)\n");
 		count_passes(std::cout << "Passed b4 / 7 test:   " << w(10) << e << " (removed ~" << w(3) << 100 - (e * 100 / d) << "%)\n");
 		count_passes(std::cout << "Passed b3&5 / 7 test: " << w(10) << f << " (removed ~" << w(3) << 100 - (f * 100 / e) << "%)\n");
-		count_passes(std::cout << "Passed div tests:     " << w(10) << g << " (removed ~" << w(3) << 100 - (g * 100 / f) << "%)\n");
+		count_passes(std::cout << "P. b8/13 b5/13 b4/17: " << w(10) << g << " (removed ~" << w(3) << 100 - (g * 100 / f) << "%)\n");
+		count_passes(std::cout << "Passed div tests:     " << w(10) << h << " (removed ~" << w(3) << 100 - (h * 100 / g) << "%)\n");
+
 	}
 
 } // namespace mbp
