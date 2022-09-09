@@ -685,23 +685,25 @@ namespace mbp
 		//				 // b.hits / b.n_of_remainders;
 		//		  });
 
+		std::cout << '\n';
+
 		auto w = std::setw;
 		for (const auto& dt : div_tests)
 		{
 			std::cout << "   base " << std::setfill(' ') << w(2) << size_t(dt.base) << " % " << w(3) << size_t(small_primes_lookup[dt.prime_idx]) << ":  ";
-			if (dt.hits == 0)
-			{
-				std::cout << "       -       ";
-			}
-			else
-			{
-				std::cout << w(8) << dt.hits << " hits  ";
-			}
+			//if (dt.hits == 0)
+			//{
+			//	std::cout << "       -       ";
+			//}
+			//else
+			//{
+			//	std::cout << w(8) << dt.hits << " hits  ";
+			//}
 
 			std::cout << w(2) << size_t(dt.n_of_remainders) << " remainders: 1";
 			for (size_t j = 1; j < dt.n_of_remainders; ++j)
 			{
-				std::cout << ' ' << w(3) << dt.remainders[j];
+				std::cout << ' ' << w(3) << size_t(dt.remainders[j]);
 				if (j == 20)
 				{
 					std::cout << " ...";
@@ -735,25 +737,6 @@ namespace mbp
 			for (size_t i = 0; i < div_tests.size(); ++i)
 				if (div_tests[i].base != copy[i].base || div_tests[i].prime_idx != copy[i].prime_idx)
 					moved++;
-
-			// clear "firsts"
-			for (auto& dt : div_tests)
-			{
-				dt.is_first_with_n_remainders = false;
-			}
-
-			// set firsts
-			for (size_t i = 0; i <= div_test::max_remainders; ++i)
-			{
-				for (auto& div_test : div_tests)
-				{
-					if (div_test.n_of_remainders == i)
-					{
-						div_test.is_first_with_n_remainders = true;
-						break;
-					}
-				}
-			}
 
 			print_div_tests();
 
@@ -911,15 +894,18 @@ namespace mbp
 
 
 		#if analyze_div_tests
-			for (const auto& dt : div_test::div_tests)
-			{
-				if (dt.hits >= next_div_test_checkpoint)
-				{
-					run_div_test_analysis();
-					next_div_test_checkpoint += div_test_log_interval;
-					break;
-				}
-			}
+			print_div_tests();
+			std::cin.ignore();
+
+			//for (const auto& dt : div_test::div_tests)
+			//{
+			//	if (dt.hits >= next_div_test_checkpoint)
+			//	{
+			//		run_div_test_analysis();
+			//		next_div_test_checkpoint += div_test_log_interval;
+			//		break;
+			//	}
+			//}
 		#endif
 
 		} // end main loop
