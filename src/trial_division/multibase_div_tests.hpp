@@ -37,8 +37,6 @@ namespace mbp::div_test
 					if (base == 5 && p == 7) continue;
 
 				#if !analyze_div_tests or suppress_extra_div_tests
-					if (base == 2 && p == 3) continue;
-
 					if (base == 4 && p == 3) continue; //  base  4^n % 3 unused
 					if (base == 5 && p == 3) continue; //  base  5^n % 3 unused
 					if (base == 7 && p == 3) continue; //  base  7^n % 3 unused
