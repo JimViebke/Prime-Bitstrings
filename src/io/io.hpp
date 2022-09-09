@@ -99,22 +99,23 @@ namespace mbp
 		std::stringstream ss;
 		ss << std::bitset<64>(n).to_string().c_str() + std::countl_zero(n) << " is a p" << up_to_base << " (" << n << ')';
 
-		// Don't write to file in benchmark mode
-		if constexpr (!benchmark_mode)
-		{
-			std::ofstream ofs(results_path, std::ofstream::app);
-			ofs << ss.str() << '\n';
-		}
-
-		// Continue populating the stringstream
-
 		static auto last_perf_time = current_time_in_ms();
 		static size_t last_n = 0;
 
 		const auto perf_time = current_time_in_ms();
 
+		// Don't log or print perf info for the first result
 		if (last_n != 0)
 		{
+			// Don't log in benchmark mode
+			if constexpr (!benchmark_mode)
+			{
+				std::ofstream ofs(results_path, std::ofstream::app);
+				ofs << ss.str() << '\n';
+			}
+
+			// Continue populating the stringstream
+
 			const double elapsed_seconds = double(perf_time - last_perf_time) / 1'000.0;
 			const double ints_per_second = double(n - last_n) / elapsed_seconds;
 
