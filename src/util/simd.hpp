@@ -15,14 +15,14 @@
 namespace mbp::util
 {
 
-	// Out and in shall be aligned on a multiple of 32 bytes.
-	// Size shall be at least 4 * 32 bytes.
+	// Out and in must be aligned on a multiple of 32 bytes.
+	// Size must be at least 4 * 32 bytes.
 	__forceinline void vectorized_copy(uint256_t* out,
 									   const uint256_t* in,
 									   size_t size_in_bytes)
 	{
-		const size_t leftover_bytes = size_in_bytes % (4 * sizeof(uint256_t));
-		const uint256_t* const aligned_end = in + ((size_in_bytes - leftover_bytes) / sizeof(uint256_t));
+		const size_t leftover_bytes = size_in_bytes % (32ull * 4);
+		const uint256_t* const aligned_end = in + ((size_in_bytes - leftover_bytes) / 32);
 
 		for (; in != aligned_end; in += 4, out += 4)
 		{
@@ -53,13 +53,63 @@ namespace mbp::util
 		_mm256_storeu_si256(out + 3, ymm3);
 	}
 
+	// Out and in must be aligned on a multiple of 32 bytes.
+	// Size must be at least 4 * 32 bytes.
+	template<size_t n_bytes>
+	__forceinline void vectorized_copy_n(uint256_t* out,
+										 const uint256_t* in)
+	{
+		constexpr size_t leftover_bytes = n_bytes % (32 * 4);
+		const uint256_t* const aligned_end = in + ((n_bytes - leftover_bytes) / 32);
+
+		for (; in != aligned_end; in += 4, out += 4)
+		{
+			const uint256_t ymm0 = _mm256_load_si256(in + 0);
+			const uint256_t ymm1 = _mm256_load_si256(in + 1);
+			const uint256_t ymm2 = _mm256_load_si256(in + 2);
+			const uint256_t ymm3 = _mm256_load_si256(in + 3);
+			_mm256_store_si256(out + 0, ymm0);
+			_mm256_store_si256(out + 1, ymm1);
+			_mm256_store_si256(out + 2, ymm2);
+			_mm256_store_si256(out + 3, ymm3);
+		}
+
+		// <32*4 bytes left. Generate instructions for 0-3 aligned copies.
+
+		if constexpr (leftover_bytes >= 32 * 1)
+		{
+			_mm256_store_si256(out++, _mm256_load_si256(in++));
+		}
+
+		if constexpr (leftover_bytes >= 32 * 2)
+		{
+			_mm256_store_si256(out++, _mm256_load_si256(in++));
+		}
+
+		if constexpr (leftover_bytes >= 32 * 3)
+		{
+			_mm256_store_si256(out++, _mm256_load_si256(in++));
+		}
+
+		// <32 bytes left. Generate instructions for 0-1 unaligned copies.
+
+		constexpr size_t adjust = 32 - (leftover_bytes % 32);
+		if constexpr (adjust > 0)
+		{
+			in = (uint256_t*)(((uint8_t*)in) - adjust);
+			out = (uint256_t*)(((uint8_t*)out) - adjust);
+
+			_mm256_storeu_si256(out, _mm256_loadu_si256(in));
+		}
+	}
+
 	// Horizontally add two vectors together
 	__forceinline auto vcl_hadd2_x(const uint256_t a, const uint256_t b)
 	{
 		const uint256_t sum_a = _mm256_sad_epu8(a, _mm256_setzero_si256()); // add adjacent bytes
 		const uint256_t sum_b = _mm256_sad_epu8(b, _mm256_setzero_si256());
 		const uint256_t sum1 = _mm256_add_epi16(sum_a, sum_b); // add adjacent uint16s
-		const uint256_t sum2 = _mm256_shuffle_epi32(sum1, 2); 
+		const uint256_t sum2 = _mm256_shuffle_epi32(sum1, 2);
 		const uint256_t sum3 = _mm256_add_epi16(sum1, sum2);
 		const uint128_t sum4 = _mm256_extracti128_si256(sum3, 1);
 		const uint128_t sum5 = _mm_add_epi16(_mm256_castsi256_si128(sum3), sum4);
@@ -122,7 +172,7 @@ namespace mbp::util
 		return e;
 	}
 
-	// _tzcnt_u32 instead of countr_zero may save an instruction
+
 
 	const char* find_sse(const char* b, const char* e, char c)
 	{

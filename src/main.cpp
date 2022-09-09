@@ -36,7 +36,7 @@ namespace mbp
 
 	using sieve_t = uint8_t;
 	using sieve_container = std::array<sieve_t, static_sieve_size>;
-	const sieve_container generate_static_sieve()
+	consteval sieve_container generate_static_sieve()
 	{
 		// sieve_container sieve(static_sieve_size, true);
 		sieve_container sieve{}; std::fill(begin(sieve), end(sieve), true);
@@ -48,7 +48,7 @@ namespace mbp
 
 		return sieve;
 	}
-	static alignas(sieve_alignment) const sieve_container static_sieve = generate_static_sieve();
+	static alignas(sieve_alignment) constexpr sieve_container static_sieve = generate_static_sieve();
 
 	// When sieving in steps of (some factor N) * (some prime P), we may have skipped a few multiples of P on
 	// on either end of the sieve. We handle these with a set of branchless writes on each end of the sieve.
@@ -819,12 +819,12 @@ namespace mbp
 		size_t number = benchmark_mode ? bm_start : load_from_results();
 		mpz_class mpz_number = 0ull; // it's a surprise tool that will help us later
 
-		static alignas(sieve_alignment) sieve_container sieve = static_sieve;
+		static alignas(sieve_alignment) sieve_container sieve {};
 
 		// Round starting number down to the nearest odd multiple of the sieve sieze
-		number -= static_sieve.size(); // n -= k
-		number -= number % (2 * static_sieve.size()); // n -= n % 2k
-		number += static_sieve.size(); // n += k
+		number -= sieve.size(); // n -= k
+		number -= number % (2 * sieve.size()); // n -= n % 2k
+		number += sieve.size(); // n += k
 
 		set_up_sieve_offsets_cache(number);
 
@@ -840,7 +840,7 @@ namespace mbp
 			double cleared = 0.0;
 			for (size_t i = 1; i < small_primes_lookup.size(); ++i)
 				cleared += ((1.0 - cleared) * (1.0 / small_primes_lookup[i]));
-			return size_t((1.0 - cleared) * double(static_sieve_size) * 1.1);
+			return size_t((1.0 - cleared) * double(sieve.size()) * 1.1);
 		}();
 		static size_t scratch[scratch_size]{};
 
@@ -860,9 +860,7 @@ namespace mbp
 
 
 			// Perform additional sieving on the static sieve
-			util::vectorized_copy((uint256_t*)sieve.data(),
-								  (uint256_t*)static_sieve.data(),
-								  static_sieve.size());
+			util::vectorized_copy_n<sieve.size()>((uint256_t*)sieve.data(), (uint256_t*)static_sieve.data());
 			partial_sieve(sieve);
 
 
