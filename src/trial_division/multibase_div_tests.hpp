@@ -241,7 +241,7 @@ namespace mbp::div_test
 			size_t largest_remainders_sum = 0;
 
 		#if analyze_div_tests
-			// Gross af, but if we're in "analyze" mode, we'll need to generate our own constexpr version of div_tests
+			// Gross, but if we're in "analyze" mode, we'll need to generate our own constexpr version of div_tests
 		#pragma warning (push)
 		#pragma warning (disable: 4459)
 			constexpr div_tests_t div_tests = generate_div_tests();

@@ -727,44 +727,37 @@ namespace mbp
 
 		//std::sort(div_tests.begin(), div_tests.end(), [] (const auto& a, const auto& b)
 		//		  {
-		//			  //return a.hits < b.hits;
-		//			  //return a.n_of_remainders < b.n_of_remainders;
-
-		//			  if (a.n_of_remainders == b.n_of_remainders)
+		//			  if (a.hits == b.hits)
 		//				  return a.base < b.base;
 		//			  else
-		//				  return a.n_of_remainders < b.n_of_remainders;
-
-		//			  //if (a.prime_idx == b.prime_idx)
-		//				 // return a.base < b.base;
-		//			  //else
-		//				 // return a.prime_idx < b.prime_idx;
-
-		//			  //return
-		//				 // a.hits / a.n_of_remainders <
-		//				 // b.hits / b.n_of_remainders;
+		//				  return a.hits < b.hits;
 		//		  });
 
 		std::cout << '\n';
+		std::cout << "Prime factor lookup size: " << div_test::detail::prime_factor_lookup_size << '\n';
+		std::cout << div_tests.size() << " div tests:\n";
 
 		auto w = std::setw;
 		for (const auto& dt : div_tests)
 		{
 			std::cout << "   base " << std::setfill(' ') << w(2) << size_t(dt.base) << " % " << w(3) << size_t(small_primes_lookup[dt.prime_idx]) << ":  ";
-			//if (dt.hits == 0)
-			//{
-			//	std::cout << "       -       ";
-			//}
-			//else
-			//{
-			//	std::cout << w(8) << dt.hits << " hits  ";
-			//}
+			if (dt.hits == 0)
+			{
+				std::cout << "       -       ";
+			}
+			else
+			{
+				std::cout << w(8) << dt.hits << " hits  ";
+			}
 
 			std::cout << w(2) << size_t(dt.n_of_remainders) << " remainders: 1";
 			for (size_t j = 1; j < dt.n_of_remainders; ++j)
 			{
-				std::cout << ' ' << w(3) << size_t(dt.remainders[j]);
-				if (j == 20)
+				if (j < 20)
+				{
+					std::cout << ' ' << w(3) << size_t(dt.remainders[j]);
+				}
+				else
 				{
 					std::cout << " ...";
 					break;
@@ -780,11 +773,16 @@ namespace mbp
 	#if analyze_div_tests
 		using namespace div_test;
 
-		auto div_test_pred = [](auto a, auto b) { return a.hits < b.hits; };
+		auto div_test_pred = [](const auto& a, const auto& b) {
+			if (a.hits == b.hits)
+				return a.base < b.base;
+			else
+				return a.hits < b.hits;
+		};
 
 		if (std::is_sorted(div_tests.rbegin(), div_tests.rend(), div_test_pred))
 		{
-			std::cout << "Div tests have not changed frequency ordering\n";
+			std::cout << "Div tests have not changed hit count order\n";
 		}
 		else
 		{
@@ -832,8 +830,8 @@ namespace mbp
 		constexpr size_t gcd_lookup = build_gcd_lookup();
 
 	#if analyze_div_tests
-		const size_t div_test_log_interval = 1'000'000;
-		size_t next_div_test_checkpoint = div_test_log_interval;
+		const size_t analyze_interval = 10'000;
+		auto next_div_test_checkpoint = current_time_in_ms() + analyze_interval;
 	#endif
 
 		constexpr size_t scratch_size = [] {
@@ -955,18 +953,14 @@ namespace mbp
 
 
 		#if analyze_div_tests
-			print_div_tests();
-			std::cin.ignore();
+			//print_div_tests();
+			//std::cin.ignore();
 
-			//for (const auto& dt : div_test::div_tests)
-			//{
-			//	if (dt.hits >= next_div_test_checkpoint)
-			//	{
-			//		run_div_test_analysis();
-			//		next_div_test_checkpoint += div_test_log_interval;
-			//		break;
-			//	}
-			//}
+			if (next_div_test_checkpoint <= current_time_in_ms())
+			{
+				run_div_test_analysis();
+				next_div_test_checkpoint += analyze_interval;
+			}
 		#endif
 
 		} // end main loop
