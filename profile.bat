@@ -1,7 +1,11 @@
 :: Remove any existing PGO profiles (.pgc) and profile databases (.pgd)
 
-del /s x64\*.pgc
-del /s x64\*.pgd
+@del /s x64\*.pgc
+@del /s x64\*.pgd
+
+:: Remove any exes from the Profile directory
+
+@del /s x64\Profile\*.exe
 
 :: Clean both targets
 
@@ -15,13 +19,31 @@ del /s x64\*.pgd
 msbuild "Prime Bitstrings.vcxproj" -p:Configuration=Profile -p:Platform=x64 -t:Build
 @if %errorlevel% neq 0 exit /b %errorlevel%
 
-:: Run profile exe
+:: Rename binary
 
-x64\Profile\"Prime Bitstrings.exe"
+@rename "x64\Profile\Prime Bitstrings.exe" "PB profile.exe"
 @if %errorlevel% neq 0 exit /b %errorlevel%
 
-:: Copy profile results
+:: Run profile exe
 
+@start /min "" "x64\Profile\PB profile.exe"
+@if %errorlevel% neq 0 exit /b %errorlevel%
+
+@for /L %%i in (1, 1, 15) do @(	
+	@tasklist | find /i "PB profile.exe" > NUL && echo Profiling... || goto next
+	@timeout /t 1 /nobreak > NUL
+)
+
+@echo Profiling time limit reached
+@taskkill /fi "IMAGENAME eq PB profile.exe" > NUL
+@if %errorlevel% neq 0 exit /b %errorlevel%
+
+:next
+@echo Finished profiling
+
+:: Copy profile results after a 1s wait
+
+@timeout /t 1 /nobreak > NUL
 copy /V /Y x64\Profile\*.pgc x64\Release
 @if %errorlevel% neq 0 exit /b %errorlevel%
 copy /V /Y x64\Profile\*.pgd x64\Release
