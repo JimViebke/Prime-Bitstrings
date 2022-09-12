@@ -861,57 +861,56 @@ namespace mbp
 		return output;
 	}
 
-
-
-	tests_are_inlined bool has_small_divisor(const size_t number)
+	tests_are_inlined const size_t* const multibase_div_tests(size_t* input,
+															  const size_t* const candidates_end)
 	{
 		using namespace div_test;
 
-		//if (recursive_is_divisible_by<7, in_base<3>>(number)) return true;
-		//if (recursive_is_divisible_by<7, in_base<4>>(number)) return true;
-		//if (recursive_is_divisible_by<7, in_base<5>>(number)) return true;
+		size_t* output = input;
 
-	#if analyze_div_tests
-		bool found_div = false;
-	#endif
-
-		static_assert(sizeof(remainder_t) == 1);
-
-		// Convert each half of number to a 32-byte bitmask
-		const uint256_t mask_lower = util::expand_bits_to_bytes(number & uint32_t(-1));
-		const uint256_t mask_upper = util::expand_bits_to_bytes(number >> 32);
-
-		uint256_t ymm0 = _mm256_loadu_si256((uint256_t*)&div_tests[0].remainders[0]);
-		uint256_t ymm1 = _mm256_loadu_si256((uint256_t*)&div_tests[0].remainders[32]);
-
-		for (div_test_const div_test_t& div_test : div_tests)
+		for (; input < candidates_end; ++input)
 		{
-			const uint256_t rems_lower = _mm256_and_si256(mask_lower, ymm0);
-			const uint256_t rems_upper = _mm256_and_si256(mask_upper, ymm1);
+			const size_t number = *input;
 
-			ymm0 = _mm256_loadu_si256((uint256_t*)(((uint8_t*)&div_test.remainders) + sizeof(div_test_t) + 0));
-			ymm1 = _mm256_loadu_si256((uint256_t*)(((uint8_t*)&div_test.remainders) + sizeof(div_test_t) + 32));
+			// always write
+			*output = number;
 
-			const size_t rem = util::vcl_hadd2_x(rems_upper, rems_lower);
+			static_assert(sizeof(remainder_t) == 1);
 
-			if (has_small_prime_factor(rem, div_test.prime_idx))
+			// Convert each half of number to a 32-byte bitmask
+			const uint256_t mask_lower = util::expand_bits_to_bytes(number & uint32_t(-1));
+			const uint256_t mask_upper = util::expand_bits_to_bytes(number >> 32);
+
+			uint256_t ymm0 = _mm256_loadu_si256((uint256_t*)&div_tests[0].remainders[0]);
+			uint256_t ymm1 = _mm256_loadu_si256((uint256_t*)&div_tests[0].remainders[32]);
+
+			size_t is_candidate = 1;
+
+			for (div_test_const div_test_t& div_test : div_tests)
 			{
-			#if analyze_div_tests
-				div_test.hits++;
-				found_div = true;
-				return true;
-			#else
-				return true;
-			#endif
+				const uint256_t rems_lower = _mm256_and_si256(mask_lower, ymm0);
+				const uint256_t rems_upper = _mm256_and_si256(mask_upper, ymm1);
+
+				ymm0 = _mm256_loadu_si256((uint256_t*)(((uint8_t*)&div_test.remainders) + sizeof(div_test_t) + 0));
+				ymm1 = _mm256_loadu_si256((uint256_t*)(((uint8_t*)&div_test.remainders) + sizeof(div_test_t) + 32));
+
+				const size_t rem = util::vcl_hadd2_x(rems_upper, rems_lower);
+
+				if (has_small_prime_factor(rem, div_test.prime_idx))
+				{
+					is_candidate = 0;
+					break;
+				}
 			}
+
+			// conditionally increment
+			output += is_candidate;
 		}
 
-	#if analyze_div_tests
-		return found_div;
-	#else
-		return false;
-	#endif
+		return output;
 	}
+
+
 
 	void print_div_tests()
 	{
@@ -1093,16 +1092,15 @@ namespace mbp
 
 
 
+			// Check if n has a small prime factor in any base
+			candidates_end = multibase_div_tests(scratch, candidates_end);
+			count_passes(i += (candidates_end - scratch));
+
+
+
 			for (size_t* candidate = scratch; candidate < candidates_end; )
 			{
 				number = *candidate++;
-
-				// Bail if n has a small prime factor in any base
-				if (has_small_divisor(number)) continue;
-
-				count_passes(++i);
-
-
 
 				// Do full primality tests, starting with base 2
 				if (!franken::mpir_is_likely_prime_BPSW(number)) continue;
