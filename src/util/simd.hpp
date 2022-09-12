@@ -132,7 +132,7 @@ namespace mbp::util
 		return _mm256_cmpeq_epi8(isolated_inverted, _mm256_setzero_si256());
 	}
 
-	void print_vector256(const uint256_t& data)
+	void print_vector256_u8(const uint256_t& data)
 	{
 		for (size_t i = 0; i < 32; ++i)
 		{
@@ -144,6 +144,22 @@ namespace mbp::util
 				std::cout << std::setw(3) << size_t(data.m256i_u8[i]);
 			else
 				std::cout << std::setw(3) << '.';
+		}
+
+		std::cout << '\n';
+	}
+	void print_vector256_u32(const uint256_t& data)
+	{
+		for (size_t i = 0; i < 8; ++i)
+		{
+			if (i % 4 == 0) // padding
+				std::cout << "  ";
+
+			// write a dot in place of a 0
+			if (data.m256i_u32[i] != 0)
+				std::cout << ' ' << std::setw(4) << size_t(data.m256i_u32[i]);
+			else
+				std::cout << ' ' << std::setw(4) << '.';
 		}
 
 		std::cout << '\n';

@@ -42,6 +42,17 @@ namespace mbp::div_test
 					if (base == 5 && p == 13) continue;
 					if (base == 4 && p == 17) continue;
 
+					// Hardcoded 5-remainder div tests by 11
+					if (base == 3 && p == 11) continue;
+					if (base == 4 && p == 11) continue;
+					if (base == 5 && p == 11) continue;
+					if (base == 9 && p == 11) continue;
+
+					// Hardcoded 10-remainder div tests by 11
+					if (base == 6 && p == 11) continue;
+					if (base == 7 && p == 11) continue;
+					if (base == 8 && p == 11) continue;
+
 				#if !analyze_div_tests or suppress_extra_div_tests
 					if (base == 4 && p == 3) continue; //  base  4^n % 3 unused
 					if (base == 5 && p == 3) continue; //  base  5^n % 3 unused

@@ -668,6 +668,200 @@ namespace mbp
 		return output;
 	}
 
+	tests_are_inlined const size_t* const div_tests_by_11(size_t* input,
+														  const size_t* const candidates_end)
+	{
+		using namespace div_test;
+		using namespace div_test::detail;
+
+		// Intellisense may generate a number of false positives here
+		//static_assert(period_of<bitmask_for<3, 11>::val>::val == 5);  // base 3 % 11   (5 remainders)
+		//static_assert(period_of<bitmask_for<4, 11>::val>::val == 5);  // base 4 % 11   (5 remainders)
+		//static_assert(period_of<bitmask_for<5, 11>::val>::val == 5);  // base 5 % 11   (5 remainders)
+		static_assert(period_of<bitmask_for<6, 11>::val>::val == 10); // base 6 % 11   (10 remainders)
+		static_assert(period_of<bitmask_for<7, 11>::val>::val == 10); // base 7 % 11   (10 remainders)
+		static_assert(period_of<bitmask_for<8, 11>::val>::val == 10); // base 8 % 11   (10 remainders)
+		//static_assert(period_of<bitmask_for<9, 11>::val>::val == 5);  // base 9 % 11   (5 remainders)
+
+		constexpr size_t bitmask = bitmask_for<6, 11>::val;
+		static_assert(period_of<bitmask>::val == 10);
+
+		size_t* output = input;
+
+		size_t next = *input;
+
+		for (; input < candidates_end; )
+		{
+			const size_t number = next;
+			++input;
+			next = *input; // load one iteration ahead
+
+			// always write
+			*output = number;
+
+			const size_t pc_0 = pop_count(number & (bitmask << 0));
+			const size_t pc_5 = pop_count(number & (bitmask << 5));
+			//size_t b3_rem = pc_0 + pc_5;
+			//size_t b4_rem = pc_0 + pc_5;
+			//size_t b5_rem = pc_0 + pc_5;
+			size_t b6_rem = pc_0 + (pc_5 * pow_mod<6, 5, 11>::rem);
+			size_t b7_rem = pc_0 + (pc_5 * pow_mod<7, 5, 11>::rem);
+			size_t b8_rem = pc_0 + (pc_5 * pow_mod<8, 5, 11>::rem);
+			//size_t b9_rem = pc_0 + pc_5;
+
+			const size_t pc_1 = pop_count(number & (bitmask << 1));
+			const size_t pc_6 = pop_count(number & (bitmask << 6));
+			//b3_rem += (pc_1 + pc_6) * pow_mod<3, 1, 11>::rem;
+			//b4_rem += (pc_1 + pc_6) * pow_mod<4, 1, 11>::rem;
+			//b5_rem += (pc_1 + pc_6) * pow_mod<5, 1, 11>::rem;
+			b6_rem += pc_1 * pow_mod<6, 1, 11>::rem + pc_6 * pow_mod<6, 6, 11>::rem;
+			b7_rem += pc_1 * pow_mod<7, 1, 11>::rem + pc_6 * pow_mod<7, 6, 11>::rem;
+			b8_rem += pc_1 * pow_mod<8, 1, 11>::rem + pc_6 * pow_mod<8, 6, 11>::rem;
+			//b9_rem += (pc_1 + pc_6) * pow_mod<9, 1, 11>::rem;
+
+			const size_t pc_2 = pop_count(number & (bitmask << 2));
+			const size_t pc_7 = pop_count(number & (bitmask << 7));
+			//b3_rem += (pc_2 + pc_7) * pow_mod<3, 2, 11>::rem;
+			//b4_rem += (pc_2 + pc_7) * pow_mod<4, 2, 11>::rem;
+			//b5_rem += (pc_2 + pc_7) * pow_mod<5, 2, 11>::rem;
+			b6_rem += pc_2 * pow_mod<6, 2, 11>::rem + pc_7 * pow_mod<6, 7, 11>::rem;
+			b7_rem += pc_2 * pow_mod<7, 2, 11>::rem + pc_7 * pow_mod<7, 7, 11>::rem;
+			b8_rem += pc_2 * pow_mod<8, 2, 11>::rem + pc_7 * pow_mod<8, 7, 11>::rem;
+			//b9_rem += (pc_2 + pc_7) * pow_mod<9, 2, 11>::rem;
+
+			const size_t pc_3 = pop_count(number & (bitmask << 3));
+			const size_t pc_8 = pop_count(number & (bitmask << 8));
+			//b3_rem += (pc_3 + pc_8) * pow_mod<3, 3, 11>::rem;
+			//b4_rem += (pc_3 + pc_8) * pow_mod<4, 3, 11>::rem;
+			//b5_rem += (pc_3 + pc_8) * pow_mod<5, 3, 11>::rem;
+			b6_rem += pc_3 * pow_mod<6, 3, 11>::rem + pc_8 * pow_mod<6, 8, 11>::rem;
+			b7_rem += pc_3 * pow_mod<7, 3, 11>::rem + pc_8 * pow_mod<7, 8, 11>::rem;
+			b8_rem += pc_3 * pow_mod<8, 3, 11>::rem + pc_8 * pow_mod<8, 8, 11>::rem;
+			//b9_rem += (pc_3 + pc_8) * pow_mod<9, 3, 11>::rem;
+
+			const size_t pc_4 = pop_count(number & (bitmask << 4));
+			const size_t pc_9 = pop_count(number & (bitmask << 9));
+			//b3_rem += (pc_4 + pc_9) * pow_mod<3, 4, 11>::rem;
+			//b4_rem += (pc_4 + pc_9) * pow_mod<4, 4, 11>::rem;
+			//b5_rem += (pc_4 + pc_9) * pow_mod<5, 4, 11>::rem;
+			b6_rem += pc_4 * pow_mod<6, 4, 11>::rem + pc_9 * pow_mod<6, 9, 11>::rem;
+			b7_rem += pc_4 * pow_mod<7, 4, 11>::rem + pc_9 * pow_mod<7, 9, 11>::rem;
+			b8_rem += pc_4 * pow_mod<8, 4, 11>::rem + pc_9 * pow_mod<8, 9, 11>::rem;
+			//b9_rem += (pc_4 + pc_9) * pow_mod<9, 4, 11>::rem;
+
+			//size_t merged_lookups = prime_factor_lookup[b3_rem];
+			//merged_lookups |= prime_factor_lookup[b4_rem];
+			//merged_lookups |= prime_factor_lookup[b5_rem];
+			size_t merged_lookups = prime_factor_lookup[b6_rem];
+			merged_lookups |= prime_factor_lookup[b7_rem];
+			merged_lookups |= prime_factor_lookup[b8_rem];
+			//merged_lookups |= prime_factor_lookup[b9_rem];
+
+			// Only advance the pointer if the nth bit was 0 in all lookups
+			if ((merged_lookups & (prime_lookup_t(1) << get_prime_index<11>::idx)) == 0) ++output;
+
+			// Only advance the pointer if the number is still a candidate
+			//bool still_a_candidate = true;
+			//if (has_small_prime_factor(b3_rem, get_prime_index<11>::idx)) still_a_candidate = false;
+			//if (has_small_prime_factor(b4_rem, get_prime_index<11>::idx)) still_a_candidate = false;
+			//if (has_small_prime_factor(b5_rem, get_prime_index<11>::idx)) still_a_candidate = false;
+			//if (has_small_prime_factor(b6_rem, get_prime_index<11>::idx)) still_a_candidate = false;
+			//if (has_small_prime_factor(b7_rem, get_prime_index<11>::idx)) still_a_candidate = false;
+			//if (has_small_prime_factor(b8_rem, get_prime_index<11>::idx)) still_a_candidate = false;
+			//if (has_small_prime_factor(b9_rem, get_prime_index<11>::idx)) still_a_candidate = false;
+			//output += still_a_candidate;
+		}
+
+		return output;
+	}
+
+	tests_are_inlined const size_t* const div_tests_by_11_with_5_rems_vectorized(size_t* input,
+																				 const size_t* const candidates_end)
+	{
+		using namespace div_test;
+		using namespace div_test::detail;
+
+		// Intellisense may generate a number of false positives here
+		constexpr size_t bitmask = bitmask_for<3, 11>::val;  // base 3 % 11   (5 remainders)
+		static_assert(bitmask == bitmask_for<4, 11>::val);  // base 4 % 11   (5 remainders)
+		static_assert(bitmask == bitmask_for<5, 11>::val);  // base 5 % 11   (5 remainders)
+		static_assert(bitmask == bitmask_for<9, 11>::val);  // base 9 % 11   (5 remainders)
+		static_assert(period_of<bitmask>::val == 5);
+
+		// constexpr uint128_t rems0 = { always all ones };
+		constexpr static uint128_t static_rems1 = uint128_t{ .m128i_u32 {
+								pow_mod<3, 1, 11>::rem,
+								pow_mod<4, 1, 11>::rem,
+								pow_mod<5, 1, 11>::rem,
+								pow_mod<9, 1, 11>::rem } };
+		constexpr static uint128_t static_rems2 = uint128_t{ .m128i_u32 {
+								pow_mod<3, 2, 11>::rem,
+								pow_mod<4, 2, 11>::rem,
+								pow_mod<5, 2, 11>::rem,
+								pow_mod<9, 2, 11>::rem } };
+		constexpr static uint128_t static_rems3 = uint128_t{ .m128i_u32 {
+								pow_mod<3, 3, 11>::rem,
+								pow_mod<4, 3, 11>::rem,
+								pow_mod<5, 3, 11>::rem,
+								pow_mod<9, 3, 11>::rem } };
+		constexpr static uint128_t static_rems4 = uint128_t{ .m128i_u32 {
+								pow_mod<3, 4, 11>::rem,
+								pow_mod<4, 4, 11>::rem,
+								pow_mod<5, 4, 11>::rem,
+								pow_mod<9, 4, 11>::rem } };
+
+		const auto xmm_rems1 = _mm_loadu_si128(&static_rems1);
+		const auto xmm_rems2 = _mm_loadu_si128(&static_rems2);
+		const auto xmm_rems3 = _mm_loadu_si128(&static_rems3);
+		const auto xmm_rems4 = _mm_loadu_si128(&static_rems4);
+
+		const int* const prime_factor_lookup_ptr = (const int*)prime_factor_lookup.data();
+
+		size_t* output = input;
+
+		for (; input < candidates_end; ++input)
+		{
+			const size_t number = *input;
+
+			// always write
+			*output = number;
+
+			auto xmm0 = _mm_set1_epi32((int)pop_count(number & (bitmask << 0)));
+			auto xmm1 = _mm_set1_epi32((int)pop_count(number & (bitmask << 1)));
+			auto xmm2 = _mm_set1_epi32((int)pop_count(number & (bitmask << 2)));
+			auto xmm3 = _mm_set1_epi32((int)pop_count(number & (bitmask << 3)));
+			auto xmm4 = _mm_set1_epi32((int)pop_count(number & (bitmask << 4)));
+
+			// multiply each popcount with Nth remainder of each test (skip xmm0)
+			xmm1 = _mm_mullo_epi32(xmm1, xmm_rems1);
+			xmm2 = _mm_mullo_epi32(xmm2, xmm_rems2);
+			xmm3 = _mm_mullo_epi32(xmm3, xmm_rems3);
+			xmm4 = _mm_mullo_epi32(xmm4, xmm_rems4);
+
+			// add pairs
+			xmm0 = _mm_add_epi32(xmm0, xmm1);
+			xmm2 = _mm_add_epi32(xmm2, xmm3);
+			// final adds
+			xmm0 = _mm_add_epi32(xmm0, xmm2);
+			xmm0 = _mm_add_epi32(xmm0, xmm4);
+
+			size_t merged_lookups = prime_factor_lookup_ptr[xmm0.m128i_u32[0]];
+			merged_lookups |= prime_factor_lookup_ptr[xmm0.m128i_u32[1]];
+			merged_lookups |= prime_factor_lookup_ptr[xmm0.m128i_u32[2]];
+			merged_lookups |= prime_factor_lookup_ptr[xmm0.m128i_u32[3]];
+
+			constexpr size_t mask = (1ull << get_prime_index<11>::idx);
+
+			// Only advance the pointer if each test's selected bit was 0
+			output += !(merged_lookups & mask);
+
+			// alternatively, use avx gather(), and(), and testz()
+			//output += _mm_testz_si128(xmm0, prime_mask); // compute bitwise AND, return 1 if result is 0, else return 0
+		}
+
+		return output;
+	}
+
 
 
 	tests_are_inlined bool has_small_divisor(const size_t number)
@@ -847,8 +1041,8 @@ namespace mbp
 
 
 
-		count_passes(size_t a, b, c, d, e, f, g, h);
-		count_passes(a = b = c = d = e = f = g = h = 0);
+		count_passes(size_t a, b, c, d, e, f, g, h, i);
+		count_passes(a = b = c = d = e = f = g = h = i = 0);
 
 		// (condition optimizes out when not benchmarking)
 		while (benchmark_mode ? number < bm_stop : true)
@@ -894,6 +1088,10 @@ namespace mbp
 			candidates_end = div_tests_b8m13_b5m13_b4m17(scratch, candidates_end);
 			count_passes(g += (candidates_end - scratch));
 
+			candidates_end = div_tests_by_11_with_5_rems_vectorized(scratch, candidates_end);
+			candidates_end = div_tests_by_11(scratch, candidates_end);
+			count_passes(h += (candidates_end - scratch));
+
 
 
 			for (size_t* candidate = scratch; candidate < candidates_end; )
@@ -903,7 +1101,7 @@ namespace mbp
 				// Bail if n has a small prime factor in any base
 				if (has_small_divisor(number)) continue;
 
-				count_passes(++h);
+				count_passes(++i);
 
 
 
@@ -977,7 +1175,8 @@ namespace mbp
 		count_passes(std::cout << "Passed b4 / 7 test:   " << w(10) << e << " (removed ~" << w(3) << 100 - (e * 100 / d) << "%)\n");
 		count_passes(std::cout << "Passed b3&5 / 7 test: " << w(10) << f << " (removed ~" << w(3) << 100 - (f * 100 / e) << "%)\n");
 		count_passes(std::cout << "P. b8/13 b5/13 b4/17: " << w(10) << g << " (removed ~" << w(3) << 100 - (g * 100 / f) << "%)\n");
-		count_passes(std::cout << "Passed div tests:     " << w(10) << h << " (removed ~" << w(3) << 100 - (h * 100 / g) << "%)\n");
+		count_passes(std::cout << "Passed / 11 tests:    " << w(10) << h << " (removed ~" << w(3) << 100 - (h * 100 / g) << "%)\n");
+		count_passes(std::cout << "Passed div tests:     " << w(10) << i << " (removed ~" << w(3) << 100 - (i * 100 / h) << "%)\n");
 
 	}
 
