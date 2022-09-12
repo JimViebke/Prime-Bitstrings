@@ -75,6 +75,7 @@ Calculate change: 1 - (  /  )
 28746 ms : Separate three more div tests into hardcoded branchless pass (~3% faster)
 28429 ms : Make static_sieve constexpr and simplify copying it (~1% faster)
 28182 ms : Hardcode div tests by 11 (~1% faster)
+27870 ms : Load next prime and sieve offset one iteration early (~1% faster)
 
 
 

@@ -113,7 +113,10 @@ namespace mbp
 
 		// Start with the first prime not in the static sieve
 		const sieve_prime_t* prime_ptr = small_primes_lookup.data() + static_sieve_primes.size() + 1;
-		sieve_prime_t* cache_ptr = sieve_offsets_cache.data() + static_sieve_primes.size() + 1;
+		sieve_prime_t* offset_cache_ptr = sieve_offsets_cache.data() + static_sieve_primes.size() + 1;
+
+		size_t next_p = *prime_ptr;
+		sieve_t* next_offset = sieve_begin + *offset_cache_ptr;
 
 		for (;;)
 		{
@@ -121,14 +124,16 @@ namespace mbp
 			//    x  x     x        x  x        x     x  x   <-- values to mark composite/false
 			// x        x     x  x        x  x     x         <-- values to ignore
 
-			// Get the next prime
-			const size_t p = *prime_ptr;
+			// Get the next prime, loading one iteration ahead
+			const size_t p = next_p;
+			next_p = *(prime_ptr + 1);
 
-			const size_t fifteen_p = p * 15;
+			// Get the position of the next odd multiple of p*15, loading one iteration ahead
+			sieve_t* j = next_offset;
+			next_offset = sieve_begin + *(offset_cache_ptr + 1);
 
-			// Get the index of the next odd multiple of p*3
-			sieve_t* j = sieve_begin + *cache_ptr;
-
+			// j is aligned to a multiple of 15, so we have 0-8 multiples of p *behind* j that must be crossed off.
+			// Use eight branchless writes to j-(N * p) if they exist, falling back to a write to j in each case.
 			*(((j - (14 * p)) >= sieve_begin) ? (j - (14 * p)) : j) = false;
 			*(((j - (13 * p)) >= sieve_begin) ? (j - (13 * p)) : j) = false;
 			*(((j - (11 * p)) >= sieve_begin) ? (j - (11 * p)) : j) = false;
@@ -139,8 +144,10 @@ namespace mbp
 			*(((j - p) >= sieve_begin) ? (j - p) : j) = false;
 
 			// Stop marking 15p early, then handle cleanup after the loop.
-			const sieve_t* const padded_end = sieve_end - fifteen_p;
+			const sieve_t* const padded_end = sieve_end - (15 * p);
 
+			// Each iteration, j points to an (already marked) multiple of p*15.
+			// Mark off specific, implicitly odd, multiples of p.
 			do
 			{
 				// skip 0
@@ -159,7 +166,7 @@ namespace mbp
 				*(j + (13 * p)) = false;
 				*(j + (14 * p)) = false;
 
-				j += fifteen_p;
+				j += (15 * p);
 			} while (j < padded_end);
 
 			// Same as above, perform any remaining writes
@@ -173,51 +180,47 @@ namespace mbp
 			*(((j + (14 * p)) < sieve_end) ? (j + (14 * p)) : j) = false;
 
 			// Calculate the offset and update the cache for the next sieving
-			*cache_ptr = sieve_prime_t((j + fifteen_p) - sieve_end);
+			*offset_cache_ptr = sieve_prime_t((j + (15 * p)) - sieve_end);
 
 			++prime_ptr;
-			++cache_ptr;
+			++offset_cache_ptr;
 
 			if (p == last_prime_for_stepping_by_fifteen) break;
 		}
 
+		// Sieve larger primes by smaller strides, using 3*p instead of 15*p
+
 		for (;;)
 		{
-			// Get the next prime
-			const size_t p = *prime_ptr;
-			// For readability:
-			const size_t two_p = p * 2;
-			const size_t three_p = p * 3;
+			const size_t p = next_p;
+			next_p = *(prime_ptr + 1);
 
-			// Get the index of the next odd multiple of p*3
-			sieve_t* j = sieve_begin + *cache_ptr;
+			sieve_t* j = next_offset;
+			next_offset = sieve_begin + *(offset_cache_ptr + 1);
 
-			// j is aligned to a multiple of 3, so we have 0, 1, or 2 multiples of p *behind* j that must be crossed off.
-			// Use two branchless writes to j-p and j-2p if they exist, falling back to a write to j in both cases
+			// Same as above, we are stepping by multiples of p. Use two branchless writes
+			// before and after the loop to handle any multiples near the start and end of the sieve.
+			*(((j - (2 * p)) >= sieve_begin) ? (j - (2 * p)) : j) = false;
 			*(((j - p) >= sieve_begin) ? (j - p) : j) = false;
-			*(((j - two_p) >= sieve_begin) ? (j - two_p) : j) = false;
 
-			// Stop marking 3p early, then handle cleanup after the loop.
-			const sieve_t* const padded_end = sieve_end - three_p;
+			const sieve_t* const padded_end = sieve_end - (3 * p);
 
-			// Each iteration, j points to an (already marked) multiple of p and 3.
-			// Only mark j + p and j + 2p.
+			// Same as above, j points to an (already marked) multiple of p.
+			// Only mark the necessary multiples of p.
 			do
 			{
 				*(j + p) = false;
-				*(j + two_p) = false;
-				j += three_p;
+				*(j + (2 * p)) = false;
+				j += (3 * p);
 			} while (j < padded_end);
 
-			// Same as above, we have 0, 1, or 2 remaining writes to perform
 			*(((j + p) < sieve_end) ? (j + p) : j) = false;
-			*(((j + two_p) < sieve_end) ? (j + two_p) : j) = false;
+			*(((j + (2 * p)) < sieve_end) ? (j + (2 * p)) : j) = false;
 
-			// Calculate the offset and update the cache for the next sieving
-			*cache_ptr = sieve_prime_t((j + three_p) - sieve_end);
+			*offset_cache_ptr = sieve_prime_t((j + (3 * p)) - sieve_end);
 
 			++prime_ptr;
-			++cache_ptr;
+			++offset_cache_ptr;
 
 			if (p == last_prime_for_stepping_by_threes) break;
 		}
@@ -226,23 +229,21 @@ namespace mbp
 		// to benefit from stepping by more than p.
 
 		for (; prime_ptr < small_primes_lookup.data() + small_primes_lookup.size();
-			 ++prime_ptr, ++cache_ptr)
+			 ++prime_ptr, ++offset_cache_ptr)
 		{
-			// Get the next prime
-			const size_t p = *prime_ptr;
+			const size_t p = next_p;
+			next_p = *(prime_ptr + 1);
 
-			// Get the index of the next odd multiple of p
-			sieve_t* j = sieve_begin + *cache_ptr;
+			sieve_t* j = next_offset;
+			next_offset = sieve_begin + *(offset_cache_ptr + 1);
 
-			// Mark off each (implicitly) odd multiple of p
 			do
 			{
 				*j = false;
 				j += p;
 			} while (j < sieve_end);
 
-			// Calculate the offset and update the cache for the next sieving
-			*cache_ptr = sieve_prime_t(j - sieve_end);
+			*offset_cache_ptr = sieve_prime_t(j - sieve_end);
 		}
 	}
 
