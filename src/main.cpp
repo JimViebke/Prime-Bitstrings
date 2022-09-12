@@ -1031,7 +1031,7 @@ namespace mbp
 			double cleared = 0.0;
 			for (size_t i = 1; i < small_primes_lookup.size(); ++i)
 				cleared += ((1.0 - cleared) * (1.0 / small_primes_lookup[i]));
-			return size_t((1.0 - cleared) * double(sieve.size()) * 1.1);
+			return size_t((1.0 - cleared) * double(sieve.size()) * 2);
 		}();
 		static size_t scratch[scratch_size]{};
 
