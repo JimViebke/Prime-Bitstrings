@@ -54,8 +54,7 @@ namespace mbp
 	// on either end of the sieve. We handle these with a set of branchless writes on each end of the sieve.
 	// This overhead has a constant cost, which we can use to estimate the threshold at which it is no longer
 	// an optimization to pass (larger) small primes through the stepped loop. This threshold is calculated at
-	// compile time, based on requiring primes to make at least (sieve_size / X) number of writes, where X
-	// is a tuneable knob.
+	// compile time, based on requiring primes to make at least X writes, where X is a tuneable knob.
 	consteval sieve_prime_t get_threshold(const size_t X)
 	{
 		for (size_t i = 1; i < small_primes_lookup.size(); ++i)
