@@ -32,9 +32,13 @@ namespace mbp::div_test
 					// Always suppress hardcoded div tests
 					if (base == 3 && p == 5) continue;
 
-					if (base == 3 && p == 7) continue;
 					if (base == 4 && p == 7) continue;
+
+					// Hardcoded div tests with 6 remainders
+					if (base == 3 && p == 7) continue;
 					if (base == 5 && p == 7) continue;
+					if (base == 4 && p == 13) continue;
+					if (base == 10 && p == 13) continue;
 
 					// another block of hardcoded tests, ordered by their
 					// original measured hit counts
