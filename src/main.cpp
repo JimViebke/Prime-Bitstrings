@@ -1039,13 +1039,13 @@ namespace mbp
 			candidates_end = div_by_7_base_4_test(scratch, candidates_end);
 			count_passes(e += (candidates_end - scratch));
 
-			// bases 3 and 5 mod 7, and 4 and 10 mod 13 - 6 remainders
+			// bases 3 and 5 mod 7, and 4 and 10 mod 13 (6 remainders)
 			candidates_end = div_tests_with_six_rems(scratch, candidates_end);
 			count_passes(f += (candidates_end - scratch));
 
-			// bases 3, 4, 5, and 9 mod 11 - 5 remainders
+			// bases 3, 4, 5, and 9 mod 11 (5 remainders)
 			candidates_end = div_tests_by_11_with_5_rems_vectorized(scratch, candidates_end);
-			// bases 6, 7, and 8 mod 11 - 10 remainders
+			// bases 6, 7, and 8 mod 11 (10 remainders)
 			candidates_end = div_tests_by_11(scratch, candidates_end);
 			count_passes(g += (candidates_end - scratch));
 
@@ -1131,7 +1131,7 @@ namespace mbp
 		count_passes(std::cout << "Passed b4 / 7 test:   " << w(10) << e << " (removed ~" << w(3) << 100 - (e * 100 / d) << "%)\n");
 		count_passes(std::cout << "Passed 6-rem tests:   " << w(10) << f << " (removed ~" << w(3) << 100 - (f * 100 / e) << "%)\n");
 		count_passes(std::cout << "Passed / 11 tests:    " << w(10) << g << " (removed ~" << w(3) << 100 - (g * 100 / f) << "%)\n");
-		count_passes(std::cout << "Passed div tests:     " << w(10) << h << " (removed ~" << w(3) << 100 - (h * 100 / g) << "%)\n");
+		count_passes(std::cout << "Passed all div tests: " << w(10) << h << " (removed ~" << w(3) << 100 - (h * 100 / g) << "%)\n");
 
 	}
 

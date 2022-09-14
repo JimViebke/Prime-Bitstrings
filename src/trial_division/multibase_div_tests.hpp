@@ -40,10 +40,9 @@ namespace mbp::div_test
 					if (base == 4 && p == 13) continue;
 					if (base == 10 && p == 13) continue;
 
-					// another block of hardcoded tests, ordered by their
-					// original measured hit counts
-					if (base == 8 && p == 13) continue;
+					// another block of hardcoded tests
 					if (base == 5 && p == 13) continue;
+					if (base == 8 && p == 13) continue;
 					if (base == 4 && p == 17) continue;
 
 					// Hardcoded 5-remainder div tests by 11
