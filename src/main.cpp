@@ -567,10 +567,19 @@ namespace mbp
 		return output;
 	}
 
-	tests_are_inlined const size_t* const div_by_7_base_4_test(size_t* input,
-															   const size_t* const candidates_end)
+	tests_are_inlined const size_t* const div_tests_with_three_rems(size_t* input,
+																	const size_t* const candidates_end)
 	{
 		using namespace div_test;
+		using namespace div_test::detail;
+
+		// Intellisense may generate a number of false positives here
+		constexpr size_t bitmask = bitmask_for<4, 7>::val;
+		static_assert(bitmask == bitmask_for<3, 13>::val &&
+					  bitmask == bitmask_for<9, 13>::val);
+		static_assert(period_of<bitmask>::val == 3);
+
+		const prime_lookup_t* const prime_factor_lookup_ptr = prime_factor_lookup.data();
 
 		size_t* output = input;
 
@@ -585,8 +594,28 @@ namespace mbp
 			// always write
 			*output = number;
 
+			const size_t pc_0 = pop_count(number & (bitmask << 0));
+			size_t b4_m7_rem = pc_0;
+			size_t b3_m13_rem = pc_0;
+			size_t b9_m13_rem = pc_0;
+
+			const size_t pc_1 = pop_count(number & (bitmask << 1));
+			b4_m7_rem += pc_1 * pow_mod<4, 1, 7>::rem;
+			b3_m13_rem += pc_1 * pow_mod<3, 1, 13>::rem;
+			b9_m13_rem += pc_1 * pow_mod<9, 1, 13>::rem;
+
+			const size_t pc_2 = pop_count(number & (bitmask << 2));
+			b4_m7_rem += pc_2 * pow_mod<4, 2, 7>::rem;
+			b3_m13_rem += pc_2 * pow_mod<3, 2, 13>::rem;
+			b9_m13_rem += pc_2 * pow_mod<9, 2, 13>::rem;
+
 			// Only advance the pointer if the number is still a candidate
-			if (!recursive_is_divisible_by<7, in_base<4>>(number)) ++output;
+			size_t merged_masks = 0;
+			merged_masks |= (prime_factor_lookup_ptr[b4_m7_rem] & (1ull << get_prime_index<7>::idx));
+			merged_masks |= (prime_factor_lookup_ptr[b3_m13_rem] & (1ull << get_prime_index<13>::idx));
+			merged_masks |= (prime_factor_lookup_ptr[b9_m13_rem] & (1ull << get_prime_index<13>::idx));
+
+			output += !merged_masks;
 		}
 
 		return output;
@@ -1035,8 +1064,8 @@ namespace mbp
 			candidates_end = div_tests_with_four_rems(scratch, candidates_end);
 			count_passes(d += (candidates_end - scratch));
 
-			// base 4 mod 7 - 3 remainders
-			candidates_end = div_by_7_base_4_test(scratch, candidates_end);
+			// base 4 mod 7, and bases 3 and 9 mod 13 (3 remainders)
+			candidates_end = div_tests_with_three_rems(scratch, candidates_end);
 			count_passes(e += (candidates_end - scratch));
 
 			// bases 3 and 5 mod 7, and 4 and 10 mod 13 (6 remainders)
@@ -1128,7 +1157,7 @@ namespace mbp
 		count_passes(std::cout << "Passed prime test:    " << w(10) << b << " (removed ~" << w(3) << 100 - (b * 100 / a) << "%)\n");
 		count_passes(std::cout << "Passed GCD test:      " << w(10) << c << " (removed ~" << w(3) << 100 - (c * 100 / b) << "%)\n");
 		count_passes(std::cout << "Passed 4-rem tests:   " << w(10) << d << " (removed ~" << w(3) << 100 - (d * 100 / c) << "%)\n");
-		count_passes(std::cout << "Passed b4 / 7 test:   " << w(10) << e << " (removed ~" << w(3) << 100 - (e * 100 / d) << "%)\n");
+		count_passes(std::cout << "Passed 3-rem tests:   " << w(10) << e << " (removed ~" << w(3) << 100 - (e * 100 / d) << "%)\n");
 		count_passes(std::cout << "Passed 6-rem tests:   " << w(10) << f << " (removed ~" << w(3) << 100 - (f * 100 / e) << "%)\n");
 		count_passes(std::cout << "Passed / 11 tests:    " << w(10) << g << " (removed ~" << w(3) << 100 - (g * 100 / f) << "%)\n");
 		count_passes(std::cout << "Passed all div tests: " << w(10) << h << " (removed ~" << w(3) << 100 - (h * 100 / g) << "%)\n");
