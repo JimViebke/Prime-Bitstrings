@@ -78,25 +78,3 @@ Calculate change: 1 - (  /  )
 27870 ms : Load next prime and sieve offset one iteration early (~1% faster)
 27616 ms : Combine four 4-remainder div tests (~1% faster)
 27169 ms : Hardcode two more 6-remainder div tests (~1.6% faster)
-
-
-
-
-
-
-
-ideas:
-- Let the full sieve be larger than (ie, a multiple of) the static sieve
-	- The above was slower - instead, store a larger, repeating static sieve
-- Compare sieving with wheel factorization
-	- Where exactly? b2 already has sieving, and it's expensive to convert into higher bases
-- Disable buffer security check
-- Use Flint2
-	- In particular, Flint may have a cheaper weak prime test that could be more optimal with fewer div tests
-
-
-
-
-
-
-
