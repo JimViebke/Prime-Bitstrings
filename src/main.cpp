@@ -605,6 +605,8 @@ namespace mbp
 					  bitmask == bitmask_for<10, 13>::val);
 		static_assert(period_of<bitmask>::val == 6);
 
+		const prime_lookup_t* const prime_factor_lookup_ptr = prime_factor_lookup.data();
+
 		size_t* output = input;
 
 		size_t next = *input;
@@ -655,12 +657,13 @@ namespace mbp
 			b10_m13_rem += pc_5 * pow_mod<10, 5, 13>::rem;
 
 			// Only advance the pointer if the number is still a candidate
-			bool still_a_candidate = true;
-			if (has_small_prime_factor(b3_m7_rem, get_prime_index<7>::idx)) still_a_candidate = false;
-			if (has_small_prime_factor(b5_m7_rem, get_prime_index<7>::idx)) still_a_candidate = false;
-			if (has_small_prime_factor(b4_m13_rem, get_prime_index<13>::idx)) still_a_candidate = false;
-			if (has_small_prime_factor(b10_m13_rem, get_prime_index<13>::idx)) still_a_candidate = false;
-			output += still_a_candidate;
+			size_t merged_masks = 0;
+			merged_masks |= (prime_factor_lookup_ptr[b3_m7_rem] & (1ull << get_prime_index<7>::idx));
+			merged_masks |= (prime_factor_lookup_ptr[b5_m7_rem] & (1ull << get_prime_index<7>::idx));
+			merged_masks |= (prime_factor_lookup_ptr[b4_m13_rem] & (1ull << get_prime_index<13>::idx));
+			merged_masks |= (prime_factor_lookup_ptr[b10_m13_rem] & (1ull << get_prime_index<13>::idx));
+
+			output += !merged_masks;
 		}
 
 		return output;
