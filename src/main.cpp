@@ -1,6 +1,6 @@
 
 // Hacky way to hide the contents of zmmintrin.h
-// For some reason MSVC always includes it from immintrin.h
+// MSVC always includes it from immintrin.h
 #ifndef _ZMMINTRIN_H_INCLUDED
 #define _ZMMINTRIN_H_INCLUDED
 #endif
@@ -247,8 +247,6 @@ namespace mbp
 		}
 	}
 
-
-
 	tests_are_inlined const size_t* const gather_sieve_results(size_t* sieve_candidates,
 															   const sieve_t* sieve_ptr, const sieve_t* const sieve_end,
 															   size_t number)
@@ -410,6 +408,8 @@ namespace mbp
 		return sieve_candidates;
 	}
 
+
+
 	tests_are_inlined const size_t* const prime_popcount_test(size_t* passed_pc_test_ptr,
 															  const size_t* const candidates_end,
 															  const size_t& tiny_primes_lookup)
@@ -510,10 +510,12 @@ namespace mbp
 
 		// Intellisense may generate a number of false positives here
 		constexpr size_t bitmask = bitmask_for<3, 5>::val;
-		static_assert(bitmask == bitmask_for<8, 13>::val &&
-					  bitmask == bitmask_for<5, 13>::val &&
+		static_assert(bitmask == bitmask_for<5, 13>::val &&
+					  bitmask == bitmask_for<8, 13>::val &&
 					  bitmask == bitmask_for<4, 17>::val);
 		static_assert(period_of<bitmask>::val == 4);
+
+		const prime_lookup_t* const prime_factor_lookup_ptr = prime_factor_lookup.data();
 
 		size_t* output = input;
 
@@ -536,29 +538,30 @@ namespace mbp
 
 			const size_t pc_1 = pop_count(number & (bitmask << 1));
 			b3m5_rem += pc_1 * pow_mod<3, 1, 5>::rem;
-			b8m13_rem += pc_1 * pow_mod<8, 1, 13>::rem;
 			b5m13_rem += pc_1 * pow_mod<5, 1, 13>::rem;
+			b8m13_rem += pc_1 * pow_mod<8, 1, 13>::rem;
 			b4m17_rem += pc_1 * pow_mod<4, 1, 17>::rem;
 
 			const size_t pc_2 = pop_count(number & (bitmask << 2));
 			b3m5_rem += pc_2 * pow_mod<3, 2, 5>::rem;
-			b8m13_rem += pc_2 * pow_mod<8, 2, 13>::rem;
 			b5m13_rem += pc_2 * pow_mod<5, 2, 13>::rem;
+			b8m13_rem += pc_2 * pow_mod<8, 2, 13>::rem;
 			b4m17_rem += pc_2 * pow_mod<4, 2, 17>::rem;
 
 			const size_t pc_3 = pop_count(number & (bitmask << 3));
 			b3m5_rem += pc_3 * pow_mod<3, 3, 5>::rem;
-			b8m13_rem += pc_3 * pow_mod<8, 3, 13>::rem;
 			b5m13_rem += pc_3 * pow_mod<5, 3, 13>::rem;
+			b8m13_rem += pc_3 * pow_mod<8, 3, 13>::rem;
 			b4m17_rem += pc_3 * pow_mod<4, 3, 17>::rem;
 
 			// Only advance the pointer if the number is still a candidate
-			bool still_a_candidate = true;
-			if (has_small_prime_factor(b3m5_rem, get_prime_index<5>::idx)) still_a_candidate = false;
-			if (has_small_prime_factor(b8m13_rem, get_prime_index<13>::idx)) still_a_candidate = false;
-			if (has_small_prime_factor(b5m13_rem, get_prime_index<13>::idx)) still_a_candidate = false;
-			if (has_small_prime_factor(b4m17_rem, get_prime_index<17>::idx)) still_a_candidate = false;
-			output += still_a_candidate;
+			size_t merged_masks = 0;
+			merged_masks |= (prime_factor_lookup_ptr[b3m5_rem] & (1ull << get_prime_index<5>::idx));
+			merged_masks |= (prime_factor_lookup_ptr[b5m13_rem] & (1ull << get_prime_index<13>::idx));
+			merged_masks |= (prime_factor_lookup_ptr[b8m13_rem] & (1ull << get_prime_index<13>::idx));
+			merged_masks |= (prime_factor_lookup_ptr[b4m17_rem] & (1ull << get_prime_index<17>::idx));
+
+			output += !merged_masks;
 		}
 
 		return output;
@@ -783,7 +786,7 @@ namespace mbp
 		static_assert(bitmask == bitmask_for<9, 11>::val);  // base 9 % 11   (5 remainders)
 		static_assert(period_of<bitmask>::val == 5);
 
-		// constexpr uint128_t rems0 = { always all ones };
+		// constexpr uint128_t static_rems0 = { always all ones };
 		constexpr static uint128_t static_rems1 = uint128_t{ .m128i_u32 {
 								pow_mod<3, 1, 11>::rem,
 								pow_mod<4, 1, 11>::rem,
@@ -827,7 +830,8 @@ namespace mbp
 			auto xmm3 = _mm_set1_epi32((int)pop_count(number & (bitmask << 3)));
 			auto xmm4 = _mm_set1_epi32((int)pop_count(number & (bitmask << 4)));
 
-			// multiply each popcount with Nth remainder of each test (skip xmm0)
+			// multiply each popcount with Nth remainder of each test
+			// (rems0 is always all ones)
 			xmm1 = _mm_mullo_epi32(xmm1, xmm_rems1);
 			xmm2 = _mm_mullo_epi32(xmm2, xmm_rems2);
 			xmm3 = _mm_mullo_epi32(xmm3, xmm_rems3);
@@ -1043,13 +1047,9 @@ namespace mbp
 		{
 			const size_t number_before_tests = number;
 
-
-
 			// Perform additional sieving on the static sieve
 			util::vectorized_copy_n<sieve.size()>((uint256_t*)sieve.data(), (uint256_t*)static_sieve.data());
 			partial_sieve(sieve);
-
-
 
 			// Collect candidates that have not been marked composite by the sieve
 			const size_t* candidates_end = gather_sieve_results(scratch, sieve.data(), sieve.data() + sieve.size(), number);
@@ -1060,8 +1060,6 @@ namespace mbp
 			// Collect candidates that have a prime number of bits set
 			candidates_end = prime_popcount_test(scratch, candidates_end, tiny_primes_lookup);
 			count_passes(b += (candidates_end - scratch));
-
-
 
 			// Collect candidates with an alternating bitsum that shares a GCD of 1 with a product of primes
 			candidates_end = gcd_test(scratch, candidates_end, gcd_lookup);
