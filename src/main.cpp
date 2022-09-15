@@ -778,26 +778,26 @@ namespace mbp
 		static_assert(period_of<bitmask>::val == 5);
 
 		// constexpr uint128_t static_rems0 = { always all ones };
-		constexpr static uint128_t static_rems1 = uint128_t{ .m128i_u32 {
-								pow_mod<3, 1, 11>::rem,
-								pow_mod<4, 1, 11>::rem,
-								pow_mod<5, 1, 11>::rem,
-								pow_mod<9, 1, 11>::rem } };
-		constexpr static uint128_t static_rems2 = uint128_t{ .m128i_u32 {
-								pow_mod<3, 2, 11>::rem,
-								pow_mod<4, 2, 11>::rem,
-								pow_mod<5, 2, 11>::rem,
-								pow_mod<9, 2, 11>::rem } };
-		constexpr static uint128_t static_rems3 = uint128_t{ .m128i_u32 {
-								pow_mod<3, 3, 11>::rem,
-								pow_mod<4, 3, 11>::rem,
-								pow_mod<5, 3, 11>::rem,
-								pow_mod<9, 3, 11>::rem } };
-		constexpr static uint128_t static_rems4 = uint128_t{ .m128i_u32 {
-								pow_mod<3, 4, 11>::rem,
-								pow_mod<4, 4, 11>::rem,
-								pow_mod<5, 4, 11>::rem,
-								pow_mod<9, 4, 11>::rem } };
+		constexpr static uint128_t static_rems1 = uint128_t{ .m128i_u32{
+			pow_mod<3, 1, 11>::rem,
+			pow_mod<4, 1, 11>::rem,
+			pow_mod<5, 1, 11>::rem,
+			pow_mod<9, 1, 11>::rem } };
+		constexpr static uint128_t static_rems2 = uint128_t{ .m128i_u32{
+			pow_mod<3, 2, 11>::rem,
+			pow_mod<4, 2, 11>::rem,
+			pow_mod<5, 2, 11>::rem,
+			pow_mod<9, 2, 11>::rem } };
+		constexpr static uint128_t static_rems3 = uint128_t{ .m128i_u32{
+			pow_mod<3, 3, 11>::rem,
+			pow_mod<4, 3, 11>::rem,
+			pow_mod<5, 3, 11>::rem,
+			pow_mod<9, 3, 11>::rem } };
+		constexpr static uint128_t static_rems4 = uint128_t{ .m128i_u32{
+			pow_mod<3, 4, 11>::rem,
+			pow_mod<4, 4, 11>::rem,
+			pow_mod<5, 4, 11>::rem,
+			pow_mod<9, 4, 11>::rem } };
 
 		const auto xmm_rems1 = _mm_loadu_si128(&static_rems1);
 		const auto xmm_rems2 = _mm_loadu_si128(&static_rems2);
@@ -1017,13 +1017,14 @@ namespace mbp
 		auto next_div_test_checkpoint = current_time_in_ms() + analyze_interval;
 	#endif
 
+		// 2x the expected number of candidates from the sieve
 		constexpr size_t scratch_size = [] {
 			double cleared = 0.0;
 			for (size_t i = 1; i < small_primes_lookup.size(); ++i)
 				cleared += ((1.0 - cleared) * (1.0 / small_primes_lookup[i]));
 			return size_t((1.0 - cleared) * double(sieve.size()) * 2);
 		}();
-		static size_t scratch[scratch_size]{};
+		static size_t scratch[scratch_size]{}; // Intellisense false-positive
 
 		// Start the clock after setup
 		const auto start = current_time_in_ms();
@@ -1032,6 +1033,7 @@ namespace mbp
 
 		count_passes(size_t a, b, c, d, e, f, g, h, i);
 		count_passes(a = b = c = d = e = f = g = h = i = 0);
+		count_passes(std::cout << "(counting passes)\n");
 
 		// (condition optimizes out when not benchmarking)
 		while (benchmark_mode ? number < bm_stop : true)
@@ -1149,8 +1151,6 @@ namespace mbp
 		} // end main loop
 
 		std::cout << "Finished. " << current_time_in_ms() - start << " ms elapsed\n";
-
-
 
 		count_passes(auto w = std::setw);
 		count_passes(std::cout << "Passed sieve:         " << w(10) << a << " (removed ~" << w(3) << 100 - (a * 100 / (bm_size / 2)) << "%)\n");

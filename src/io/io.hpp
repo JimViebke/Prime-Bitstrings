@@ -13,7 +13,7 @@ namespace mbp
 {
 	void print_preamble()
 	{
-		std::cout << "Version " __DATE__ " " __TIME__ << ((mbp::benchmark_mode) ? "... " : "\n");
+		std::cout << "Built " __DATE__ " " __TIME__ << ((mbp::benchmark_mode) ? "... " : "\n");
 	}
 
 	static std::filesystem::path results_path;

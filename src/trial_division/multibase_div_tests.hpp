@@ -30,31 +30,31 @@ namespace mbp::div_test
 					const auto p = small_primes_lookup[i];
 
 					// Always suppress hardcoded div tests
-					if (base == 3 && p == 5) continue;
 
-					// hardcoded div tests with 3 remainders
+					// Hardcoded div tests with 4 remainders
+					if (base == 3 && p == 5) continue;
+					if (base == 5 && p == 13) continue;
+					if (base == 8 && p == 13) continue;
+					if (base == 4 && p == 17) continue;
+
+					// 3 remainders
 					if (base == 4 && p == 7) continue;
 					if (base == 3 && p == 13) continue;
 					if (base == 9 && p == 13) continue;
 
-					// Hardcoded div tests with 6 remainders
+					// 6 remainders
 					if (base == 3 && p == 7) continue;
 					if (base == 5 && p == 7) continue;
 					if (base == 4 && p == 13) continue;
 					if (base == 10 && p == 13) continue;
 
-					// another block of hardcoded tests
-					if (base == 5 && p == 13) continue;
-					if (base == 8 && p == 13) continue;
-					if (base == 4 && p == 17) continue;
-
-					// Hardcoded 5-remainder div tests by 11
+					// 5 remainders
 					if (base == 3 && p == 11) continue;
 					if (base == 4 && p == 11) continue;
 					if (base == 5 && p == 11) continue;
 					if (base == 9 && p == 11) continue;
 
-					// Hardcoded 10-remainder div tests by 11
+					// 10 remainders
 					if (base == 6 && p == 11) continue;
 					if (base == 7 && p == 11) continue;
 					if (base == 8 && p == 11) continue;
