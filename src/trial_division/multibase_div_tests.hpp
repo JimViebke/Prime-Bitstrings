@@ -59,6 +59,11 @@ namespace mbp::div_test
 					if (base == 7 && p == 11) continue;
 					if (base == 8 && p == 11) continue;
 
+					// 12 remainders
+					if (base == 6 && p == 13) continue;
+					if (base == 7 && p == 13) continue;
+					if (base == 11 && p == 13) continue;
+
 				#if !analyze_div_tests or suppress_extra_div_tests
 					if (base == 4 && p == 3) continue; //  base  4^n % 3 unused
 					if (base == 5 && p == 3) continue; //  base  5^n % 3 unused

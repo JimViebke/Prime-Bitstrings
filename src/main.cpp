@@ -852,6 +852,87 @@ namespace mbp
 		return output;
 	}
 
+	tests_are_inlined const size_t* const div_tests_with_12_rems(size_t* input,
+																 const size_t* const candidates_end)
+	{
+		using namespace div_test;
+		using namespace div_test::detail;
+
+		static_assert(sizeof(remainder_t) == 1);
+		alignas(64) static constexpr remainder_t b6_rems[64] = {
+			1, 6, 10, 8, 9, 2, 12, 7, 3, 5, 4, 11,
+			1, 6, 10, 8, 9, 2, 12, 7, 3, 5, 4, 11,
+			1, 6, 10, 8, 9, 2, 12, 7, 3, 5, 4, 11,
+			1, 6, 10, 8, 9, 2, 12, 7, 3, 5, 4, 11,
+			1, 6, 10, 8, 9, 2, 12, 7, 3, 5, 4, 11,
+			1, 6, 10, 8 };
+		alignas(64) static constexpr remainder_t b7_rems[64] = {
+			1, 7, 10, 5, 9, 11, 12, 6, 3, 8, 4, 2,
+			1, 7, 10, 5, 9, 11, 12, 6, 3, 8, 4, 2,
+			1, 7, 10, 5, 9, 11, 12, 6, 3, 8, 4, 2,
+			1, 7, 10, 5, 9, 11, 12, 6, 3, 8, 4, 2,
+			1, 7, 10, 5, 9, 11, 12, 6, 3, 8, 4, 2,
+			1, 7, 10, 5 };
+		alignas(64) static constexpr remainder_t b11_rems[64] = {
+			1, 11, 4, 5, 3, 7, 12, 2, 9, 8, 10, 6,
+			1, 11, 4, 5, 3, 7, 12, 2, 9, 8, 10, 6,
+			1, 11, 4, 5, 3, 7, 12, 2, 9, 8, 10, 6,
+			1, 11, 4, 5, 3, 7, 12, 2, 9, 8, 10, 6,
+			1, 11, 4, 5, 3, 7, 12, 2, 9, 8, 10, 6,
+			1, 11, 4, 5 };
+
+		const uint256_t b6_rems_lower = _mm256_loadu_si256((uint256_t*)&b6_rems[0]);
+		const uint256_t b6_rems_upper = _mm256_loadu_si256((uint256_t*)&b6_rems[32]);
+
+		const uint256_t b7_rems_lower = _mm256_loadu_si256((uint256_t*)&b7_rems[0]);
+		const uint256_t b7_rems_upper = _mm256_loadu_si256((uint256_t*)&b7_rems[32]);
+
+		const uint256_t b11_rems_lower = _mm256_loadu_si256((uint256_t*)&b11_rems[0]);
+		const uint256_t b11_rems_upper = _mm256_loadu_si256((uint256_t*)&b11_rems[32]);
+
+		size_t* output = input;
+
+		size_t next = *input;
+
+		for (; input < candidates_end; )
+		{
+			const size_t number = next;
+			++input;
+			next = *input; // load one iteration ahead
+
+			// always write
+			*output = number;
+
+			// Convert 64 bits to 64 bytes
+			const uint256_t mask_lower = util::expand_bits_to_bytes(number & uint32_t(-1));
+			const uint256_t mask_upper = util::expand_bits_to_bytes(number >> 32);
+
+			const uint256_t ymm0 = _mm256_and_si256(mask_lower, b6_rems_lower);
+			const uint256_t ymm1 = _mm256_and_si256(mask_upper, b6_rems_upper);
+
+			const uint256_t ymm2 = _mm256_and_si256(mask_lower, b7_rems_lower);
+			const uint256_t ymm3 = _mm256_and_si256(mask_upper, b7_rems_upper);
+
+			const uint256_t ymm4 = _mm256_and_si256(mask_lower, b11_rems_lower);
+			const uint256_t ymm5 = _mm256_and_si256(mask_upper, b11_rems_upper);
+
+			// Not all div tests can safely combine rems without moving to a larger type,
+			// but our rems are small enough to avoid overflow.
+			const auto b6_rem = util::vcl_hadd_x(_mm256_add_epi8(ymm0, ymm1));
+			const auto b7_rem = util::vcl_hadd_x(_mm256_add_epi8(ymm2, ymm3));
+			const auto b11_rem = util::vcl_hadd_x(_mm256_add_epi8(ymm4, ymm5));
+
+			prime_lookup_t merged_lookups = prime_factor_lookup[b6_rem];
+			merged_lookups |= prime_factor_lookup[b7_rem];
+			merged_lookups |= prime_factor_lookup[b11_rem];
+
+			// Only advance the pointer if the nth bit was 0 in all lookups
+			if ((merged_lookups & (prime_lookup_t(1u) << get_prime_index<13>::idx)) == 0) ++output;
+		}
+
+		return output;
+	}
+
 	tests_are_inlined const size_t* const multibase_div_tests(size_t* input,
 															  const size_t* const candidates_end)
 	{
@@ -1031,9 +1112,9 @@ namespace mbp
 
 
 
-		count_passes(size_t a, b, c, d, e, f, g, h, i);
-		count_passes(a = b = c = d = e = f = g = h = i = 0);
 		count_passes(std::cout << "(counting passes)\n");
+		count_passes(size_t a, b, c, d, e, f, g, h, i, j);
+		count_passes(a = b = c = d = e = f = g = h = i = j = 0);
 
 		// (condition optimizes out when not benchmarking)
 		while (benchmark_mode ? number < bm_stop : true)
@@ -1076,15 +1157,21 @@ namespace mbp
 
 			// bases 3, 4, 5, and 9 mod 11 (5 remainders)
 			candidates_end = div_tests_by_11_with_5_rems_vectorized(scratch, candidates_end);
+			count_passes(g += (candidates_end - scratch));
+
 			// bases 6, 7, and 8 mod 11 (10 remainders)
 			candidates_end = div_tests_by_11(scratch, candidates_end);
-			count_passes(g += (candidates_end - scratch));
+			count_passes(h += (candidates_end - scratch));
+
+			// bases 6, 7, and 11 mod 13 (12 remainders)
+			candidates_end = div_tests_with_12_rems(scratch, candidates_end);
+			count_passes(i += (candidates_end - scratch));
 
 
 
 			// Check if n has a small prime factor in any base
 			candidates_end = multibase_div_tests(scratch, candidates_end);
-			count_passes(h += (candidates_end - scratch));
+			count_passes(j += (candidates_end - scratch));
 
 
 
@@ -1153,14 +1240,17 @@ namespace mbp
 		std::cout << "Finished. " << current_time_in_ms() - start << " ms elapsed\n";
 
 		count_passes(auto w = std::setw);
-		count_passes(std::cout << "Passed sieve:         " << w(10) << a << " (removed ~" << w(3) << 100 - (a * 100 / (bm_size / 2)) << "%)\n");
-		count_passes(std::cout << "Passed prime test:    " << w(10) << b << " (removed ~" << w(3) << 100 - (b * 100 / a) << "%)\n");
-		count_passes(std::cout << "Passed GCD test:      " << w(10) << c << " (removed ~" << w(3) << 100 - (c * 100 / b) << "%)\n");
-		count_passes(std::cout << "Passed 4-rem tests:   " << w(10) << d << " (removed ~" << w(3) << 100 - (d * 100 / c) << "%)\n");
-		count_passes(std::cout << "Passed 3-rem tests:   " << w(10) << e << " (removed ~" << w(3) << 100 - (e * 100 / d) << "%)\n");
-		count_passes(std::cout << "Passed 6-rem tests:   " << w(10) << f << " (removed ~" << w(3) << 100 - (f * 100 / e) << "%)\n");
-		count_passes(std::cout << "Passed / 11 tests:    " << w(10) << g << " (removed ~" << w(3) << 100 - (g * 100 / f) << "%)\n");
-		count_passes(std::cout << "Passed all div tests: " << w(10) << h << " (removed ~" << w(3) << 100 - (h * 100 / g) << "%)\n");
+		count_passes(std::cout <<
+					 "Passed sieve:          " << w(10) << a << " (removed ~" << w(3) << 100 - (a * 100 / (bm_size / 2)) << "%)\n"
+					 "Passed popcount test:  " << w(10) << b << " (removed ~" << w(3) << 100 - (b * 100 / a) << "%)\n"
+					 "Passed GCD test:       " << w(10) << c << " (removed ~" << w(3) << 100 - (c * 100 / b) << "%)\n"
+					 "Passed 4-rem tests:    " << w(10) << d << " (removed ~" << w(3) << 100 - (d * 100 / c) << "%)\n"
+					 "Passed 3-rem tests:    " << w(10) << e << " (removed ~" << w(3) << 100 - (e * 100 / d) << "%)\n"
+					 "Passed 6-rem tests:    " << w(10) << f << " (removed ~" << w(3) << 100 - (f * 100 / e) << "%)\n"
+					 "Passed 5-rem tests:    " << w(10) << g << " (removed ~" << w(3) << 100 - (g * 100 / f) << "%)\n"
+					 "Passed 10-rem tests:   " << w(10) << h << " (removed ~" << w(3) << 100 - (h * 100 / g) << "%)\n"
+					 "Passed 12-rem tests:   " << w(10) << i << " (removed ~" << w(3) << 100 - (i * 100 / h) << "%)\n"
+					 "Passed full div tests: " << w(10) << j << " (removed ~" << w(3) << 100 - (j * 100 / i) << "%)\n");
 
 	}
 
