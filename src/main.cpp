@@ -247,9 +247,9 @@ namespace mbp
 		}
 	}
 
-	tests_are_inlined const size_t* const gather_sieve_results(size_t* sieve_candidates,
-															   const sieve_t* sieve_ptr, const sieve_t* const sieve_end,
-															   size_t number)
+	tests_are_inlined size_t* gather_sieve_results(size_t* candidates,
+												   const sieve_t* sieve_ptr, const sieve_t* const sieve_end,
+												   size_t number)
 	{
 		static_assert(static_sieve_size % 15 == 0);
 
@@ -266,13 +266,6 @@ namespace mbp
 		// "Offsets" stores the indexes that we must check, working from sieve_ptr.
 		// sieve_ptr is aligned on a multiple of 3*5*7 from the beginning of the sieve,
 		// which itself has stricter alignment on the number line.
-
-		// The offset must be multiplied by 2 when calculating the bitstring, because the sieve only represents odd values.
-		// There is a performance gotcha here: when this offset reaches 128, almost half of the encoded instructions below
-		// become slightly larger, and no longer fit in 16 bytes. We can fix this by advancing both "number" and
-		// "sieve_ptr" halfway through the loop, and then continuing with new, smaller offsets. We make these offsets smaller
-		// by subtracting offset[23], the midpoint, from each of the following 24 offsets.
-
 		constexpr std::array<size_t, 48> offsets = []() consteval {
 			std::array<size_t, 48> offsets{};
 			size_t idx = 0;
@@ -281,7 +274,11 @@ namespace mbp
 				if (n % 3 != 0 && n % 5 != 0 && n % 7 != 0)
 					offsets[idx++] = n;
 
-			// Perform scaling on the second half of the offsets, per above
+			// The offset must be multiplied by 2 when calculating the bitstring, because the sieve only represents odd values.
+			// There is a performance gotcha here: when this offset reaches 128, almost half of the encoded instructions below
+			// become slightly larger, and no longer fit in 16 bytes. We can fix this by advancing both "number" and
+			// "sieve_ptr" halfway through the loop, and then continuing with new, smaller offsets. We make these offsets smaller
+			// by subtracting offset[23], the midpoint, from each of the following 24 offsets.
 			for (size_t n = 24; n < offsets.size(); ++n)
 				offsets[n] -= offsets[23];
 
@@ -294,216 +291,216 @@ namespace mbp
 		{
 			auto it = offsets.cbegin();
 
-			*sieve_candidates = number + *it * 2; // unconditionally store number + offset*2
-			sieve_candidates += *(sieve_ptr + *it++); // conditionally increment
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++); // write #5
+			*candidates = number + *it * 2; // unconditionally store number + offset*2
+			candidates += *(sieve_ptr + *it++); // conditionally increment
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++); // write #5
 
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++); // 10
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++); // 10
 
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++); // 15
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++); // 15
 
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++); // 20
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++); // 20
 
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
 
 			number += *it * 2;
 			sieve_ptr += *it++;
-			*sieve_candidates = number;
-			sieve_candidates += *(sieve_ptr); // 24 is a special case - see above
+			*candidates = number;
+			candidates += *(sieve_ptr); // 24 is a special case - see above
 
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++); // 25
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++); // 25
 
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++); // 30
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++); // 30
 
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++); // 35
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++); // 35
 
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++); // 40
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++); // 40
 
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++); // 45
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++); // 45
 
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++);
-			*sieve_candidates = number + *it * 2;
-			sieve_candidates += *(sieve_ptr + *it++); // 48
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++);
+			*candidates = number + *it * 2;
+			candidates += *(sieve_ptr + *it++); // 48
 		}
 
-		return sieve_candidates;
+		return candidates;
 	}
 
 
 
-	tests_are_inlined const size_t* const prime_popcount_test(size_t* passed_pc_test_ptr,
-															  const size_t* const candidates_end,
-															  const size_t& tiny_primes_lookup)
+	tests_are_inlined size_t* prime_popcount_test(size_t* input,
+												  const size_t* const candidates_end,
+												  const size_t& tiny_primes_lookup)
 	{
-		const size_t* const candidates_end_rounded = candidates_end - (size_t(candidates_end - passed_pc_test_ptr) & 0b11);
-		const size_t* candidate_ptr = passed_pc_test_ptr;
+		const size_t* const candidates_end_rounded = candidates_end - (size_t(candidates_end - input) & 0b11);
+		size_t* output = input;
 
-		for (; candidate_ptr < candidates_end_rounded; candidate_ptr += 4)
+		for (; input < candidates_end_rounded; input += 4)
 		{
-			const size_t c0 = *candidate_ptr;
+			const size_t c0 = *input;
 			const size_t pc_c0 = pop_count(c0);
-			*passed_pc_test_ptr = c0;
-			if (tiny_primes_lookup & (1ull << pc_c0)) ++passed_pc_test_ptr;
+			*output = c0;
+			if (tiny_primes_lookup & (1ull << pc_c0)) ++output;
 
-			const size_t c1 = *(candidate_ptr + 1);
+			const size_t c1 = *(input + 1);
 			const size_t pc_c1 = pop_count(c1);
-			*passed_pc_test_ptr = c1;
-			if (tiny_primes_lookup & (1ull << pc_c1)) ++passed_pc_test_ptr;
+			*output = c1;
+			if (tiny_primes_lookup & (1ull << pc_c1)) ++output;
 
-			const size_t c2 = *(candidate_ptr + 2);
+			const size_t c2 = *(input + 2);
 			const size_t pc_c2 = pop_count(c2);
-			*passed_pc_test_ptr = c2;
-			if (tiny_primes_lookup & (1ull << pc_c2)) ++passed_pc_test_ptr;
+			*output = c2;
+			if (tiny_primes_lookup & (1ull << pc_c2)) ++output;
 
-			const size_t c3 = *(candidate_ptr + 3);
+			const size_t c3 = *(input + 3);
 			const size_t pc_c3 = pop_count(c3);
-			*passed_pc_test_ptr = c3;
-			if (tiny_primes_lookup & (1ull << pc_c3)) ++passed_pc_test_ptr;
+			*output = c3;
+			if (tiny_primes_lookup & (1ull << pc_c3)) ++output;
 		}
 
 		// handle last few elements
-		for (; candidate_ptr < candidates_end; ++candidate_ptr)
+		for (; input < candidates_end; ++input)
 		{
-			const size_t c0 = *candidate_ptr;
+			const size_t c0 = *input;
 			const size_t pc_c0 = pop_count(c0);
-			*passed_pc_test_ptr = c0;
-			if (tiny_primes_lookup & (1ull << pc_c0)) ++passed_pc_test_ptr;
+			*output = c0;
+			if (tiny_primes_lookup & (1ull << pc_c0)) ++output;
 		}
 
-		return passed_pc_test_ptr;
+		return output;
 	}
 
-	tests_are_inlined const size_t* const gcd_test(size_t* passed_gcd_test_ptr,
-												   const size_t* const candidates_end,
-												   const size_t& gcd_lookup)
+	tests_are_inlined size_t* gcd_test(size_t* input,
+									   const size_t* const candidates_end,
+									   const size_t& gcd_lookup)
 	{
-		const size_t* const candidates_end_rounded = candidates_end - (size_t(candidates_end - passed_gcd_test_ptr) & 0b11);
-		const size_t* candidate_ptr = passed_gcd_test_ptr;
+		const size_t* const candidates_end_rounded = candidates_end - (size_t(candidates_end - input) & 0b11);
 
-		for (; candidate_ptr < candidates_end_rounded; candidate_ptr += 4)
+		size_t* output = input;
+
+		for (; input < candidates_end_rounded; input += 4)
 		{
-			const size_t n0 = *candidate_ptr;
-			*passed_gcd_test_ptr = n0;
+			const size_t n0 = *input;
+			*output = n0;
 			const size_t n0_pca = pop_count(n0 & 0xAAAAAAAAAAAAAAAA);
 			const size_t n0_pcb = pop_count(n0 & 0x5555555555555555);
-			if (gcd_lookup & (1ull << (n0_pca + 32 - n0_pcb))) ++passed_gcd_test_ptr;
+			if (gcd_lookup & (1ull << (n0_pca + 32 - n0_pcb))) ++output;
 
-			const size_t n1 = *(candidate_ptr + 1);
-			*passed_gcd_test_ptr = n1;
+			const size_t n1 = *(input + 1);
+			*output = n1;
 			const size_t n1_pca = pop_count(n1 & 0xAAAAAAAAAAAAAAAA);
 			const size_t n1_pcb = pop_count(n1 & 0x5555555555555555);
-			if (gcd_lookup & (1ull << (n1_pca + 32 - n1_pcb))) ++passed_gcd_test_ptr;
+			if (gcd_lookup & (1ull << (n1_pca + 32 - n1_pcb))) ++output;
 
-			const size_t n2 = *(candidate_ptr + 2);
-			*passed_gcd_test_ptr = n2;
+			const size_t n2 = *(input + 2);
+			*output = n2;
 			const size_t n2_pca = pop_count(n2 & 0xAAAAAAAAAAAAAAAA);
 			const size_t n2_pcb = pop_count(n2 & 0x5555555555555555);
-			if (gcd_lookup & (1ull << (n2_pca + 32 - n2_pcb))) ++passed_gcd_test_ptr;
+			if (gcd_lookup & (1ull << (n2_pca + 32 - n2_pcb))) ++output;
 
-			const size_t n3 = *(candidate_ptr + 3);
-			*passed_gcd_test_ptr = n3;
+			const size_t n3 = *(input + 3);
+			*output = n3;
 			const size_t n3_pca = pop_count(n3 & 0xAAAAAAAAAAAAAAAA);
 			const size_t n3_pcb = pop_count(n3 & 0x5555555555555555);
-			if (gcd_lookup & (1ull << (n3_pca + 32 - n3_pcb))) ++passed_gcd_test_ptr;
+			if (gcd_lookup & (1ull << (n3_pca + 32 - n3_pcb))) ++output;
 		}
 
 		// handle last few elements
-		for (; candidate_ptr < candidates_end; ++candidate_ptr)
+		for (; input < candidates_end; ++input)
 		{
-			const size_t n0 = *candidate_ptr;
-			const auto n0_pca = pop_count(n0 & 0xAAAAAAAAAAAAAAAA);
-			const auto n0_pcb = pop_count(n0 & 0x5555555555555555);
-
-			*passed_gcd_test_ptr = n0;
-			passed_gcd_test_ptr += bool(gcd_lookup & (1ull << (n0_pca + 32 - n0_pcb)));
+			const size_t n0 = *input;
+			*output = n0;
+			const size_t n0_pca = pop_count(n0 & 0xAAAAAAAAAAAAAAAA);
+			const size_t n0_pcb = pop_count(n0 & 0x5555555555555555);
+			if (gcd_lookup & (1ull << (n0_pca + 32 - n0_pcb))) ++output;
 		}
 
-		return passed_gcd_test_ptr;
+		return output;
 	}
 
 
 
-	tests_are_inlined const size_t* const div_tests_with_four_rems(size_t* input,
-																   const size_t* const candidates_end)
+	tests_are_inlined size_t* div_tests_with_four_rems(size_t* input,
+													   const size_t* const candidates_end)
 	{
 		using namespace div_test;
 		using namespace div_test::detail;
@@ -567,8 +564,8 @@ namespace mbp
 		return output;
 	}
 
-	tests_are_inlined const size_t* const div_tests_with_three_rems(size_t* input,
-																	const size_t* const candidates_end)
+	tests_are_inlined size_t* div_tests_with_three_rems(size_t* input,
+														const size_t* const candidates_end)
 	{
 		using namespace div_test;
 		using namespace div_test::detail;
@@ -621,8 +618,8 @@ namespace mbp
 		return output;
 	}
 
-	tests_are_inlined const size_t* const div_tests_with_six_rems(size_t* input,
-																  const size_t* const candidates_end)
+	tests_are_inlined size_t* div_tests_with_six_rems(size_t* input,
+													  const size_t* const candidates_end)
 	{
 		using namespace div_test;
 		using namespace div_test::detail;
@@ -698,74 +695,8 @@ namespace mbp
 		return output;
 	}
 
-	tests_are_inlined const size_t* const div_tests_by_11(size_t* input,
-														  const size_t* const candidates_end)
-	{
-		using namespace div_test;
-		using namespace div_test::detail;
-
-		// Intellisense may generate a number of false positives here
-		constexpr size_t bitmask = bitmask_for<6, 11>::val; // base 6 % 11   (10 remainders)
-		static_assert(bitmask == bitmask_for<7, 11>::val); // base 7 % 11   (10 remainders)
-		static_assert(bitmask == bitmask_for<8, 11>::val); // base 8 % 11   (10 remainders)
-		static_assert(period_of<bitmask>::val == 10);
-
-		size_t* output = input;
-
-		size_t next = *input;
-
-		for (; input < candidates_end; )
-		{
-			const size_t number = next;
-			++input;
-			next = *input; // load one iteration ahead
-
-			// always write
-			*output = number;
-
-			const size_t pc_0 = pop_count(number & (bitmask << 0));
-			const size_t pc_5 = pop_count(number & (bitmask << 5));
-			size_t b6_rem = pc_0 + (pc_5 * pow_mod<6, 5, 11>::rem);
-			size_t b7_rem = pc_0 + (pc_5 * pow_mod<7, 5, 11>::rem);
-			size_t b8_rem = pc_0 + (pc_5 * pow_mod<8, 5, 11>::rem);
-
-			const size_t pc_1 = pop_count(number & (bitmask << 1));
-			const size_t pc_6 = pop_count(number & (bitmask << 6));
-			b6_rem += pc_1 * pow_mod<6, 1, 11>::rem + pc_6 * pow_mod<6, 6, 11>::rem;
-			b7_rem += pc_1 * pow_mod<7, 1, 11>::rem + pc_6 * pow_mod<7, 6, 11>::rem;
-			b8_rem += pc_1 * pow_mod<8, 1, 11>::rem + pc_6 * pow_mod<8, 6, 11>::rem;
-
-			const size_t pc_2 = pop_count(number & (bitmask << 2));
-			const size_t pc_7 = pop_count(number & (bitmask << 7));
-			b6_rem += pc_2 * pow_mod<6, 2, 11>::rem + pc_7 * pow_mod<6, 7, 11>::rem;
-			b7_rem += pc_2 * pow_mod<7, 2, 11>::rem + pc_7 * pow_mod<7, 7, 11>::rem;
-			b8_rem += pc_2 * pow_mod<8, 2, 11>::rem + pc_7 * pow_mod<8, 7, 11>::rem;
-
-			const size_t pc_3 = pop_count(number & (bitmask << 3));
-			const size_t pc_8 = pop_count(number & (bitmask << 8));
-			b6_rem += pc_3 * pow_mod<6, 3, 11>::rem + pc_8 * pow_mod<6, 8, 11>::rem;
-			b7_rem += pc_3 * pow_mod<7, 3, 11>::rem + pc_8 * pow_mod<7, 8, 11>::rem;
-			b8_rem += pc_3 * pow_mod<8, 3, 11>::rem + pc_8 * pow_mod<8, 8, 11>::rem;
-
-			const size_t pc_4 = pop_count(number & (bitmask << 4));
-			const size_t pc_9 = pop_count(number & (bitmask << 9));
-			b6_rem += pc_4 * pow_mod<6, 4, 11>::rem + pc_9 * pow_mod<6, 9, 11>::rem;
-			b7_rem += pc_4 * pow_mod<7, 4, 11>::rem + pc_9 * pow_mod<7, 9, 11>::rem;
-			b8_rem += pc_4 * pow_mod<8, 4, 11>::rem + pc_9 * pow_mod<8, 9, 11>::rem;
-
-			size_t merged_lookups = prime_factor_lookup[b6_rem];
-			merged_lookups |= prime_factor_lookup[b7_rem];
-			merged_lookups |= prime_factor_lookup[b8_rem];
-
-			// Only advance the pointer if the nth bit was 0 in all lookups
-			if ((merged_lookups & (prime_lookup_t(1) << get_prime_index<11>::idx)) == 0) ++output;
-		}
-
-		return output;
-	}
-
-	tests_are_inlined const size_t* const div_tests_by_11_with_5_rems_vectorized(size_t* input,
-																				 const size_t* const candidates_end)
+	tests_are_inlined size_t* div_tests_with_five_rems(size_t* input,
+													   const size_t* const candidates_end)
 	{
 		using namespace div_test;
 		using namespace div_test::detail;
@@ -852,8 +783,74 @@ namespace mbp
 		return output;
 	}
 
-	tests_are_inlined const size_t* const div_tests_with_12_rems(size_t* input,
-																 const size_t* const candidates_end)
+	tests_are_inlined size_t* div_tests_with_10_rems(size_t* input,
+													 const size_t* const candidates_end)
+	{
+		using namespace div_test;
+		using namespace div_test::detail;
+
+		// Intellisense may generate a number of false positives here
+		constexpr size_t bitmask = bitmask_for<6, 11>::val; // base 6 % 11   (10 remainders)
+		static_assert(bitmask == bitmask_for<7, 11>::val); // base 7 % 11   (10 remainders)
+		static_assert(bitmask == bitmask_for<8, 11>::val); // base 8 % 11   (10 remainders)
+		static_assert(period_of<bitmask>::val == 10);
+
+		size_t* output = input;
+
+		size_t next = *input;
+
+		for (; input < candidates_end; )
+		{
+			const size_t number = next;
+			++input;
+			next = *input; // load one iteration ahead
+
+			// always write
+			*output = number;
+
+			const size_t pc_0 = pop_count(number & (bitmask << 0));
+			const size_t pc_5 = pop_count(number & (bitmask << 5));
+			size_t b6_rem = pc_0 + (pc_5 * pow_mod<6, 5, 11>::rem);
+			size_t b7_rem = pc_0 + (pc_5 * pow_mod<7, 5, 11>::rem);
+			size_t b8_rem = pc_0 + (pc_5 * pow_mod<8, 5, 11>::rem);
+
+			const size_t pc_1 = pop_count(number & (bitmask << 1));
+			const size_t pc_6 = pop_count(number & (bitmask << 6));
+			b6_rem += pc_1 * pow_mod<6, 1, 11>::rem + pc_6 * pow_mod<6, 6, 11>::rem;
+			b7_rem += pc_1 * pow_mod<7, 1, 11>::rem + pc_6 * pow_mod<7, 6, 11>::rem;
+			b8_rem += pc_1 * pow_mod<8, 1, 11>::rem + pc_6 * pow_mod<8, 6, 11>::rem;
+
+			const size_t pc_2 = pop_count(number & (bitmask << 2));
+			const size_t pc_7 = pop_count(number & (bitmask << 7));
+			b6_rem += pc_2 * pow_mod<6, 2, 11>::rem + pc_7 * pow_mod<6, 7, 11>::rem;
+			b7_rem += pc_2 * pow_mod<7, 2, 11>::rem + pc_7 * pow_mod<7, 7, 11>::rem;
+			b8_rem += pc_2 * pow_mod<8, 2, 11>::rem + pc_7 * pow_mod<8, 7, 11>::rem;
+
+			const size_t pc_3 = pop_count(number & (bitmask << 3));
+			const size_t pc_8 = pop_count(number & (bitmask << 8));
+			b6_rem += pc_3 * pow_mod<6, 3, 11>::rem + pc_8 * pow_mod<6, 8, 11>::rem;
+			b7_rem += pc_3 * pow_mod<7, 3, 11>::rem + pc_8 * pow_mod<7, 8, 11>::rem;
+			b8_rem += pc_3 * pow_mod<8, 3, 11>::rem + pc_8 * pow_mod<8, 8, 11>::rem;
+
+			const size_t pc_4 = pop_count(number & (bitmask << 4));
+			const size_t pc_9 = pop_count(number & (bitmask << 9));
+			b6_rem += pc_4 * pow_mod<6, 4, 11>::rem + pc_9 * pow_mod<6, 9, 11>::rem;
+			b7_rem += pc_4 * pow_mod<7, 4, 11>::rem + pc_9 * pow_mod<7, 9, 11>::rem;
+			b8_rem += pc_4 * pow_mod<8, 4, 11>::rem + pc_9 * pow_mod<8, 9, 11>::rem;
+
+			size_t merged_lookups = prime_factor_lookup[b6_rem];
+			merged_lookups |= prime_factor_lookup[b7_rem];
+			merged_lookups |= prime_factor_lookup[b8_rem];
+
+			// Only advance the pointer if the nth bit was 0 in all lookups
+			if ((merged_lookups & (prime_lookup_t(1) << get_prime_index<11>::idx)) == 0) ++output;
+		}
+
+		return output;
+	}
+
+	tests_are_inlined size_t* div_tests_with_12_rems(size_t* input,
+													 const size_t* const candidates_end)
 	{
 		using namespace div_test;
 		using namespace div_test::detail;
@@ -933,8 +930,10 @@ namespace mbp
 		return output;
 	}
 
-	tests_are_inlined const size_t* const multibase_div_tests(size_t* input,
-															  const size_t* const candidates_end)
+
+
+	tests_are_inlined size_t* multibase_div_tests(size_t* input,
+												  const size_t* const candidates_end)
 	{
 		using namespace div_test;
 
@@ -981,8 +980,6 @@ namespace mbp
 
 		return output;
 	}
-
-
 
 	void print_div_tests()
 	{
@@ -1098,12 +1095,12 @@ namespace mbp
 		auto next_div_test_checkpoint = current_time_in_ms() + analyze_interval;
 	#endif
 
-		// 2x the expected number of candidates from the sieve
+		// 2x the expected number of candidates from the sieve passes
 		constexpr size_t scratch_size = [] {
 			double cleared = 0.0;
 			for (size_t i = 1; i < small_primes_lookup.size(); ++i)
-				cleared += ((1.0 - cleared) * (1.0 / small_primes_lookup[i]));
-			return size_t((1.0 - cleared) * double(sieve.size()) * 2);
+				cleared += (1.0 - cleared) * (1.0 / small_primes_lookup[i]);
+			return size_t((1.0 - cleared) * sieve.size() * sieve_steps * 2);
 		}();
 		static size_t scratch[scratch_size]{}; // Intellisense false-positive
 
@@ -1121,12 +1118,18 @@ namespace mbp
 		{
 			const size_t number_before_tests = number;
 
-			// Perform additional sieving on the static sieve
-			util::vectorized_copy_n<sieve.size()>((uint256_t*)sieve.data(), (uint256_t*)static_sieve.data());
-			partial_sieve(sieve);
+			size_t* candidates_end = scratch;
 
-			// Collect candidates that have not been marked composite by the sieve
-			const size_t* candidates_end = gather_sieve_results(scratch, sieve.data(), sieve.data() + sieve.size(), number);
+			for (size_t sieve_step = 0; sieve_step < sieve_steps; ++sieve_step)
+			{
+				// Perform additional sieving on the static sieve
+				util::vectorized_copy_n<sieve.size()>((uint256_t*)sieve.data(), (uint256_t*)static_sieve.data());
+				partial_sieve(sieve);
+
+				// Collect candidates that have not been marked composite by the sieve
+				candidates_end = gather_sieve_results(candidates_end, sieve.data(), sieve.data() + sieve.size(),
+													  number + (sieve_step * sieve.size() * 2));
+			}
 			count_passes(a += (candidates_end - scratch));
 
 
@@ -1156,11 +1159,11 @@ namespace mbp
 			count_passes(f += (candidates_end - scratch));
 
 			// bases 3, 4, 5, and 9 mod 11 (5 remainders)
-			candidates_end = div_tests_by_11_with_5_rems_vectorized(scratch, candidates_end);
+			candidates_end = div_tests_with_five_rems(scratch, candidates_end);
 			count_passes(g += (candidates_end - scratch));
 
 			// bases 6, 7, and 8 mod 11 (10 remainders)
-			candidates_end = div_tests_by_11(scratch, candidates_end);
+			candidates_end = div_tests_with_10_rems(scratch, candidates_end);
 			count_passes(h += (candidates_end - scratch));
 
 			// bases 6, 7, and 11 mod 13 (12 remainders)
@@ -1169,17 +1172,17 @@ namespace mbp
 
 
 
-			// Check if n has a small prime factor in any base
+			// Check for small prime factors across all bases
 			candidates_end = multibase_div_tests(scratch, candidates_end);
 			count_passes(j += (candidates_end - scratch));
 
 
 
+			// Do full primality tests, starting with base 2
 			for (size_t* candidate = scratch; candidate < candidates_end; )
 			{
 				number = *candidate++;
 
-				// Do full primality tests, starting with base 2
 				if (!franken::mpir_is_likely_prime_BPSW(number)) continue;
 
 				// convert uint64_t to char array of ['0', '1'...] for MPIR
@@ -1220,7 +1223,7 @@ namespace mbp
 				log_result(number, 12);
 			}
 
-			number = number_before_tests + 2 * sieve.size();
+			number = number_before_tests + (2 * sieve.size() * sieve_steps);
 
 
 

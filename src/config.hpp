@@ -21,7 +21,7 @@ namespace mbp
 
 	const size_t p11 = 0b1000000010000011110100010001000101001010110111001;
 
-	const bool benchmark_mode = false;
+	const bool benchmark_mode = true;
 
 	const size_t bm_start = p11; // default: p11
 	const size_t bm_size = 50'000'000'000; // default 50'000'000'000
@@ -35,8 +35,8 @@ namespace mbp
 
 	constexpr size_t sieve_alignment = sizeof(__m256i);
 
-	// The size of the factorization wheel sieve is the product of these numbers. Exercise caution.
-	constexpr std::array wheel_primes{ 2ull, 3ull, 5ull, 7ull, 11ull, 13ull };
+	// For debugging, combinations of 3*43*12907 yield the same pass counts as 1
+	constexpr size_t sieve_steps = 3ull * 43ull;
 
 	const size_t sieve_primes_cap = 2200; // default: 2200
 
