@@ -21,7 +21,7 @@ namespace mbp
 
 	const size_t p11 = 0b1000000010000011110100010001000101001010110111001;
 
-	const bool benchmark_mode = true;
+	const bool benchmark_mode = false;
 
 	const size_t bm_start = p11; // default: p11
 	const size_t bm_size = 50'000'000'000; // default 50'000'000'000
