@@ -412,30 +412,57 @@ namespace mbp
 												  const size_t& tiny_primes_lookup)
 	{
 		const size_t* const candidates_end_rounded = candidates_end - (size_t(candidates_end - input) & 0b11);
-		size_t* output = input;
+
+		// Alternate between two output ptrs to split the workload
+		// into two dependency chains.
+		size_t* output_a = input;
+		size_t* output_b = input + 1;
 
 		for (; input < candidates_end_rounded; input += 4)
 		{
 			const size_t c0 = *input;
 			const size_t pc_c0 = pop_count(c0);
-			*output = c0;
-			if (tiny_primes_lookup & (1ull << pc_c0)) ++output;
+			*output_a = c0;
+			if (tiny_primes_lookup & (1ull << pc_c0)) output_a += 2;
 
 			const size_t c1 = *(input + 1);
 			const size_t pc_c1 = pop_count(c1);
-			*output = c1;
-			if (tiny_primes_lookup & (1ull << pc_c1)) ++output;
+			*output_b = c1;
+			if (tiny_primes_lookup & (1ull << pc_c1)) output_b += 2;
 
 			const size_t c2 = *(input + 2);
 			const size_t pc_c2 = pop_count(c2);
-			*output = c2;
-			if (tiny_primes_lookup & (1ull << pc_c2)) ++output;
+			*output_a = c2;
+			if (tiny_primes_lookup & (1ull << pc_c2)) output_a += 2;
 
 			const size_t c3 = *(input + 3);
 			const size_t pc_c3 = pop_count(c3);
-			*output = c3;
-			if (tiny_primes_lookup & (1ull << pc_c3)) ++output;
+			*output_b = c3;
+			if (tiny_primes_lookup & (1ull << pc_c3)) output_b += 2;
 		}
+
+		// We've effectively created two interleaved arrays in one.
+		// When the output ptrs end up nonadjacent, move data from a->b or b->a
+		// until our data is contiguous again.
+
+		// Scenario 1
+		while (output_a > output_b + 1)
+		{
+			output_a -= 2;
+			*output_b = *output_a;
+			output_b += 2;
+		}
+
+		// Scenario 2
+		while (output_a < output_b - 1)
+		{
+			output_b -= 2;
+			*output_a = *output_b;
+			output_a += 2;
+		}
+
+		// keep the smaller of the two
+		size_t* output = (output_a < output_b) ? output_a : output_b;
 
 		// handle last few elements
 		for (; input < candidates_end; ++input)

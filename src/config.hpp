@@ -36,7 +36,7 @@ namespace mbp
 	constexpr size_t sieve_alignment = sizeof(__m256i);
 
 	// For debugging, combinations of 3*43*12907 yield the same pass counts as 1
-	constexpr size_t sieve_steps = 3ull * 43ull;
+	constexpr size_t sieve_steps = 3ull * 43ull; // default: 3ull * 43ull
 
 	const size_t sieve_primes_cap = 2200; // default: 2200
 
