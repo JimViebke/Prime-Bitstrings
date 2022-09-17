@@ -181,14 +181,22 @@ namespace mbp::div_test
 			return div_tests;
 		}
 
+		// calculate a^b mod m
+		template<size_t a, size_t b, size_t m>
+		struct pow_mod
+		{
+			static constexpr size_t rem = pk::powMod(a, b, m);
+		};
+
 		// bitmask for all base^n mod prime
 		template<size_t base, size_t prime>
 		struct bitmask_for
 		{
 			static consteval size_t f()
 			{
+				// Calculate the period of base^n % prime
 				size_t i = 0;
-				for (; i < 64; ++i) // calculate base^i MOD prime
+				for (; i < 64; ++i)
 				{
 					remainder_t rem = remainder_t(pk::powMod(base, i, prime));
 					if (rem == 1 && i > 0) break; // break when the pattern repeats
@@ -204,13 +212,6 @@ namespace mbp::div_test
 				return bitmask;
 			}
 			static constexpr size_t val = f();
-		};
-
-		// calculate a^b mod m
-		template<size_t a, size_t b, size_t m>
-		struct pow_mod
-		{
-			static constexpr size_t rem = pk::powMod(a, b, m);
 		};
 
 		template<size_t bitmask>
@@ -260,31 +261,36 @@ namespace mbp::div_test
 	{
 		consteval size_t calculate_prime_factor_lookup_size()
 		{
-			size_t largest_remainders_sum = 0;
-
 		#if analyze_div_tests
-			// Gross, but if we're in "analyze" mode, we'll need to generate our own constexpr version of div_tests
+			// When the div test lookup is not constexpr, we'll need to generate our own
 		#pragma warning (push)
-		#pragma warning (disable: 4459)
+		#pragma warning (disable: 4459) // supress "declaration of 'identifier' hides global declaration"
 			constexpr div_tests_t div_tests = generate_div_tests();
 		#pragma warning (pop)
 		#endif
 
-			// for each div test
+			size_t largest_sum = 0;
+
+			// Calculate the largest possible sum of remainders of a number with every bit set
 			for (const auto& div_test : div_tests)
 			{
-				// calculate the sum of having every bit set
-				size_t remainders_sum = 0;
-				for (size_t i = 0; i < 64; ++i)
-					remainders_sum += div_test.remainders[i % div_test.n_of_remainders];
+				size_t sum = 0;
+				if constexpr (div_test::max_remainders == 64)
+				{
+					sum = std::accumulate(div_test.remainders.begin(), div_test.remainders.end(), size_t(0));
+				}
+				else
+				{
+					for (size_t i = 0; i < 64; ++i)
+						sum += div_test.remainders[i % div_test.n_of_remainders];
+				}
 
-				// keep track of the largest sum
-				if (remainders_sum > largest_remainders_sum)
-					largest_remainders_sum = remainders_sum;
+				if (sum > largest_sum)
+					largest_sum = sum;
 			}
 
-			// + 1 so "lookup[sum]" is always safe.
-			return largest_remainders_sum + 1;
+			// + 1 so "lookup[sum]" is always in range
+			return largest_sum + 1;
 		}
 
 		using prime_lookup_t = narrowest_uint_for_n_bits<div_test::n_of_primes>;
@@ -328,10 +334,10 @@ namespace mbp::div_test
 			return lookup;
 		}
 
-		// Replaces "n % prime[k] == 0" with "lookup[n] & (1 << k)"
 		const std::vector<prime_lookup_t> prime_factor_lookup = build_prime_factor_lookup_old();
 	}
 
+	// Replaces "n % prime[idx] == 0" with "lookup[n] & (1 << idx)", usually as a bittest instruction
 	__forceinline bool has_small_prime_factor(const size_t n, const prime_idx_t prime_index)
 	{
 		return (detail::prime_factor_lookup[n] & (detail::prime_lookup_t(1) << prime_index)) != 0;

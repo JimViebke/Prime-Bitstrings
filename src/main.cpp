@@ -835,32 +835,32 @@ namespace mbp
 			// always write
 			*output = number;
 
-			const size_t pc_0 = pop_count(number & (bitmask << 0));
-			const size_t pc_5 = pop_count(number & (bitmask << 5));
+			const size_t pc_0 = pop_count(number & (bitmask << 0u));
+			const size_t pc_5 = pop_count(number & (bitmask << 5u));
 			size_t b6_rem = pc_0 + (pc_5 * pow_mod<6, 5, 11>::rem);
 			size_t b7_rem = pc_0 + (pc_5 * pow_mod<7, 5, 11>::rem);
 			size_t b8_rem = pc_0 + (pc_5 * pow_mod<8, 5, 11>::rem);
 
-			const size_t pc_1 = pop_count(number & (bitmask << 1));
-			const size_t pc_6 = pop_count(number & (bitmask << 6));
+			const size_t pc_1 = pop_count(number & (bitmask << 1u));
+			const size_t pc_6 = pop_count(number & (bitmask << 6u));
 			b6_rem += pc_1 * pow_mod<6, 1, 11>::rem + pc_6 * pow_mod<6, 6, 11>::rem;
 			b7_rem += pc_1 * pow_mod<7, 1, 11>::rem + pc_6 * pow_mod<7, 6, 11>::rem;
 			b8_rem += pc_1 * pow_mod<8, 1, 11>::rem + pc_6 * pow_mod<8, 6, 11>::rem;
 
-			const size_t pc_2 = pop_count(number & (bitmask << 2));
-			const size_t pc_7 = pop_count(number & (bitmask << 7));
+			const size_t pc_2 = pop_count(number & (bitmask << 2u));
+			const size_t pc_7 = pop_count(number & (bitmask << 7u));
 			b6_rem += pc_2 * pow_mod<6, 2, 11>::rem + pc_7 * pow_mod<6, 7, 11>::rem;
 			b7_rem += pc_2 * pow_mod<7, 2, 11>::rem + pc_7 * pow_mod<7, 7, 11>::rem;
 			b8_rem += pc_2 * pow_mod<8, 2, 11>::rem + pc_7 * pow_mod<8, 7, 11>::rem;
 
-			const size_t pc_3 = pop_count(number & (bitmask << 3));
-			const size_t pc_8 = pop_count(number & (bitmask << 8));
+			const size_t pc_3 = pop_count(number & (bitmask << 3u));
+			const size_t pc_8 = pop_count(number & (bitmask << 8u));
 			b6_rem += pc_3 * pow_mod<6, 3, 11>::rem + pc_8 * pow_mod<6, 8, 11>::rem;
 			b7_rem += pc_3 * pow_mod<7, 3, 11>::rem + pc_8 * pow_mod<7, 8, 11>::rem;
 			b8_rem += pc_3 * pow_mod<8, 3, 11>::rem + pc_8 * pow_mod<8, 8, 11>::rem;
 
-			const size_t pc_4 = pop_count(number & (bitmask << 4));
-			const size_t pc_9 = pop_count(number & (bitmask << 9));
+			const size_t pc_4 = pop_count(number & (bitmask << 4u));
+			const size_t pc_9 = pop_count(number & (bitmask << 9u));
 			b6_rem += pc_4 * pow_mod<6, 4, 11>::rem + pc_9 * pow_mod<6, 9, 11>::rem;
 			b7_rem += pc_4 * pow_mod<7, 4, 11>::rem + pc_9 * pow_mod<7, 9, 11>::rem;
 			b8_rem += pc_4 * pow_mod<8, 4, 11>::rem + pc_9 * pow_mod<8, 9, 11>::rem;
@@ -870,7 +870,7 @@ namespace mbp
 			merged_lookups |= prime_factor_lookup[b8_rem];
 
 			// Only advance the pointer if the nth bit was 0 in all lookups
-			if ((merged_lookups & (prime_lookup_t(1) << get_prime_index<11>::idx)) == 0) ++output;
+			if ((merged_lookups & (prime_lookup_t(1u) << get_prime_index<11>::idx)) == 0) ++output;
 		}
 
 		return output;
@@ -986,14 +986,23 @@ namespace mbp
 
 			for (div_test_const div_test_t& div_test : div_tests)
 			{
+				// Use the byte-sized bits of the bitstring to select remainders
 				const uint256_t rems_lower = _mm256_and_si256(mask_lower, ymm0);
 				const uint256_t rems_upper = _mm256_and_si256(mask_upper, ymm1);
 
+				// Load the next remainders, one iteration ahead
 				ymm0 = _mm256_loadu_si256((uint256_t*)(((uint8_t*)&div_test.remainders) + sizeof(div_test_t) + 0));
 				ymm1 = _mm256_loadu_si256((uint256_t*)(((uint8_t*)&div_test.remainders) + sizeof(div_test_t) + 32));
 
+				// Calculate the horizontal sum of remainders. We have two vectors to h-sum,
+				// but they can't be immediately added together without 8-bit overflow. We also
+				// don't want to pay for two full h-sums. Solve this with a custom hadd: perform
+				// the first hadd step on each vector, which extends their values from 8-bit to
+				// 16-bit integers, then safely add the vectors together and continue with just
+				// one. This takes N+2 steps in total, instead of 2N.
 				const size_t rem = util::vcl_hadd2_x(rems_upper, rems_lower);
 
+				// This branch could further be reduced by div testing in batches
 				if (has_small_prime_factor(rem, div_test.prime_idx))
 				{
 					is_candidate = 0;
