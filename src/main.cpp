@@ -408,9 +408,10 @@ namespace mbp
 
 
 	tests_are_inlined size_t* prime_popcount_test(size_t* input,
-												  const size_t* const candidates_end,
-												  const size_t& tiny_primes_lookup)
+												  const size_t* const candidates_end)
 	{
+		constexpr size_t tiny_primes_lookup = build_tiny_primes_lookup();
+
 		const size_t* const candidates_end_rounded = candidates_end - (size_t(candidates_end - input) & 0b11);
 
 		// Alternate between two output ptrs to split the workload
@@ -477,9 +478,10 @@ namespace mbp
 	}
 
 	tests_are_inlined size_t* gcd_test(size_t* input,
-									   const size_t* const candidates_end,
-									   const size_t& gcd_lookup)
+									   const size_t* const candidates_end)
 	{
+		constexpr size_t gcd_lookup = build_gcd_lookup();
+
 		const size_t* const candidates_end_rounded = candidates_end - (size_t(candidates_end - input) & 0b11);
 
 		size_t* output = input;
@@ -1123,9 +1125,6 @@ namespace mbp
 
 		set_up_sieve_offsets_cache(number);
 
-		constexpr size_t tiny_primes_lookup = build_tiny_primes_lookup();
-		constexpr size_t gcd_lookup = build_gcd_lookup();
-
 	#if analyze_div_tests
 		const size_t analyze_interval = 10'000;
 		auto next_div_test_checkpoint = current_time_in_ms() + analyze_interval;
@@ -1171,11 +1170,11 @@ namespace mbp
 
 
 			// Collect candidates that have a prime number of bits set
-			candidates_end = prime_popcount_test(scratch, candidates_end, tiny_primes_lookup);
+			candidates_end = prime_popcount_test(scratch, candidates_end);
 			count_passes(b += (candidates_end - scratch));
 
 			// Collect candidates with an alternating bitsum that shares a GCD of 1 with a product of primes
-			candidates_end = gcd_test(scratch, candidates_end, gcd_lookup);
+			candidates_end = gcd_test(scratch, candidates_end);
 			count_passes(c += (candidates_end - scratch));
 
 
