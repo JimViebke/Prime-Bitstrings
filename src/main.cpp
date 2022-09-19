@@ -1007,6 +1007,10 @@ namespace mbp
 				// This branch could further be reduced by div testing in batches
 				if (has_small_prime_factor(rem, div_test.prime_idx))
 				{
+				#if analyze_div_tests
+					div_test.hits++;
+				#endif
+
 					is_candidate = 0;
 					break;
 				}
@@ -1024,46 +1028,43 @@ namespace mbp
 	#if analyze_div_tests
 		using namespace div_test;
 
-		//std::sort(div_tests.begin(), div_tests.end(), [] (const auto& a, const auto& b)
-		//		  {
-		//			  if (a.hits == b.hits)
-		//				  return a.base < b.base;
-		//			  else
-		//				  return a.hits < b.hits;
-		//		  });
+		std::stringstream ss;
 
-		std::cout << '\n';
-		std::cout << "Prime factor lookup size: " << div_test::detail::prime_factor_lookup_size << '\n';
-		std::cout << div_tests.size() << " div tests:\n";
+		ss << '\n';
+		ss << "Prime factor lookup size: " << div_test::detail::prime_factor_lookup_size << '\n';
+		ss << div_tests.size() << " div tests:\n";
 
 		auto w = std::setw;
 		for (const auto& dt : div_tests)
 		{
-			std::cout << "   base " << std::setfill(' ') << w(2) << size_t(dt.base) << " % " << w(3) << size_t(small_primes_lookup[dt.prime_idx]) << ":  ";
+			ss << "   base " << std::setfill(' ') << w(2) << size_t(dt.base) << " % " << w(3) << size_t(small_primes_lookup[dt.prime_idx]) << ": ";
 			if (dt.hits == 0)
 			{
-				std::cout << "       -       ";
+				ss << "        -       ";
 			}
 			else
 			{
-				std::cout << w(8) << dt.hits << " hits  ";
+				ss << w(9) << dt.hits << " hits  ";
 			}
 
-			std::cout << w(2) << size_t(dt.n_of_remainders) << " remainders: 1";
+			ss << w(2) << size_t(dt.n_of_remainders) << " remainders: 1";
 			for (size_t j = 1; j < dt.n_of_remainders; ++j)
 			{
 				if (j < 20)
 				{
-					std::cout << ' ' << w(3) << size_t(dt.remainders[j]);
+					ss << ' ' << w(3) << size_t(dt.remainders[j]);
 				}
 				else
 				{
-					std::cout << " ...";
+					ss << " ...";
 					break;
 				}
 			}
-			std::cout << '\n';
+			ss << '\n';
 		}
+
+		std::cout << ss.str();
+
 	#endif
 	}
 
@@ -1073,36 +1074,32 @@ namespace mbp
 		using namespace div_test;
 
 		auto div_test_pred = [](const auto& a, const auto& b) {
-			if (a.hits == b.hits)
-				return a.base < b.base;
-			else
-				return a.hits < b.hits;
+			return a.hits < b.hits;
 		};
 
 		if (std::is_sorted(div_tests.rbegin(), div_tests.rend(), div_test_pred))
 		{
 			std::cout << "Div tests have not changed hit count order\n";
+			return;
 		}
-		else
-		{
-			const auto copy = div_tests;
 
-			// sort descending
-			std::sort(div_tests.rbegin(), div_tests.rend(), div_test_pred);
+		const auto copy = div_tests;
 
-			size_t moved = 0;
-			for (size_t i = 0; i < div_tests.size(); ++i)
-				if (div_tests[i].base != copy[i].base || div_tests[i].prime_idx != copy[i].prime_idx)
-					moved++;
+		// sort descending
+		std::sort(div_tests.rbegin(), div_tests.rend(), div_test_pred);
 
-			print_div_tests();
+		size_t moved = 0;
+		for (size_t i = 0; i < div_tests.size(); ++i)
+			if (div_tests[i].base != copy[i].base || div_tests[i].prime_idx != copy[i].prime_idx)
+				moved++;
 
-			static std::stringstream ss;
-			ss << ' ' << moved;
+		print_div_tests();
 
-			std::cout << moved << " div tests changed position\n";
-			std::cout << '(' << ss.str() << ")\n";
-		}
+		static std::stringstream ss;
+		ss << ' ' << moved;
+
+		std::cout << moved << " div tests changed position\n";
+		std::cout << '(' << ss.str() << ")\n\n";
 	#endif
 	}
 
@@ -1126,8 +1123,8 @@ namespace mbp
 		set_up_sieve_offsets_cache(number);
 
 	#if analyze_div_tests
-		const size_t analyze_interval = 10'000;
-		auto next_div_test_checkpoint = current_time_in_ms() + analyze_interval;
+		const size_t analyze_interval = 1'000'000'000;
+		size_t next_analyze_checkpoint = number + analyze_interval;
 	#endif
 
 		// 2x the expected number of candidates from the sieve passes
@@ -1145,8 +1142,8 @@ namespace mbp
 
 
 		count_passes(std::cout << "(counting passes)\n");
-		count_passes(size_t a, b, c, d, e, f, g, h, i, j);
-		count_passes(a = b = c = d = e = f = g = h = i = j = 0);
+		count_passes(size_t a, b, c, d, e, f, g, h, i, j, k);
+		count_passes(a = b = c = d = e = f = g = h = i = j = k = 0);
 
 		// (condition optimizes out when not benchmarking)
 		while (benchmark_mode ? number < bm_stop : true)
@@ -1220,6 +1217,8 @@ namespace mbp
 
 				if (!franken::mpir_is_likely_prime_BPSW(number)) continue;
 
+				count_passes(++k);
+
 				// convert uint64_t to char array of ['0', '1'...] for MPIR
 				char bin_str[64 + 1];
 				auto result = std::to_chars(&bin_str[0], &bin_str[64], number, 2);
@@ -1263,17 +1262,21 @@ namespace mbp
 
 
 		#if analyze_div_tests
-			//print_div_tests();
-			//std::cin.ignore();
-
-			if (next_div_test_checkpoint <= current_time_in_ms())
+			if (next_analyze_checkpoint <= number)
 			{
 				run_div_test_analysis();
-				next_div_test_checkpoint += analyze_interval;
+				next_analyze_checkpoint += analyze_interval;
 			}
 		#endif
 
 		} // end main loop
+
+
+
+	#if analyze_div_tests
+		// Run one final step before exiting
+		run_div_test_analysis();
+	#endif
 
 		std::cout << "Finished. " << current_time_in_ms() - start << " ms elapsed\n";
 
@@ -1288,7 +1291,8 @@ namespace mbp
 					 "Passed 5-rem tests:    " << w(10) << g << " (removed ~" << w(3) << 100 - (g * 100 / f) << "%)\n"
 					 "Passed 10-rem tests:   " << w(10) << h << " (removed ~" << w(3) << 100 - (h * 100 / g) << "%)\n"
 					 "Passed 12-rem tests:   " << w(10) << i << " (removed ~" << w(3) << 100 - (i * 100 / h) << "%)\n"
-					 "Passed full div tests: " << w(10) << j << " (removed ~" << w(3) << 100 - (j * 100 / i) << "%)\n");
+					 "Passed full div tests: " << w(10) << j << " (removed ~" << w(3) << 100 - (j * 100 / i) << "%)\n"
+					 "Passed b2 BPSW test:   " << w(10) << k << " (removed ~" << w(3) << 100 - (k * 100 / j) << "%)\n");
 
 	}
 
