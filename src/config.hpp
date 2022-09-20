@@ -45,7 +45,7 @@ namespace mbp
 		constexpr size_t n_of_primes = 32; // default: 32
 		constexpr size_t up_to_base = 12; // default: 12
 
-		constexpr size_t max_remainders = 50; // default: 50
+		constexpr size_t max_remainders = 64; // default: 64
 	}
 
 	namespace prime_test
