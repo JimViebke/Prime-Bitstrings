@@ -244,6 +244,48 @@ namespace mbp
 			} while (j < sieve_end);
 
 			*offset_cache_ptr = sieve_prime_t(j - sieve_end);
+
+			/*
+			sieve_t* const j_start = j;
+
+		#define try_next_write(n) \
+			j = (j_start + p*n < sieve_end) ? (j_start + p*n) : j; \
+			*j = false;
+			// end define
+
+			// 6 hardcoded writes
+			*(j + p * 0) = false;
+			*(j + p * 1) = false;
+			*(j + p * 2) = false;
+			*(j + p * 3) = false;
+			*(j + p * 4) = false; // 5
+			*(j + p * 5) = false;
+
+			// Set j to the last written byte
+			j += p * 5;
+
+			// Use cmovs to make any further writes required
+			try_next_write(6);
+			try_next_write(7);
+			try_next_write(8);
+			try_next_write(9); // 10
+			try_next_write(10);
+			try_next_write(11);
+			try_next_write(12);
+			try_next_write(13);
+			try_next_write(14); // 15
+			try_next_write(15); // 16
+
+			// Instead of stepping by p until we pass the end of the sieve, calculate at
+			// compile time the max and min possible number of writes. Hardcode the min
+			// possible writes, and use cmovs to make up the difference.
+			constexpr size_t fewest_possible_writes_required = sieve_container().size() / small_primes_lookup.back();
+			constexpr size_t most_possible_writes_required = sieve_container().size() / last_prime_for_stepping_by_threes;
+			static_assert(fewest_possible_writes_required == 6); // Intellisense false-positive
+			static_assert(most_possible_writes_required == 16); // Intellisense false-positive
+
+			*offset_cache_ptr = sieve_prime_t((j + p) - sieve_end);
+			*/
 		}
 	}
 
