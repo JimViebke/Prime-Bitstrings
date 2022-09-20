@@ -302,5 +302,85 @@ namespace mbp
 			// After the above loop, we still need cleanup at the end - the sieve is not a multiple of 15*4
 			*/
 		}
+
+		void simd_popcount_64(size_t* output, size_t* input, const size_t* const end)
+		{
+			static constexpr uint256_t static_nibble_popcounts = []() consteval {
+				uint256_t pcs{ .m256i_u8 = { 0 } };
+				for (size_t i = 0; i < 16; ++i)
+					pcs.m256i_u8[i] = uint8_t(std::popcount(i));
+				return pcs;
+			}();
+
+			const uint256_t nibble_popcounts = _mm256_loadu_si256((uint256_t*)&static_nibble_popcounts);
+			const uint256_t nibble_mask = _mm256_set1_epi8(0b0000'1111);
+
+			// load one iteration ahead
+			uint256_t ymm_next = _mm256_loadu_si256((uint256_t*)input);
+
+			for (; input < end; )
+			{
+				// shift high four bits right by four, so both registers have
+				// byte values in range 0-F inclusive
+				uint256_t ymm0 = _mm256_and_si256(ymm_next, nibble_mask);
+				uint256_t ymm1 = _mm256_and_si256(_mm256_srli_epi64(ymm_next, 4), nibble_mask);
+
+				// load one iteration ahead
+				input += 4;
+				ymm_next = _mm256_loadu_si256((uint256_t*)input);
+
+				// replace all bytes (values 0-F) with their popcount (values 0-4)
+				ymm0 = _mm256_shuffle_epi8(ymm0, nibble_popcounts);
+				ymm1 = _mm256_shuffle_epi8(ymm1, nibble_popcounts);
+
+				// add low and high together
+				ymm0 = _mm256_add_epi8(ymm0, ymm1);
+
+				// sum blocks of eight bytes
+				ymm0 = _mm256_sad_epu8(ymm0, _mm256_setzero_si256());
+
+				// extract four popcounts
+				const auto pc_a = _mm256_extract_epi8(ymm0, 0);
+				const auto pc_b = _mm256_extract_epi8(ymm0, 8);
+				// extract the high half
+				uint128_t xmm1 = _mm256_extracti128_si256(ymm0, 1);
+				const auto pc_c = _mm_extract_epi8(xmm1, 0);
+				const auto pc_d = _mm_extract_epi8(xmm1, 8);
+
+				*(output + 0) = pc_a;
+				*(output + 1) = pc_b;
+				*(output + 2) = pc_c;
+				*(output + 3) = pc_d;
+				output += 4;
+
+				// After calculating the four popcounts, we still need the original four
+				// candidates (four loads, four cmovs, four stores)
+			}
+
+		}
+
+		void test_simd_popcount()
+		{
+
+			std::array<size_t, 100> input{};
+			std::array<size_t, 100> output{};
+			output.fill(0);
+
+			size_t some_val = 0;
+			for (size_t i = 0; i < 100; ++i)
+			{
+				std::cin >> some_val;
+				input[i] = some_val;
+
+				if (some_val == 7) break;
+			}
+
+			simd_popcount_64(output.data(), input.data(), input.data() + 100);
+
+			for (size_t i = 0; i < 100; ++i)
+			{
+				std::cout << output[i] << ' ';
+			}
+		}
 	}
 }
