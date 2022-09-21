@@ -29,6 +29,9 @@ namespace mbp::div_test
 				{
 					const auto p = small_primes_lookup[i];
 
+					// Skip always-composite cases
+					if (base % p == 0) continue;
+
 					// Always suppress hardcoded div tests
 
 					// Hardcoded div tests with 4 remainders
@@ -94,20 +97,17 @@ namespace mbp::div_test
 					if (base == 11 && p == 7) continue; // base 11^n % 7 is congruent to 4^n % 7 
 					if (base == 12 && p == 7) continue; // base 12^n % 7 is congruent to 5^n % 7
 
-					// removed for being unused (due to ordering)
-					if (base == 9 && p == 73) continue; //   base  9^n %  73:   -       6 remainders : 1   9   8  72  64  65
 				#endif
 
 					uncompressed_div_test_t dt{ .base = base_t(base), .prime_idx = prime_idx_t(i) };
 
 					// calculate base^j mod prime, where j is the place value
-					for (size_t j = 0; j < max_remainders; ++j)
+					for (size_t j = 0; j < 64; ++j)
 					{
 						remainder_t rem = remainder_t(pk::powMod(base, j, small_primes_lookup[i]));
 						if (rem == 1 && j > 0)
 						{
-							// The pattern is repeating - store what we have, then break
-							uncompressed_dts.push_back(dt);
+							// The pattern is repeating; stop generating further terms
 							break;
 						}
 
@@ -115,13 +115,7 @@ namespace mbp::div_test
 						dt.n_of_remainders++;
 					}
 
-					// Special case where we maxed out our terms without finding a repeat.
-					// Save this div test if and only if the next term is 1 (ie, a repeat)
-					if (dt.n_of_remainders == max_remainders &&
-						pk::powMod(base, max_remainders, small_primes_lookup[i]) == 1)
-					{
-						uncompressed_dts.push_back(dt);
-					}
+					uncompressed_dts.push_back(dt);
 				}
 			}
 
@@ -130,28 +124,10 @@ namespace mbp::div_test
 				dt.hits = cached_hitcount_for(dt.base, small_primes_lookup[dt.prime_idx]);
 			}
 
-			// Order div tests by prime divisor
 			std::sort(uncompressed_dts.begin(), uncompressed_dts.end(), [](const auto& a, const auto& b)
 					  {
-						  //if (a.prime_idx == b.prime_idx)
-							 // return a.n_of_remainders < b.n_of_remainders;
-						  // return a.prime_idx < b.prime_idx;
-
-						  //if (a.n_of_remainders == b.n_of_remainders)
-							 // return a.prime_idx < b.prime_idx;
-						  //return a.n_of_remainders < b.n_of_remainders;
-
-						  //return
-							 // size_t(a.n_of_remainders) * small_primes_lookup[a.prime_idx] <
-							 // size_t(b.n_of_remainders) * small_primes_lookup[b.prime_idx];
-
-						  return
-							  1.0 / double(a.hits) <
-							  1.0 / double(b.hits);
-
-						  //return
-							 // double(a.n_of_remainders) * double(small_primes_lookup[a.prime_idx]) / (1. * double(a.hits)) <
-							 // double(b.n_of_remainders) * double(small_primes_lookup[b.prime_idx]) / (1. * double(b.hits));
+						  // sort high to low
+						  return a.hits > b.hits;
 					  });
 
 			std::vector<div_test_t> div_tests;
@@ -274,16 +250,7 @@ namespace mbp::div_test
 			// Calculate the largest possible sum of remainders of a number with every bit set
 			for (const auto& div_test : div_tests)
 			{
-				size_t sum = 0;
-				if constexpr (div_test::max_remainders == 64)
-				{
-					sum = std::accumulate(div_test.remainders.begin(), div_test.remainders.end(), size_t(0));
-				}
-				else
-				{
-					for (size_t i = 0; i < 64; ++i)
-						sum += div_test.remainders[i % div_test.n_of_remainders];
-				}
+				const size_t sum = std::accumulate(div_test.remainders.begin(), div_test.remainders.end(), size_t(0));
 
 				if (sum > largest_sum)
 					largest_sum = sum;
