@@ -1170,13 +1170,13 @@ namespace mbp
 	#endif
 
 		// 2x the expected number of candidates from the sieve passes
-		constexpr size_t scratch_size = [] {
+		constexpr size_t candidates_capacity = [] {
 			double cleared = 0.0;
 			for (size_t i = 1; i < small_primes_lookup.size(); ++i)
 				cleared += (1.0 - cleared) * (1.0 / small_primes_lookup[i]);
 			return size_t((1.0 - cleared) * sieve.size() * sieve_steps * 2);
 		}();
-		static size_t scratch[scratch_size]{}; // Intellisense false-positive
+		static size_t candidates[candidates_capacity]{}; // Intellisense false-positive
 
 		// Start the clock after setup
 		const auto start = current_time_in_ms();
@@ -1192,7 +1192,7 @@ namespace mbp
 		{
 			const size_t number_before_tests = number;
 
-			size_t* candidates_end = scratch;
+			size_t* candidates_end = candidates;
 
 			for (size_t sieve_step = 0; sieve_step < sieve_steps; ++sieve_step)
 			{
@@ -1204,56 +1204,56 @@ namespace mbp
 				candidates_end = gather_sieve_results(candidates_end, sieve.data(), sieve.data() + sieve.size(),
 													  number + (sieve_step * sieve.size() * 2));
 			}
-			count_passes(a += (candidates_end - scratch));
+			count_passes(a += (candidates_end - candidates));
 
 
 
 			// Collect candidates that have a prime number of bits set
-			candidates_end = prime_popcount_test(scratch, candidates_end);
-			count_passes(b += (candidates_end - scratch));
+			candidates_end = prime_popcount_test(candidates, candidates_end);
+			count_passes(b += (candidates_end - candidates));
 
 			// Collect candidates with an alternating bitsum that shares a GCD of 1 with a product of primes
-			candidates_end = gcd_test(scratch, candidates_end);
-			count_passes(c += (candidates_end - scratch));
+			candidates_end = gcd_test(candidates, candidates_end);
+			count_passes(c += (candidates_end - candidates));
 
 
 
 			// Perform some div tests separately to remove some of the branchiest branches
 
 			// base 3 mod 5, base 4 mod 17, and bases 5 and 8 mod 13 (4 remainders)
-			candidates_end = div_tests_with_four_rems(scratch, candidates_end);
-			count_passes(d += (candidates_end - scratch));
+			candidates_end = div_tests_with_four_rems(candidates, candidates_end);
+			count_passes(d += (candidates_end - candidates));
 
 			// base 4 mod 7, and bases 3 and 9 mod 13 (3 remainders)
-			candidates_end = div_tests_with_three_rems(scratch, candidates_end);
-			count_passes(e += (candidates_end - scratch));
+			candidates_end = div_tests_with_three_rems(candidates, candidates_end);
+			count_passes(e += (candidates_end - candidates));
 
 			// bases 3 and 5 mod 7, and 4 and 10 mod 13 (6 remainders)
-			candidates_end = div_tests_with_six_rems(scratch, candidates_end);
-			count_passes(f += (candidates_end - scratch));
+			candidates_end = div_tests_with_six_rems(candidates, candidates_end);
+			count_passes(f += (candidates_end - candidates));
 
 			// bases 3, 4, 5, and 9 mod 11 (5 remainders)
-			candidates_end = div_tests_with_five_rems(scratch, candidates_end);
-			count_passes(g += (candidates_end - scratch));
+			candidates_end = div_tests_with_five_rems(candidates, candidates_end);
+			count_passes(g += (candidates_end - candidates));
 
 			// bases 6, 7, and 8 mod 11 (10 remainders)
-			candidates_end = div_tests_with_10_rems(scratch, candidates_end);
-			count_passes(h += (candidates_end - scratch));
+			candidates_end = div_tests_with_10_rems(candidates, candidates_end);
+			count_passes(h += (candidates_end - candidates));
 
 			// bases 6, 7, and 11 mod 13 (12 remainders)
-			candidates_end = div_tests_with_12_rems(scratch, candidates_end);
-			count_passes(i += (candidates_end - scratch));
+			candidates_end = div_tests_with_12_rems(candidates, candidates_end);
+			count_passes(i += (candidates_end - candidates));
 
 
 
 			// Check for small prime factors across all bases
-			candidates_end = multibase_div_tests(scratch, candidates_end);
-			count_passes(j += (candidates_end - scratch));
+			candidates_end = multibase_div_tests(candidates, candidates_end);
+			count_passes(j += (candidates_end - candidates));
 
 
 
 			// Do full primality tests, starting with base 2
-			for (size_t* candidate = scratch; candidate < candidates_end; )
+			for (size_t* candidate = candidates; candidate < candidates_end; )
 			{
 				number = *candidate++;
 
