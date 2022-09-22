@@ -35,7 +35,7 @@ namespace mbp
 
 	constexpr size_t sieve_alignment = sizeof(__m256i);
 
-	// For 50B benchmark, combinations of 3*43*12907 yield the same pass counts as 1
+	// For a 50B benchmark, combinations of 3*43*12907 yield the same pass counts as 1
 	constexpr size_t sieve_steps = 3ull * 43ull; // default: 3ull * 43ull
 
 	const size_t sieve_primes_cap = 2200; // default: 2200
@@ -44,6 +44,8 @@ namespace mbp
 	{
 		constexpr size_t n_of_primes = 32; // default: 32
 		constexpr size_t up_to_base = 12; // default: 12
+
+		constexpr size_t reorder_interval = 10'000'000'000; // default: 10 B
 	}
 
 	namespace prime_test

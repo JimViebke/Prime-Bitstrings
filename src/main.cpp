@@ -1028,7 +1028,7 @@ namespace mbp
 
 			size_t is_candidate = 1;
 
-			for (div_test_const div_test_t& div_test : div_tests)
+			for (div_test_t& div_test : div_tests)
 			{
 				// Use the byte-sized bits of the bitstring to select remainders
 				const uint256_t rems_lower = _mm256_and_si256(mask_lower, ymm0);
@@ -1049,10 +1049,7 @@ namespace mbp
 				// This branch could further be reduced by div testing in batches
 				if (has_small_prime_factor(rem, div_test.prime_idx))
 				{
-				#if analyze_div_tests
 					div_test.hits++;
-				#endif
-
 					is_candidate = 0;
 					break;
 				}
@@ -1063,6 +1060,26 @@ namespace mbp
 		}
 
 		return output;
+	}
+
+	void update_div_test_order()
+	{
+		using namespace div_test;
+
+		for (size_t i = 1; i < div_tests.size(); ++i)
+		{
+			if (div_tests[i].hits > div_tests[i - 1].hits)
+			{
+				std::swap(div_tests[i], div_tests[i - 1]);
+
+				// skip next comparison, so no test can move by more than one position per reorder
+				++i;
+			}
+		}
+
+		// Divide hit counts by 2 to create a weighted moving average
+		for (auto& div_test : div_tests)
+			div_test.hits >>= 1u;
 	}
 
 	void print_div_tests()
@@ -1115,7 +1132,7 @@ namespace mbp
 	#if analyze_div_tests
 		using namespace div_test;
 
-		auto div_test_pred = [](const auto& a, const auto& b) {
+		const auto div_test_pred = [](const auto& a, const auto& b) {
 			return a.hits < b.hits;
 		};
 
@@ -1164,10 +1181,7 @@ namespace mbp
 
 		set_up_sieve_offsets_cache(number);
 
-	#if analyze_div_tests
-		const size_t analyze_interval = 1'000'000'000;
-		size_t next_analyze_checkpoint = number + analyze_interval;
-	#endif
+		size_t next_div_test_reorder = number + div_test::reorder_interval;
 
 		// 2x the expected number of candidates from the sieve passes
 		constexpr size_t candidates_capacity = [] {
@@ -1303,13 +1317,31 @@ namespace mbp
 
 
 
-		#if analyze_div_tests
-			if (next_analyze_checkpoint <= number)
+			if (next_div_test_reorder <= number)
 			{
-				run_div_test_analysis();
-				next_analyze_checkpoint += analyze_interval;
+				update_div_test_order();
+				next_div_test_reorder += div_test::reorder_interval;
+
+			#if analyze_div_tests
+				static auto last_perf_time = current_time_in_ms();
+				static size_t last_n = 0;
+
+				std::stringstream ss;
+				ss << (number - bm_start) / 1'000'000'000 << " B ints searched.";
+				const auto perf_time = current_time_in_ms();
+				if (last_n != 0)
+				{
+					const double elapsed_seconds = double(perf_time - last_perf_time) / 1'000.0;
+					const double ints_per_second = double(number - last_n) / elapsed_seconds;
+					ss << ' ' << size_t((ints_per_second / 1'000'000.0) + 0.5) << " M ints/second";
+				}
+				ss << '\n';
+				std::cout << ss.str();
+
+				last_perf_time = perf_time;
+				last_n = number;
+			#endif
 			}
-		#endif
 
 		} // end main loop
 

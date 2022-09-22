@@ -17,9 +17,10 @@ namespace mbp::div_test
 	public:
 	#if analyze_div_tests
 		bool used = false;
-		uint32_t hits = 0;
 		base_t base = 0;
 	#endif
+
+		uint32_t hits = 0;
 
 		prime_idx_t prime_idx = 0;
 		n_of_remainders_t n_of_remainders = 0;

@@ -40,33 +40,27 @@ v5 ditches the worst of the padding
 v8 uses the exact bases-first ordering of v1.
 v9 is the fastest version by a bit, because it skips prime "2"
 
-
 Div testing does not need to check against 2.
 - Even bases can't be divisible by 2, because all candidates end in 1.
 - Odd bases can't be divisible by 2, because we check for a prime (odd) number of bits.
 
-
 - Vector<bool> (1/8 the memory, but with an instruction overhead) was slightly slower than vector<uint8_t>, including when one prime was added.
 - The newer templated versions of div_test functions compile to the same assembly as the earlier non-templated versions.
-- Unrolled div testing is more efficient against factors 5 and 7, but slower for 11
-- Letting the full sieve be a multiple of the static sieve ended up being slower
-
+- Making the sieve larger than the static sieve, or making both larger together, is slower
 
 - Searching permutations of bits was slower, presumably because it's hard to beat sieving
 - The small amounts of duplicate MPIR code aren't going anywhere unless MPIR's .c files are compiled as part of the project
 
 - /favor:INTEL64 produced identical asm
 
-
 There is substantial variation in the fraction of numbers that pass the sieve, popcount, and GCD tests.
 Batches of 25 billion integers can fluctuate calls to has_small_prime_factor by up to a factor of 2.
-
 
 partial_sieve() is slower when inlined.
 gather_sieve_results(), prime_popcount_test(), gcd_test(), and has_small_divisor() are slower when not inlined.
 
+update_div_test_order() has no measurable runtime overhead unless it runs at least once per 100M integers
 
-Making the sieve larger than the static sieve, or making both larger together, is slower.
 
 
 

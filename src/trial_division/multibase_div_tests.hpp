@@ -233,7 +233,7 @@ namespace mbp::div_test
 	}
 
 	using div_tests_t = std::array<div_test::div_test_t, div_test::div_tests_size>;
-	static div_test_constexpr div_tests_t div_tests = generate_div_tests(); // intellisense false positive
+	static div_tests_t div_tests = generate_div_tests(); // intellisense false positive
 
 
 
@@ -241,18 +241,12 @@ namespace mbp::div_test
 	{
 		consteval size_t calculate_prime_factor_lookup_size()
 		{
-		#if analyze_div_tests
-			// When the div test lookup is not constexpr, we'll need to generate our own
-		#pragma warning (push)
-		#pragma warning (disable: 4459) // supress "declaration of 'identifier' hides global declaration"
-			constexpr div_tests_t div_tests = generate_div_tests();
-		#pragma warning (pop)
-		#endif
+			constexpr div_tests_t div_tests_constexpr = generate_div_tests();
 
 			size_t largest_sum = 0;
 
 			// Calculate the largest possible sum of remainders of a number with every bit set
-			for (const auto& div_test : div_tests)
+			for (const auto& div_test : div_tests_constexpr)
 			{
 				const size_t sum = std::accumulate(div_test.remainders.begin(), div_test.remainders.end(), size_t(0));
 
