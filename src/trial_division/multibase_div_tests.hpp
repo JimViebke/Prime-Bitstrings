@@ -119,16 +119,20 @@ namespace mbp::div_test
 				}
 			}
 
-			for (auto& dt : uncompressed_dts)
+			// Div tests are periodically re-ordered during runtime based on performance.
+			// To reflect real-world performance in benchmarks, pre-order the div tests based
+			// on cached performance data (the hitcount of each test).
+			// Otherwise, start with the default ordering of primes, low to high.
+			if constexpr (benchmark_mode)
 			{
-				dt.hits = cached_hitcount_for(dt.base, small_primes_lookup[dt.prime_idx]);
-			}
+				for (auto& dt : uncompressed_dts)
+				{
+					dt.hits = cached_hitcount_for(dt.base, small_primes_lookup[dt.prime_idx]);
+				}
 
-			std::sort(uncompressed_dts.begin(), uncompressed_dts.end(), [](const auto& a, const auto& b)
-					  {
-						  // sort high to low
-						  return a.hits > b.hits;
-					  });
+				std::sort(uncompressed_dts.begin(), uncompressed_dts.end(),
+						  [](const auto& a, const auto& b) {return a.hits > b.hits; });
+			}
 
 			std::vector<div_test_t> div_tests;
 			div_tests.reserve(uncompressed_dts.size());
