@@ -104,27 +104,27 @@ namespace mbp::util
 	}
 
 	// Horizontally add a vector
-	__forceinline auto vcl_hadd_x(const uint256_t a)
+	__forceinline uint64_t vcl_hadd_x(const uint256_t a)
 	{
 		const uint256_t sum1 = _mm256_sad_epu8(a, _mm256_setzero_si256());
-		const uint256_t sum2 = _mm256_shuffle_epi32(sum1, 2);
+		const uint256_t sum2 = _mm256_shuffle_epi32(sum1, 0b01'01'01'10);
 		const uint256_t sum3 = _mm256_add_epi16(sum1, sum2);
 		const uint128_t sum4 = _mm256_extracti128_si256(sum3, 1);
 		const uint128_t sum5 = _mm_add_epi16(_mm256_castsi256_si128(sum3), sum4);
-		return _mm_cvtsi128_si32(sum5);
+		return _mm_cvtsi128_si64(sum5);
 	}
 
 	// Horizontally add two vectors together
-	__forceinline auto vcl_hadd2_x(const uint256_t a, const uint256_t b)
+	__forceinline uint64_t vcl_hadd2_x(const uint256_t a, const uint256_t b)
 	{
 		const uint256_t sum_a = _mm256_sad_epu8(a, _mm256_setzero_si256()); // add adjacent bytes
 		const uint256_t sum_b = _mm256_sad_epu8(b, _mm256_setzero_si256());
 		const uint256_t sum1 = _mm256_add_epi16(sum_a, sum_b);
-		const uint256_t sum2 = _mm256_shuffle_epi32(sum1, 2);
+		const uint256_t sum2 = _mm256_shuffle_epi32(sum1, 0b01'01'01'10);
 		const uint256_t sum3 = _mm256_add_epi16(sum1, sum2);
 		const uint128_t sum4 = _mm256_extracti128_si256(sum3, 1);
 		const uint128_t sum5 = _mm_add_epi16(_mm256_castsi256_si128(sum3), sum4);
-		return _mm_cvtsi128_si32(sum5);
+		return _mm_cvtsi128_si64(sum5);
 	}
 
 	// Convert a 32-bit bitmask to a 32-byte/256-bit bitmask
