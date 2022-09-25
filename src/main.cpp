@@ -1003,12 +1003,74 @@ namespace mbp
 
 
 
+	tests_are_inlined size_t* branchless_div_tests(size_t* const candidates_begin,
+												   size_t* const candidates_end,
+												   div_test::div_test_t* div_tests,
+												   const size_t n_of_tests)
+	{
+		using namespace div_test;
+		using namespace div_test::detail;
+		constexpr size_t upper_bits_mask = size_t(-1) << 32;
+
+		size_t* shrinking_end = candidates_end;
+
+		for (size_t i = 0; i < n_of_tests; ++i)
+		{
+			div_test_t& div_test = *(div_tests + i);
+
+			const uint256_t ymm0 = _mm256_loadu_si256((uint256_t*)&div_test.remainders[0]);
+			const uint256_t ymm1 = _mm256_loadu_si256((uint256_t*)&div_test.remainders[32]);
+
+			size_t upper_bits = candidates_begin[0] & upper_bits_mask;
+			const prime_lookup_t* pf_lookup_preinc = prime_factor_lookup.data() +
+				util::vcl_hadd_x(_mm256_and_si256(util::expand_bits_to_bytes(upper_bits >> 32), ymm1));
+
+			const size_t* input = candidates_begin;
+			size_t* output = candidates_begin;
+
+			size_t number = *input; // load one iteration ahead
+
+			for (; input < shrinking_end; ++input)
+			{
+				*output = number; // always write
+
+				// These only change every 4B integers - re-calculate when stale
+				if ((number & upper_bits_mask) != upper_bits)
+				{
+					upper_bits = number & upper_bits_mask;
+					pf_lookup_preinc = prime_factor_lookup.data() +
+						util::vcl_hadd_x(_mm256_and_si256(util::expand_bits_to_bytes(upper_bits >> 32), ymm1));
+				}
+
+				const uint256_t mask_lower = util::expand_bits_to_bytes(number & uint32_t(-1));
+
+				// load one iteration ahead
+				number = *(input + 1);
+
+				const uint256_t rems_lower = _mm256_and_si256(mask_lower, ymm0);
+				const auto rem = util::vcl_hadd_x(rems_lower);
+
+				// increment only if we haven't found a prime factor yet
+				output += ((pf_lookup_preinc[rem] & (prime_lookup_t(1) << div_test.prime_idx)) == 0);
+			}
+
+			div_test.hits += uint32_t(input - output);
+
+			// output is one past the last element; use it as the new end
+			shrinking_end = output;
+		}
+
+		return shrinking_end;
+	}
+
 	tests_are_inlined size_t* multibase_div_tests(size_t* input,
-												  const size_t* const candidates_end)
+												  const size_t* const candidates_end,
+												  div_test::div_test_t* div_tests_start)
 	{
 		using namespace div_test;
 
 		size_t* output = input;
+		const auto* const div_tests_end = div_tests.data() + div_tests.size();
 
 		for (; input < candidates_end; ++input)
 		{
@@ -1023,13 +1085,15 @@ namespace mbp
 			const uint256_t mask_lower = util::expand_bits_to_bytes(number & uint32_t(-1));
 			const uint256_t mask_upper = util::expand_bits_to_bytes(number >> 32);
 
-			uint256_t ymm0 = _mm256_loadu_si256((uint256_t*)&div_tests[0].remainders[0]);
-			uint256_t ymm1 = _mm256_loadu_si256((uint256_t*)&div_tests[0].remainders[32]);
+			uint256_t ymm0 = _mm256_loadu_si256((uint256_t*)&div_tests_start->remainders[0]);
+			uint256_t ymm1 = _mm256_loadu_si256((uint256_t*)&div_tests_start->remainders[32]);
 
 			size_t is_candidate = 1;
 
-			for (div_test_t& div_test : div_tests)
+			for (auto* div_test_ptr = div_tests_start; div_test_ptr < div_tests_end; ++div_test_ptr)
 			{
+				div_test_t& div_test = *div_test_ptr;
+
 				// Use the byte-sized bits of the bitstring to select remainders
 				const uint256_t rems_lower = _mm256_and_si256(mask_lower, ymm0);
 				const uint256_t rems_upper = _mm256_and_si256(mask_upper, ymm1);
@@ -1198,8 +1262,8 @@ namespace mbp
 
 
 		count_passes(std::cout << "(counting passes)\n");
-		count_passes(size_t a, b, c, d, e, f, g, h, i, j, k);
-		count_passes(a = b = c = d = e = f = g = h = i = j = k = 0);
+		count_passes(size_t a, b, c, d, e, f, g, h, i, j, k, l);
+		count_passes(a = b = c = d = e = f = g = h = i = j = k = l = 0);
 
 		// (condition optimizes out when not benchmarking)
 		while (benchmark_mode ? number < bm_stop : true)
@@ -1261,8 +1325,10 @@ namespace mbp
 
 
 			// Check for small prime factors across all bases
-			candidates_end = multibase_div_tests(candidates, candidates_end);
+			candidates_end = branchless_div_tests(candidates, candidates_end, div_test::div_tests.data(), 5);
 			count_passes(j += (candidates_end - candidates));
+			candidates_end = multibase_div_tests(candidates, candidates_end, div_test::div_tests.data() + 5);
+			count_passes(k += (candidates_end - candidates));
 
 
 
@@ -1273,7 +1339,7 @@ namespace mbp
 
 				if (!franken::mpir_is_likely_prime_BPSW(number)) continue;
 
-				count_passes(++k);
+				count_passes(++l);
 
 				// convert uint64_t to char array of ['0', '1'...] for MPIR
 				char bin_str[64 + 1];
@@ -1349,7 +1415,8 @@ namespace mbp
 
 	#if analyze_div_tests
 		// Run one final step before exiting
-		run_div_test_analysis();
+		// run_div_test_analysis();
+		print_div_tests();
 	#endif
 
 		std::cout << "Finished. " << current_time_in_ms() - start << " ms elapsed\n";
@@ -1365,8 +1432,9 @@ namespace mbp
 					 "Passed 5-rem tests:    " << w(10) << g << " (removed ~" << w(3) << 100 - (g * 100 / f) << "%)\n"
 					 "Passed 10-rem tests:   " << w(10) << h << " (removed ~" << w(3) << 100 - (h * 100 / g) << "%)\n"
 					 "Passed 12-rem tests:   " << w(10) << i << " (removed ~" << w(3) << 100 - (i * 100 / h) << "%)\n"
-					 "Passed full div tests: " << w(10) << j << " (removed ~" << w(3) << 100 - (j * 100 / i) << "%)\n"
-					 "Passed b2 BPSW test:   " << w(10) << k << " (removed ~" << w(3) << 100 - (k * 100 / j) << "%)\n");
+					 "P. branchless divtests:" << w(10) << j << " (removed ~" << w(3) << 100 - (j * 100 / i) << "%)\n"
+					 "P. branching divtests: " << w(10) << k << " (removed ~" << w(3) << 100 - (k * 100 / j) << "%)\n"
+					 "Passed b2 BPSW test:   " << w(10) << l << " (removed ~" << w(3) << 100 - (l * 100 / k) << "%)\n");
 
 	}
 
