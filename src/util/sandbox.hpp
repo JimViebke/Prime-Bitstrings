@@ -308,7 +308,7 @@ namespace mbp
 			static constexpr uint256_t static_nibble_popcounts = []() consteval {
 				uint256_t pcs{ .m256i_u8 = { 0 } };
 				for (size_t i = 0; i < 16; ++i)
-					pcs.m256i_u8[i] = uint8_t(std::popcount(i));
+					pcs.m256i_u8[i] = pcs.m256i_u8[i + 16] = uint8_t(std::popcount(i));
 				return pcs;
 			}();
 
@@ -382,5 +382,121 @@ namespace mbp
 				std::cout << output[i] << ' ';
 			}
 		}
-	}
-}
+
+		void denser_sieves()
+		{
+			std::cout << "Testing denser sieves...\n";
+
+			std::array<uint8_t, 100> sieve{};
+			sieve.fill(true);
+			const size_t start = 11; // the starting point, the 0th value of the sieve
+
+			constexpr std::array primes = { 3, 5, 7 };
+
+			for (auto p : primes)
+			{
+				// Find out how far it is to the next multiple of p.
+				size_t n = p - (start % p); // n = 3 - (11 % 3)
+				// n = 1
+
+				// odd multiples of 3: 99, 105
+
+				// Start is always odd. Therefore, if n is odd, start + n is pointing to the next even multiple of p.
+				// -- increase by p
+				if (n % 2 == 1)
+					n += p;
+				// before: start + n == 11 + 1 == 12 (even multiple)
+				// after:  start + n == 11 + 4 == 15 (next odd multiple of p)
+
+				// We now have the distance to the next odd multiple of p.
+				// Divide by 2 to store the *index* of the next odd multiple of p.
+				std::cout << "Clear multiples of " << p << ":";
+				for (size_t i = n / 2; i < sieve.size(); i += p)
+				{
+					sieve[i] = false;
+					std::cout << ' ' << start + 2 * i;
+				}
+				std::cout << '\n';
+			}
+
+			std::cout << "\nDone. Prime candidates: ";
+			for (size_t i = 0; i < sieve.size(); ++i)
+				if (sieve[i])
+					std::cout << start + 2 * i << ' ';
+			std::cout << '\n';
+
+
+
+			// for each prime N, calculate the gaps between multiples of N
+
+			std::cout << "\n\n\n";
+
+			std::vector<size_t> packed_number_line;
+			for (size_t i = 3; packed_number_line.size() < 1'000; ++i)
+				if (i % 2 != 0 && i % 3 != 0 && i % 5 != 0)
+					packed_number_line.push_back(i);
+
+			std::cout << "Packed number line: (no 2s, 3s, or 5s)\n";
+			for (size_t i = 0; i < packed_number_line.size(); ++i)
+			{
+				if (i % 8 == 0) std::cout << '\n';
+				
+				std::cout << std::setw(5) << packed_number_line[i];
+			}
+			std::cout << '\n';
+
+			auto print_gaps_for = [packed_number_line](int prime_factor) {
+				size_t counter = 0;
+				bool found_first = false;
+				for (auto n : packed_number_line)
+				{
+					++counter;
+					if (n % prime_factor == 0)
+					{
+						if (!found_first) // don't print before the first multiple
+						{
+							found_first = true;
+							counter = 0;
+							continue;
+						}
+						std::cout << ' ' << counter;
+						counter = 0;
+					}
+				}
+				std::cout << '\n';
+			};
+
+			std::cout << "Gaps for 7:";
+			print_gaps_for(7);
+
+			std::cout << "Gaps for 11:";
+			print_gaps_for(11);
+
+			std::cout << "Gaps for 13:";
+			print_gaps_for(13);
+
+			std::cout << "Gaps for 17:";
+			print_gaps_for(17);
+
+			std::cout << "Gaps for 19:";
+			print_gaps_for(19);
+
+			std::cout << "Gaps for 23:";
+			print_gaps_for(23);
+
+			std::cout << "Gaps for 29:";
+			print_gaps_for(29);
+
+			std::cout << "Gaps for 31:";
+			print_gaps_for(31);
+
+			std::cout << "Gaps for 37:";
+			print_gaps_for(37);
+
+
+
+		} // denser_sieves()
+
+	} // namespace detail
+
+} // namespace mbp
