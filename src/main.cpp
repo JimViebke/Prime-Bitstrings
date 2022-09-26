@@ -622,13 +622,13 @@ namespace mbp
 			b8m13_rem += pc_3 * pow_mod<8, 3, 13>::rem;
 			b4m17_rem += pc_3 * pow_mod<4, 3, 17>::rem;
 
-			// Only advance the pointer if the number is still a candidate
 			size_t merged_masks = 0;
 			merged_masks |= (prime_factor_lookup_ptr[b3m5_rem] & (1ull << get_prime_index<5>::idx));
 			merged_masks |= (prime_factor_lookup_ptr[b5m13_rem] & (1ull << get_prime_index<13>::idx));
 			merged_masks |= (prime_factor_lookup_ptr[b8m13_rem] & (1ull << get_prime_index<13>::idx));
 			merged_masks |= (prime_factor_lookup_ptr[b4m17_rem] & (1ull << get_prime_index<17>::idx));
 
+			// Only advance the pointer if the number is still a candidate
 			output += !merged_masks;
 		}
 
@@ -1008,6 +1008,8 @@ namespace mbp
 												   div_test::div_test_t* div_tests,
 												   const size_t n_of_tests)
 	{
+		// See multibase_div_tests() for details.
+
 		using namespace div_test;
 		using namespace div_test::detail;
 		constexpr size_t upper_bits_mask = size_t(-1) << 32;
@@ -1085,6 +1087,7 @@ namespace mbp
 			const uint256_t mask_lower = util::expand_bits_to_bytes(number & uint32_t(-1));
 			const uint256_t mask_upper = util::expand_bits_to_bytes(number >> 32);
 
+			// Load 32+32 remainders into two 32-byte registers
 			uint256_t ymm0 = _mm256_loadu_si256((uint256_t*)&div_tests_start->remainders[0]);
 			uint256_t ymm1 = _mm256_loadu_si256((uint256_t*)&div_tests_start->remainders[32]);
 
@@ -1106,11 +1109,10 @@ namespace mbp
 				// but they can't be immediately added together without 8-bit overflow. We also
 				// don't want to pay for two full h-sums. Solve this with a custom hadd: perform
 				// the first hadd step on each vector, which extends their values from 8-bit to
-				// 16-bit integers, then safely add the vectors together and continue with just
-				// one. This takes N+2 steps in total, instead of 2N.
+				// 16-bit integers, then safely add the vectors together and continue the hadd.
+				// This takes N+2 steps in total, instead of 2N.
 				const size_t rem = util::vcl_hadd2_x(rems_upper, rems_lower);
 
-				// This branch could further be reduced by div testing in batches
 				if (has_small_prime_factor(rem, div_test.prime_idx))
 				{
 					div_test.hits++;
@@ -1262,8 +1264,8 @@ namespace mbp
 
 
 		count_passes(std::cout << "(counting passes)\n");
-		count_passes(size_t a, b, c, d, e, f, g, h, i, j, k, l);
-		count_passes(a = b = c = d = e = f = g = h = i = j = k = l = 0);
+		count_passes(size_t a, b, c, d, e, f, g, h, i, j, k, l, passes);
+		count_passes(a = b = c = d = e = f = g = h = i = j = k = l = passes = 0);
 
 		// (condition optimizes out when not benchmarking)
 		while (benchmark_mode ? number < bm_stop : true)
@@ -1409,6 +1411,7 @@ namespace mbp
 			#endif
 			}
 
+			count_passes(++passes);
 		} // end main loop
 
 
@@ -1421,21 +1424,18 @@ namespace mbp
 
 		std::cout << "Finished. " << current_time_in_ms() - start << " ms elapsed\n";
 
-		count_passes(auto w = std::setw);
-		count_passes(std::cout <<
-					 "Passed sieve:          " << w(10) << a << " (removed ~" << w(3) << 100 - (a * 100 / (bm_size / 2)) << "%)\n"
-					 "Passed popcount test:  " << w(10) << b << " (removed ~" << w(3) << 100 - (b * 100 / a) << "%)\n"
-					 "Passed GCD test:       " << w(10) << c << " (removed ~" << w(3) << 100 - (c * 100 / b) << "%)\n"
-					 "Passed 4-rem tests:    " << w(10) << d << " (removed ~" << w(3) << 100 - (d * 100 / c) << "%)\n"
-					 "Passed 3-rem tests:    " << w(10) << e << " (removed ~" << w(3) << 100 - (e * 100 / d) << "%)\n"
-					 "Passed 6-rem tests:    " << w(10) << f << " (removed ~" << w(3) << 100 - (f * 100 / e) << "%)\n"
-					 "Passed 5-rem tests:    " << w(10) << g << " (removed ~" << w(3) << 100 - (g * 100 / f) << "%)\n"
-					 "Passed 10-rem tests:   " << w(10) << h << " (removed ~" << w(3) << 100 - (h * 100 / g) << "%)\n"
-					 "Passed 12-rem tests:   " << w(10) << i << " (removed ~" << w(3) << 100 - (i * 100 / h) << "%)\n"
-					 "P. branchless divtests:" << w(10) << j << " (removed ~" << w(3) << 100 - (j * 100 / i) << "%)\n"
-					 "P. branching divtests: " << w(10) << k << " (removed ~" << w(3) << 100 - (k * 100 / j) << "%)\n"
-					 "Passed b2 BPSW test:   " << w(10) << l << " (removed ~" << w(3) << 100 - (l * 100 / k) << "%)\n");
-
+		log_pass_counts("Passed sieve:          ", a, (bm_size / 2));
+		log_pass_counts("Passed popcount test:  ", b, a);
+		log_pass_counts("Passed GCD test:       ", c, b);
+		log_pass_counts("Passed 4-rem tests:    ", d, c);
+		log_pass_counts("Passed 3-rem tests:    ", e, d);
+		log_pass_counts("Passed 6-rem tests:    ", f, e);
+		log_pass_counts("Passed 5-rem tests:    ", g, f);
+		log_pass_counts("Passed 10-rem tests:   ", h, g);
+		log_pass_counts("Passed 12-rem tests:   ", i, h);
+		log_pass_counts("P. branchless divtests:", j, i);
+		log_pass_counts("P. branching divtests: ", k, j);
+		log_pass_counts("Passed b2 BPSW test:   ", l, k);
 	}
 
 } // namespace mbp

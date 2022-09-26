@@ -79,7 +79,11 @@ namespace mbp
 
 #if 0 // accumulate and print pass counts
 #define count_passes(...) __VA_ARGS__
+#define log_pass_counts(str, count, count_before) { \
+	auto w = std::setw; \
+	std::cout << str << w(10) << count << " (removed ~" << w(3) << 100 - (count * 100 / count_before) << "%) (~" << w(6) << count / passes << " candidates pass per main loop iteration)\n"; }
 #else
+#define log_pass_counts(...)
 #define count_passes(...)
 #endif
 

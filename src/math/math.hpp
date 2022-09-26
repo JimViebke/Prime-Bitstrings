@@ -170,20 +170,4 @@ namespace mbp
 		*/
 	}
 
-	__forceinline void lex_permute(size_t& n)
-	{
-		const size_t t = n | (n - 1); // t gets v's least significant 0 bits set to 1
-		// Next set to 1 the most significant bit to change, 
-		// set to 0 the least significant ones, and add the necessary 1 bits.
-
-		unsigned long idx;
-		_BitScanForward64(&idx, n);
-
-		// suppress "warning C4146 : unary minus operator applied to unsigned type, result still unsigned"
-	#pragma warning (push)
-	#pragma warning (disable: 4146)
-		n = (t + 1) | (((~t & -~t) - 1) >> (idx + 1));
-	#pragma warning (pop)
-	}
-
 }
