@@ -702,6 +702,39 @@ namespace mbp
 					  bitmask == bitmask_for<10, 13>::val);
 		static_assert(period_of<bitmask>::val == 6);
 
+		// constexpr uint128_t static_rems0 = { always all ones };
+		constexpr static uint128_t static_rems1 = uint128_t{ .m128i_u32{
+			pow_mod<3, 1, 7>::rem,
+			pow_mod<5, 1, 7>::rem,
+			pow_mod<4, 1, 13>::rem,
+			pow_mod<10, 1, 13>::rem } };
+		constexpr static uint128_t static_rems2 = uint128_t{ .m128i_u32{
+			pow_mod<3, 2, 7>::rem,
+			pow_mod<5, 2, 7>::rem,
+			pow_mod<4, 2, 13>::rem,
+			pow_mod<10, 2, 13>::rem } };
+		constexpr static uint128_t static_rems3 = uint128_t{ .m128i_u32{
+			pow_mod<3, 3, 7>::rem,
+			pow_mod<5, 3, 7>::rem,
+			pow_mod<4, 3, 13>::rem,
+			pow_mod<10, 3, 13>::rem } };
+		constexpr static uint128_t static_rems4 = uint128_t{ .m128i_u32{
+			pow_mod<3, 4, 7>::rem,
+			pow_mod<5, 4, 7>::rem,
+			pow_mod<4, 4, 13>::rem,
+			pow_mod<10, 4, 13>::rem } };
+		constexpr static uint128_t static_rems5 = uint128_t{ .m128i_u32{
+			pow_mod<3, 5, 7>::rem,
+			pow_mod<5, 5, 7>::rem,
+			pow_mod<4, 5, 13>::rem,
+			pow_mod<10, 5, 13>::rem } };
+
+		const auto xmm_rems1 = _mm_loadu_si128(&static_rems1);
+		const auto xmm_rems2 = _mm_loadu_si128(&static_rems2);
+		const auto xmm_rems3 = _mm_loadu_si128(&static_rems3);
+		const auto xmm_rems4 = _mm_loadu_si128(&static_rems4);
+		const auto xmm_rems5 = _mm_loadu_si128(&static_rems5);
+
 		const prime_lookup_t* const prime_factor_lookup_ptr = prime_factor_lookup.data();
 
 		size_t* output = input;
@@ -717,48 +750,35 @@ namespace mbp
 			// always write
 			*output = number;
 
-			const size_t pc_0 = pop_count(number & (bitmask << 0));
-			size_t b3_m7_rem = pc_0;
-			size_t b5_m7_rem = pc_0;
-			size_t b10_m13_rem = pc_0;
-			size_t b4_m13_rem = pc_0;
+			auto xmm0 = _mm_set1_epi32((int)pop_count(number & (bitmask << 0)));
+			auto xmm1 = _mm_set1_epi32((int)pop_count(number & (bitmask << 1)));
+			auto xmm2 = _mm_set1_epi32((int)pop_count(number & (bitmask << 2)));
+			auto xmm3 = _mm_set1_epi32((int)pop_count(number & (bitmask << 3)));
+			auto xmm4 = _mm_set1_epi32((int)pop_count(number & (bitmask << 4)));
+			auto xmm5 = _mm_set1_epi32((int)pop_count(number & (bitmask << 5)));
 
-			const size_t pc_1 = pop_count(number & (bitmask << 1));
-			b3_m7_rem += pc_1 * pow_mod<3, 1, 7>::rem;
-			b5_m7_rem += pc_1 * pow_mod<5, 1, 7>::rem;
-			b4_m13_rem += pc_1 * pow_mod<4, 1, 13>::rem;
-			b10_m13_rem += pc_1 * pow_mod<10, 1, 13>::rem;
+			// multiply each popcount with Nth remainder of each test
+			// (rems0 is always all ones)
+			xmm1 = _mm_mullo_epi32(xmm1, xmm_rems1);
+			xmm2 = _mm_mullo_epi32(xmm2, xmm_rems2);
+			xmm3 = _mm_mullo_epi32(xmm3, xmm_rems3);
+			xmm4 = _mm_mullo_epi32(xmm4, xmm_rems4);
+			xmm5 = _mm_mullo_epi32(xmm5, xmm_rems5);
 
-			const size_t pc_2 = pop_count(number & (bitmask << 2));
-			b3_m7_rem += pc_2 * pow_mod<3, 2, 7>::rem;
-			b5_m7_rem += pc_2 * pow_mod<5, 2, 7>::rem;
-			b4_m13_rem += pc_2 * pow_mod<4, 2, 13>::rem;
-			b10_m13_rem += pc_2 * pow_mod<10, 2, 13>::rem;
-
-			const size_t pc_3 = pop_count(number & (bitmask << 3));
-			b3_m7_rem += pc_3 * pow_mod<3, 3, 7>::rem;
-			b5_m7_rem += pc_3 * pow_mod<5, 3, 7>::rem;
-			b4_m13_rem += pc_3 * pow_mod<4, 3, 13>::rem;
-			b10_m13_rem += pc_3 * pow_mod<10, 3, 13>::rem;
-
-			const size_t pc_4 = pop_count(number & (bitmask << 4));
-			b3_m7_rem += pc_4 * pow_mod<3, 4, 7>::rem;
-			b5_m7_rem += pc_4 * pow_mod<5, 4, 7>::rem;
-			b4_m13_rem += pc_4 * pow_mod<4, 4, 13>::rem;
-			b10_m13_rem += pc_4 * pow_mod<10, 4, 13>::rem;
-
-			const size_t pc_5 = pop_count(number & (bitmask << 5));
-			b3_m7_rem += pc_5 * pow_mod<3, 5, 7>::rem;
-			b5_m7_rem += pc_5 * pow_mod<5, 5, 7>::rem;
-			b4_m13_rem += pc_5 * pow_mod<4, 5, 13>::rem;
-			b10_m13_rem += pc_5 * pow_mod<10, 5, 13>::rem;
+			// add pairs
+			xmm0 = _mm_add_epi32(xmm0, xmm1);
+			xmm2 = _mm_add_epi32(xmm2, xmm3);
+			xmm4 = _mm_add_epi32(xmm4, xmm5);
+			// final adds
+			xmm0 = _mm_add_epi32(xmm0, xmm2);
+			xmm0 = _mm_add_epi32(xmm0, xmm4);
 
 			// Only advance the pointer if the number is still a candidate
 			size_t merged_masks = 0;
-			merged_masks |= (prime_factor_lookup_ptr[b3_m7_rem] & (1ull << get_prime_index<7>::idx));
-			merged_masks |= (prime_factor_lookup_ptr[b5_m7_rem] & (1ull << get_prime_index<7>::idx));
-			merged_masks |= (prime_factor_lookup_ptr[b4_m13_rem] & (1ull << get_prime_index<13>::idx));
-			merged_masks |= (prime_factor_lookup_ptr[b10_m13_rem] & (1ull << get_prime_index<13>::idx));
+			merged_masks |= (prime_factor_lookup_ptr[xmm0.m128i_u32[0]] & (1ull << get_prime_index<7>::idx));
+			merged_masks |= (prime_factor_lookup_ptr[xmm0.m128i_u32[1]] & (1ull << get_prime_index<7>::idx));
+			merged_masks |= (prime_factor_lookup_ptr[xmm0.m128i_u32[2]] & (1ull << get_prime_index<13>::idx));
+			merged_masks |= (prime_factor_lookup_ptr[xmm0.m128i_u32[3]] & (1ull << get_prime_index<13>::idx));
 
 			output += !merged_masks;
 		}
