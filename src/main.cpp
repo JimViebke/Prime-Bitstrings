@@ -860,11 +860,42 @@ namespace mbp
 		using namespace div_test;
 		using namespace div_test::detail;
 
-		// Intellisense may generate a number of false positives here
-		constexpr size_t bitmask = bitmask_for<6, 11>::val; // base 6 % 11   (10 remainders)
-		static_assert(bitmask == bitmask_for<7, 11>::val); // base 7 % 11   (10 remainders)
-		static_assert(bitmask == bitmask_for<8, 11>::val); // base 8 % 11   (10 remainders)
-		static_assert(period_of<bitmask>::val == 10);
+		// bases 6, 7, and 8 mod 11 (10 remainders)
+
+		static_assert(sizeof(remainder_t) == 1);
+		alignas(64) static constexpr remainder_t b6_rems[64] = {
+			1, 6, 3, 7, 9, 10, 5, 8, 4, 2,
+			1, 6, 3, 7, 9, 10, 5, 8, 4, 2,
+			1, 6, 3, 7, 9, 10, 5, 8, 4, 2,
+			1, 6, 3, 7, 9, 10, 5, 8, 4, 2,
+			1, 6, 3, 7, 9, 10, 5, 8, 4, 2,
+			1, 6, 3, 7, 9, 10, 5, 8, 4, 2,
+			1, 6, 3, 7 };
+		alignas(64) static constexpr remainder_t b7_rems[64] = {
+			1, 7, 5, 2, 3, 10, 4, 6, 9, 8,
+			1, 7, 5, 2, 3, 10, 4, 6, 9, 8,
+			1, 7, 5, 2, 3, 10, 4, 6, 9, 8,
+			1, 7, 5, 2, 3, 10, 4, 6, 9, 8,
+			1, 7, 5, 2, 3, 10, 4, 6, 9, 8,
+			1, 7, 5, 2, 3, 10, 4, 6, 9, 8,
+			1, 7, 5, 2 };
+		alignas(64) static constexpr remainder_t b8_rems[64] = {
+			1, 8, 9, 6, 4, 10, 3, 2, 5, 7,
+			1, 8, 9, 6, 4, 10, 3, 2, 5, 7,
+			1, 8, 9, 6, 4, 10, 3, 2, 5, 7,
+			1, 8, 9, 6, 4, 10, 3, 2, 5, 7,
+			1, 8, 9, 6, 4, 10, 3, 2, 5, 7,
+			1, 8, 9, 6, 4, 10, 3, 2, 5, 7,
+			1, 8, 9, 6 };
+
+		const uint256_t b6_rems_lower = _mm256_loadu_si256((uint256_t*)&b6_rems[0]);
+		const uint256_t b6_rems_upper = _mm256_loadu_si256((uint256_t*)&b6_rems[32]);
+
+		const uint256_t b7_rems_lower = _mm256_loadu_si256((uint256_t*)&b7_rems[0]);
+		const uint256_t b7_rems_upper = _mm256_loadu_si256((uint256_t*)&b7_rems[32]);
+
+		const uint256_t b8_rems_lower = _mm256_loadu_si256((uint256_t*)&b8_rems[0]);
+		const uint256_t b8_rems_upper = _mm256_loadu_si256((uint256_t*)&b8_rems[32]);
 
 		size_t* output = input;
 
@@ -879,35 +910,24 @@ namespace mbp
 			// always write
 			*output = number;
 
-			const size_t pc_0 = pop_count(number & (bitmask << 0u));
-			const size_t pc_5 = pop_count(number & (bitmask << 5u));
-			size_t b6_rem = pc_0 + (pc_5 * pow_mod<6, 5, 11>::rem);
-			size_t b7_rem = pc_0 + (pc_5 * pow_mod<7, 5, 11>::rem);
-			size_t b8_rem = pc_0 + (pc_5 * pow_mod<8, 5, 11>::rem);
+			// Convert 64 bits to 64 bytes
+			const uint256_t mask_lower = util::expand_bits_to_bytes(number & uint32_t(-1));
+			const uint256_t mask_upper = util::expand_bits_to_bytes(number >> 32);
 
-			const size_t pc_1 = pop_count(number & (bitmask << 1u));
-			const size_t pc_6 = pop_count(number & (bitmask << 6u));
-			b6_rem += pc_1 * pow_mod<6, 1, 11>::rem + pc_6 * pow_mod<6, 6, 11>::rem;
-			b7_rem += pc_1 * pow_mod<7, 1, 11>::rem + pc_6 * pow_mod<7, 6, 11>::rem;
-			b8_rem += pc_1 * pow_mod<8, 1, 11>::rem + pc_6 * pow_mod<8, 6, 11>::rem;
+			const uint256_t ymm0 = _mm256_and_si256(mask_lower, b6_rems_lower);
+			const uint256_t ymm1 = _mm256_and_si256(mask_upper, b6_rems_upper);
 
-			const size_t pc_2 = pop_count(number & (bitmask << 2u));
-			const size_t pc_7 = pop_count(number & (bitmask << 7u));
-			b6_rem += pc_2 * pow_mod<6, 2, 11>::rem + pc_7 * pow_mod<6, 7, 11>::rem;
-			b7_rem += pc_2 * pow_mod<7, 2, 11>::rem + pc_7 * pow_mod<7, 7, 11>::rem;
-			b8_rem += pc_2 * pow_mod<8, 2, 11>::rem + pc_7 * pow_mod<8, 7, 11>::rem;
+			const uint256_t ymm2 = _mm256_and_si256(mask_lower, b7_rems_lower);
+			const uint256_t ymm3 = _mm256_and_si256(mask_upper, b7_rems_upper);
 
-			const size_t pc_3 = pop_count(number & (bitmask << 3u));
-			const size_t pc_8 = pop_count(number & (bitmask << 8u));
-			b6_rem += pc_3 * pow_mod<6, 3, 11>::rem + pc_8 * pow_mod<6, 8, 11>::rem;
-			b7_rem += pc_3 * pow_mod<7, 3, 11>::rem + pc_8 * pow_mod<7, 8, 11>::rem;
-			b8_rem += pc_3 * pow_mod<8, 3, 11>::rem + pc_8 * pow_mod<8, 8, 11>::rem;
+			const uint256_t ymm4 = _mm256_and_si256(mask_lower, b8_rems_lower);
+			const uint256_t ymm5 = _mm256_and_si256(mask_upper, b8_rems_upper);
 
-			const size_t pc_4 = pop_count(number & (bitmask << 4u));
-			const size_t pc_9 = pop_count(number & (bitmask << 9u));
-			b6_rem += pc_4 * pow_mod<6, 4, 11>::rem + pc_9 * pow_mod<6, 9, 11>::rem;
-			b7_rem += pc_4 * pow_mod<7, 4, 11>::rem + pc_9 * pow_mod<7, 9, 11>::rem;
-			b8_rem += pc_4 * pow_mod<8, 4, 11>::rem + pc_9 * pow_mod<8, 9, 11>::rem;
+			// Not all div tests can safely combine rems without moving to a larger type,
+			// but our rems are small enough to avoid overflow.
+			const auto b6_rem = util::vcl_hadd_x(_mm256_add_epi8(ymm0, ymm1));
+			const auto b7_rem = util::vcl_hadd_x(_mm256_add_epi8(ymm2, ymm3));
+			const auto b8_rem = util::vcl_hadd_x(_mm256_add_epi8(ymm4, ymm5));
 
 			size_t merged_lookups = prime_factor_lookup[b6_rem];
 			merged_lookups |= prime_factor_lookup[b7_rem];
