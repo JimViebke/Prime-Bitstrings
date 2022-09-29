@@ -1041,6 +1041,96 @@ namespace mbp
 		return output;
 	}
 
+	tests_are_inlined size_t* div_tests_with_16_rems(size_t* input,
+													 const size_t* const candidates_end)
+	{
+		using namespace div_test;
+		using namespace div_test::detail;
+
+		constexpr size_t upper_bits_mask = size_t(-1) << 32;
+
+		constexpr static alignas(64) uint8_t static_rems[7 + 1][16] = {
+			{ 1, 3, 9, 10, 13, 5, 15, 11, 16, 14, 8, 7, 4, 12, 2, 6 }, // base 3 % 17
+			{ 1, 5, 8, 6, 13, 14, 2, 10, 16, 12, 9, 11, 4, 3, 15, 7 }, // base 5 % 17
+			{ 1, 6, 2, 12, 4, 7, 8, 14, 16, 11, 15, 5, 13, 10, 9, 3 }, // base 6 % 17
+			{ 1, 7, 15, 3, 4, 11, 9, 12, 16, 10, 2, 14, 13, 6, 8, 5 }, // base 7 % 17
+			{ 1, 10, 15, 14, 4, 6, 9, 5, 16, 7, 2, 3, 13, 11, 8, 12 }, // base 10 % 17
+			{ 1, 11, 2, 5, 4, 10, 8, 3, 16, 6, 15, 12, 13, 7, 9, 14 }, // base 11 % 17
+			{ 1, 12, 8, 11, 13, 3, 2, 7, 16, 5, 9, 6, 4, 14, 15, 10 }, // base 12 % 17
+			{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } }; // padding
+
+		const uint256_t rems_0_1 = _mm256_loadu_si256((uint256_t*)&static_rems[0]);
+		const uint256_t rems_2_3 = _mm256_loadu_si256((uint256_t*)&static_rems[2]);
+		const uint256_t rems_4_5 = _mm256_loadu_si256((uint256_t*)&static_rems[4]);
+		const uint256_t rems_6_x = _mm256_loadu_si256((uint256_t*)&static_rems[6]);
+
+		size_t* output = input;
+		size_t number = *input;
+
+		size_t upper_bits = number & upper_bits_mask;
+		uint256_t upper_bytes = _mm256_and_si256(util::expand_bits_to_bytes(number >> 32),
+												 _mm256_set1_epi8(0x01));
+
+		for (; input < candidates_end; )
+		{
+			// Upper 32 bits only change every 4B integers - re-calculate when stale
+			if ((number & upper_bits_mask) != upper_bits)
+			{
+				upper_bits = number & upper_bits_mask;
+				upper_bytes = _mm256_and_si256(util::expand_bits_to_bytes(number >> 32),
+											   _mm256_set1_epi8(0x01)); // convert 0xFF -> 0x01
+			}
+
+			uint256_t lower_bytes = _mm256_and_si256(util::expand_bits_to_bytes(number & uint32_t(-1)),
+													 _mm256_set1_epi8(0x01)); // convert 0xFF -> 0x01
+
+			// always write
+			*output = number;
+			// load one iteration ahead
+			++input;
+			number = *input;
+
+			// add the upper 32 bytes to the lower 32 bytes to get values in range 0-2
+			uint256_t ymm0 = _mm256_add_epi8(lower_bytes, upper_bytes);
+
+			// add the upper 16 bytes to the lower 16 bytes to get values in range 0-4, and leave the results in both lanes
+			ymm0 = _mm256_add_epi8(ymm0, _mm256_permute2x128_si256(ymm0, ymm0, 1));
+
+			// multiply 16+16 8-bit values by 32 remainders, storing partially summed results as 8+8 uint16_ts
+			uint256_t ymm1 = _mm256_maddubs_epi16(ymm0, rems_0_1);
+			uint256_t ymm2 = _mm256_maddubs_epi16(ymm0, rems_2_3);
+			uint256_t ymm3 = _mm256_maddubs_epi16(ymm0, rems_4_5);
+			uint256_t ymm4 = _mm256_maddubs_epi16(ymm0, rems_6_x);
+
+			// pack four sparse registers into two
+			ymm0 = _mm256_packus_epi16(ymm1, ymm2);
+			ymm1 = _mm256_packus_epi16(ymm3, ymm4);
+
+			// h-sum into 4 16-bit integers, 2 in each lane
+			ymm0 = _mm256_sad_epu8(ymm0, _mm256_setzero_si256());
+			ymm1 = _mm256_sad_epu8(ymm1, _mm256_setzero_si256());
+
+			// extract high lanes
+			const uint128_t xmm2 = _mm256_extracti128_si256(ymm0, 1);
+			const uint128_t xmm3 = _mm256_extracti128_si256(ymm1, 1);
+
+			prime_lookup_t merged_lookups = 0;
+			merged_lookups |= prime_factor_lookup[ymm0.m256i_i64[0]];
+			merged_lookups |= prime_factor_lookup[ymm0.m256i_i64[1]];
+			merged_lookups |= prime_factor_lookup[ymm1.m256i_i64[0]];
+			merged_lookups |= prime_factor_lookup[ymm1.m256i_i64[1]];
+			merged_lookups |= prime_factor_lookup[xmm2.m128i_i64[0]];
+			merged_lookups |= prime_factor_lookup[xmm2.m128i_i64[1]];
+			merged_lookups |= prime_factor_lookup[xmm3.m128i_i64[0]];
+
+			// Only advance the pointer if the nth bit was 0 in all lookups
+			// Invert the bit we care about, move it to the 0th position, and mask to select it
+			output += (~merged_lookups >> get_prime_index<17>::idx) & 0b1;
+		}
+
+		return output;
+	}
+
 
 
 	tests_are_inlined size_t* branchless_div_tests(size_t* const candidates_begin,
@@ -1304,8 +1394,8 @@ namespace mbp
 
 
 		count_passes(std::cout << "(counting passes)\n");
-		count_passes(size_t a, b, c, d, e, f, g, h, i, j, k, l, passes);
-		count_passes(a = b = c = d = e = f = g = h = i = j = k = l = passes = 0);
+		count_passes(size_t a, b, c, d, e, f, g, h, i, j, k, l, m, passes);
+		count_passes(a = b = c = d = e = f = g = h = i = j = k = l = m = passes = 0);
 
 		// (condition optimizes out when not benchmarking)
 		while (benchmark_mode ? number < bm_stop : true)
@@ -1364,13 +1454,17 @@ namespace mbp
 			candidates_end = div_tests_with_12_rems(candidates, candidates_end);
 			count_passes(i += (candidates_end - candidates));
 
+			// bases 3, 5, 6, 7, 10, 11 and 12 mod 17 (16 remainders)
+			candidates_end = div_tests_with_16_rems(candidates, candidates_end);
+			count_passes(j += (candidates_end - candidates));
+
 
 
 			// Check for small prime factors across all bases
 			candidates_end = branchless_div_tests(candidates, candidates_end, div_test::div_tests.data(), 5);
-			count_passes(j += (candidates_end - candidates));
-			candidates_end = multibase_div_tests(candidates, candidates_end, div_test::div_tests.data() + 5);
 			count_passes(k += (candidates_end - candidates));
+			candidates_end = multibase_div_tests(candidates, candidates_end, div_test::div_tests.data() + 5);
+			count_passes(l += (candidates_end - candidates));
 
 
 
@@ -1381,7 +1475,7 @@ namespace mbp
 
 				if (!franken::mpir_is_likely_prime_BPSW(number)) continue;
 
-				count_passes(++l);
+				count_passes(++m);
 
 				// convert uint64_t to char array of ['0', '1'...] for MPIR
 				char bin_str[64 + 1];
@@ -1473,9 +1567,10 @@ namespace mbp
 		log_pass_counts("Passed 5-rem tests:    ", g, f);
 		log_pass_counts("Passed 10-rem tests:   ", h, g);
 		log_pass_counts("Passed 12-rem tests:   ", i, h);
-		log_pass_counts("P. branchless divtests:", j, i);
-		log_pass_counts("P. branching divtests: ", k, j);
-		log_pass_counts("Passed b2 BPSW test:   ", l, k);
+		log_pass_counts("Passed 16-rem tests:   ", j, i);
+		log_pass_counts("P. branchless divtests:", k, j);
+		log_pass_counts("P. branching divtests: ", l, k);
+		log_pass_counts("Passed b2 BPSW test:   ", m, l);
 	}
 
 } // namespace mbp
