@@ -60,6 +60,7 @@ partial_sieve() is slower when inlined.
 gather_sieve_results(), prime_popcount_test(), gcd_test(), and has_small_divisor() are slower when not inlined.
 
 update_div_test_order() has no measurable runtime overhead unless it runs at least once per 100M integers
+Worst-case ordering (primes high to low) reaches a sorted state by about +6 trillion ints when shuffling every 10 billion
 
 
 
