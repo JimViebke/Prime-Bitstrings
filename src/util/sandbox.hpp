@@ -17,7 +17,7 @@ namespace mbp
 	{
 		void find_p_n()
 		{
-			const auto start = current_time_in_ms();
+			const auto start = util::current_time_in_ms();
 
 			gmp_randclass r{ gmp_randinit_mt };
 			r.seed(mpir_ui{ 0xdeadbeef });
@@ -51,7 +51,7 @@ namespace mbp
 			}
 
 		done:
-			std::cout << "Found in " << current_time_in_ms() - start << " ms.\n";
+			std::cout << "Found in " << util::current_time_in_ms() - start << " ms.\n";
 		}
 
 		void calculate_static_sieve_sizes()

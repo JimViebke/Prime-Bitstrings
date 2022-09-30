@@ -4,7 +4,7 @@
 
 #include "direct.h"
 
-namespace mbp
+namespace mbp::util
 {
 	inline auto current_time_in_ms()
 	{
@@ -19,6 +19,12 @@ namespace mbp
 	void create_folder(const std::string& path)
 	{
 		std::ignore = _mkdir(path.c_str());
+	}
+
+	__forceinline bool upper_32_bits_match(const size_t a, const size_t b)
+	{
+		constexpr size_t mask = size_t(-1) << 32;
+		return (a & mask) == (b & mask);
 	}
 
 	namespace util_detail

@@ -5,7 +5,7 @@
 
 namespace mbp
 {
-	using sieve_prime_t = narrowest_uint_for_val<sieve_primes_cap>;
+	using sieve_prime_t = util::narrowest_uint_for_val<sieve_primes_cap>;
 
 	using uint128_t = __m128i;
 	using uint256_t = __m256i;

@@ -99,10 +99,10 @@ namespace mbp
 		std::stringstream ss;
 		ss << std::bitset<64>(n).to_string().c_str() + std::countl_zero(n) << " is a p" << up_to_base << " (" << n << ')';
 
-		static auto last_perf_time = current_time_in_ms();
+		static auto last_perf_time = util::current_time_in_ms();
 		static size_t last_n = 0;
 
-		const auto perf_time = current_time_in_ms();
+		const auto perf_time = util::current_time_in_ms();
 
 		// Don't log or print perf info for the first result
 		if (last_n != 0)

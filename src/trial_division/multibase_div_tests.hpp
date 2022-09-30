@@ -267,7 +267,7 @@ namespace mbp::div_test
 			return largest_sum + 1;
 		}
 
-		using prime_lookup_t = narrowest_uint_for_n_bits<div_test::n_of_primes>;
+		using prime_lookup_t = util::narrowest_uint_for_n_bits<div_test::n_of_primes>;
 		constexpr size_t prime_factor_lookup_size = calculate_prime_factor_lookup_size();
 
 		// Faster version

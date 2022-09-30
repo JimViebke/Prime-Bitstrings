@@ -168,6 +168,10 @@
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\bit_pattern_tests.hpp" />
+    <ClInclude Include="src\full_div_tests.hpp" />
+    <ClInclude Include="src\hardcoded_div_tests.hpp" />
+    <ClInclude Include="src\sieve.hpp" />
     <ClInclude Include="src\trial_division\div_test_hits.hpp" />
     <ClInclude Include="src\io\io.hpp" />
     <ClInclude Include="src\math\boost_sqrt.hpp" />
