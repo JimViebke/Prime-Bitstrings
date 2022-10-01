@@ -157,7 +157,7 @@ namespace mbp
 
 
 
-	static alignas(sieve_alignment) sieve_container sieve;
+	static alignas(64) sieve_container sieve;
 
 	// 2x the expected number of candidates from the sieve passes
 	constexpr size_t candidates_capacity = [] {
@@ -166,7 +166,7 @@ namespace mbp
 			cleared += (1.0 - cleared) * (1.0 / small_primes_lookup[i]);
 		return 2 * size_t((1.0 - cleared) * sieve.size() * sieve_steps);
 	}();
-	static std::array<size_t, candidates_capacity> candidates_storage;
+	static alignas(64) std::array<size_t, candidates_capacity> candidates_storage;
 
 
 

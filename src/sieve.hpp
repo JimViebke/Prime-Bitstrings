@@ -21,7 +21,7 @@ namespace mbp
 
 		return sieve;
 	}
-	static alignas(sieve_alignment) constexpr sieve_container static_sieve = generate_static_sieve();
+	static alignas(64) constexpr sieve_container static_sieve = generate_static_sieve();
 
 	// When sieving in steps of (some factor N) * (some prime P), we may have skipped a few multiples of P on
 	// on either end of the sieve. We handle these with a set of branchless writes on each end of the sieve.

@@ -33,8 +33,6 @@ namespace mbp
 	// The size of the static sieve is the product of these numbers. Exercise caution.
 	constexpr std::array static_sieve_primes{ 3ull, 5ull, 7ull, 11ull, 13ull };
 
-	constexpr size_t sieve_alignment = sizeof(__m256i);
-
 	// For a 50B benchmark, combinations of 3*43*12907 yield the same pass counts as 1
 	constexpr size_t sieve_steps = 3ull * 43ull; // default: 3ull * 43ull
 
