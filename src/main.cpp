@@ -361,18 +361,18 @@ namespace mbp
 				if (!franken::mpir_is_prime(mpz_number, gmp_rand, div_test::n_of_primes - 1)) continue;
 
 				mpz_number.set_str(bin_str, 9);
-				if (!mpir_is_prime(mpz_number, gmp_rand)) { log_result(number, 8); continue; }
+				if (!mpir_is_prime(mpz_number, gmp_rand)) { log_result(candidate, 8); continue; }
 
 				mpz_number.set_str(bin_str, 10);
-				if (!mpir_is_prime(mpz_number, gmp_rand)) { log_result(number, 9); continue; }
+				if (!mpir_is_prime(mpz_number, gmp_rand)) { log_result(candidate, 9); continue; }
 
 				mpz_number.set_str(bin_str, 11);
-				if (!mpir_is_prime(mpz_number, gmp_rand)) { log_result(number, 10); continue; }
+				if (!mpir_is_prime(mpz_number, gmp_rand)) { log_result(candidate, 10); continue; }
 
 				mpz_number.set_str(bin_str, 12);
-				if (!mpir_is_prime(mpz_number, gmp_rand)) { log_result(number, 11); continue; }
+				if (!mpir_is_prime(mpz_number, gmp_rand)) { log_result(candidate, 11); continue; }
 
-				log_result(number, 12);
+				log_result(candidate, 12);
 			}
 		}
 
