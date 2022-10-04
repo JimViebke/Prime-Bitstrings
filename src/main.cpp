@@ -290,7 +290,7 @@ namespace mbp
 			// Perform some div tests separately to remove some of the branchiest branches
 
 			// base 3 mod 5, base 4 mod 17, and bases 5 and 8 mod 13 (4 remainders)
-			candidates_end = div_tests_with_four_rems(candidates, candidates_end);
+			candidates_end = div_tests_with_four_rems<on_fast_path>(candidates, candidates_end);
 			count_passes(d += (candidates_end - candidates));
 
 			// base 4 mod 7, and bases 3 and 9 mod 13 (3 remainders)
