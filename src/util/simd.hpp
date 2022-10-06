@@ -175,6 +175,28 @@ namespace mbp::util
 
 		std::cout << '\n';
 	}
+	template<typename scalar_t, typename vector_t>
+	void print_vector_as(const vector_t& data)
+	{
+		static_assert(std::is_unsigned<scalar_t>());
+
+		const scalar_t* ptr = (const scalar_t*)&data;
+
+		std::cout << '[';
+
+		for (size_t i = 0; i < sizeof(vector_t) / sizeof(scalar_t); ++i)
+		{
+			if (i % 8 == 0 && i > 0) std::cout << "  "; // padding
+
+			std::cout << ' ' << std::setw(3);
+			if (ptr[i] != 0)
+				std::cout << size_t(ptr[i]);
+			else // write a dot in place of a 0
+				std::cout << '.';
+		}
+
+		std::cout << "]\n";
+	}
 
 
 
