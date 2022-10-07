@@ -143,6 +143,21 @@ namespace mbp::util
 		return _mm256_cmpeq_epi8(isolated_inverted, _mm256_setzero_si256());
 	}
 
+	__forceinline uint256_t expand_16_bits_to_bytes(uint16_t x)
+	{
+		uint256_t xbcast = _mm256_set1_epi16(x);
+
+		// Each byte gets the source byte containing the corresponding bit
+		uint256_t shufmask = _mm256_set_epi64x(0x0101010101010101, 0x0000000000000000, 0x0101010101010101, 0x0000000000000000);
+		uint256_t shuf = _mm256_shuffle_epi8(xbcast, shufmask);
+
+		uint256_t andmask = _mm256_set1_epi64x(0x80'40'20'10'08'04'02'01);  // every 8 bits -> 8 bytes, pattern repeats.
+		uint256_t isolated_inverted = _mm256_andnot_si256(shuf, andmask);
+
+		// this is the extra step: compare each byte == 0 to produce 0 or -1
+		return _mm256_cmpeq_epi8(isolated_inverted, _mm256_setzero_si256());
+	}
+
 	void print_vector256_u8(const uint256_t& data)
 	{
 		for (size_t i = 0; i < 32; ++i)
