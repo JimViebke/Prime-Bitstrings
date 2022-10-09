@@ -21,6 +21,20 @@ namespace mbp::util
 		std::ignore = _mkdir(path.c_str());
 	}
 
+	void print_bits(const size_t n)
+	{
+		std::stringstream ss;
+		ss << std::bitset<8>(uint8_t(n >> (8 * 7))) << ' ';
+		ss << std::bitset<8>(uint8_t(n >> (8 * 6))) << ' ';
+		ss << std::bitset<8>(uint8_t(n >> (8 * 5))) << ' ';
+		ss << std::bitset<8>(uint8_t(n >> (8 * 4))) << ' ';
+		ss << std::bitset<8>(uint8_t(n >> (8 * 3))) << ' ';
+		ss << std::bitset<8>(uint8_t(n >> (8 * 2))) << ' ';
+		ss << std::bitset<8>(uint8_t(n >> (8 * 1))) << ' ';
+		ss << std::bitset<8>(uint8_t(n >> (8 * 0))) << '\n';
+		std::cout << ss.str();
+	}
+
 	__forceinline bool upper_32_bits_match(const size_t a, const size_t b)
 	{
 		constexpr size_t mask = size_t(-1) << 32;
