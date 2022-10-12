@@ -27,6 +27,7 @@ namespace mbp
 	const size_t bm_size = 50'000'000'000; // default 50'000'000'000
 	const size_t bm_stop = bm_start + bm_size;
 
+	// Currently unused
 	constexpr size_t num_threads = 1; // could be passed by command line instead
 	constexpr size_t block_size = 1'000'000'000;
 
@@ -38,7 +39,8 @@ namespace mbp
 
 	const size_t sieve_primes_cap = 2200; // default: 2200
 
-	namespace div_test // trial division tests
+	// trial division tests in bases 3..n
+	namespace div_test
 	{
 		constexpr size_t n_of_primes = 32; // default: 32
 		constexpr size_t up_to_base = 12; // default: 12
@@ -46,6 +48,7 @@ namespace mbp
 		constexpr size_t reorder_interval = 10'000'000'000; // default: 10 B
 	}
 
+	// full primality testing in bases 3..n
 	namespace prime_test
 	{
 		const size_t n_random_bases = 1;
@@ -85,7 +88,7 @@ namespace mbp
 #define count_passes(...)
 #endif
 
-#if 1 // toggle inlining on sieve, popcount, GCD, and div tests
+#if 1 // toggle inlining on sieve, GCD, and div tests
 #define tests_are_inlined __forceinline
 #else
 #define tests_are_inlined __declspec(noinline)

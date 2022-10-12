@@ -154,7 +154,7 @@ namespace mbp
 			lookup |= size_t(gcd(i, size_t(3 * 5 * 7 * 11 * 13)) == 1ull) << i;
 
 		Use:
-			(lookup & (1ull << abs(pca - pcb))) == 0			
+			(lookup & (1ull << abs(pca - pcb))) == 0
 
 		Loop impl 2:
 			lookup |= size_t(gcd(i, size_t(3 * 5 * 7 * 11 * 13)) == 1ull) << (32 - i);

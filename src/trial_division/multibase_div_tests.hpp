@@ -1,11 +1,11 @@
 #pragma once
 
 /*
-To determine if a bitstring has a small prime divisor in base b, we can do better than converting the bitstring to base b, then calculating bistring % smallprime == 0.
+Determine if a bitstring has a small prime divisor in base b.
 
-Given any bitstring in the original base 2, the value of each digit is either 0 or base^(digit position). For example, in base 7, the bits can only represent 7^0, 7^1, 7^2...
+Given any bitstring, the value of each digit is either base^(digit position) or 0. For example, in base 7, bits 0, 1, and 2 can only represent 7^0, 7^1, 7^2... or 0.
 
-Therefore, for base b, place value n, and a small prime p, we can easily calculate and store b^n % p. These remainders follow a repeating pattern often shorter than the chosen n, so we only need to store k unique remainders. At runtime, for each of the k remainders, use a bitmask to select every k-th bit, run a popcount, and multiply by the k-th remainder. Adding these k results together gives us a small sum of remainders, s. If s is evenly divisible by p, the bitstring is divisible by p in base b. Discard it.
+Therefore, for base b, place value n, and a small prime p, we calculate and store b^n % p. These remainders eventually follow a repeating pattern, often shorter than the chosen n, so we only need to store k unique remainders. At runtime, for each of the k remainders, use a bitmask to select every k-th bit, perform a popcount, and multiply the count by that k-th remainder. Adding these k results together gives us a small sum of remainders, s. If s is evenly divisible by p, then the bitstring is divisible by p in base b. Discard it.
 */
 
 #include <vector>
@@ -113,7 +113,7 @@ namespace mbp::div_test
 					// calculate base^j mod prime, where j is the place value
 					for (size_t j = 0; j < 64; ++j)
 					{
-						remainder_t rem = remainder_t(pk::powMod(base, j, small_primes_lookup[i]));
+						remainder_t rem = remainder_t(pk::powMod(base, j, p));
 						if (rem == 1 && j > 0)
 						{
 							// The pattern is repeating; stop generating further terms
@@ -140,7 +140,7 @@ namespace mbp::div_test
 				}
 
 				std::sort(uncompressed_dts.begin(), uncompressed_dts.end(),
-						  [](const auto& a, const auto& b) {return a.hits > b.hits; });
+						  [](const auto& a, const auto& b) { return a.hits > b.hits; });
 			}
 
 			std::vector<div_test_t> div_tests;
@@ -268,7 +268,7 @@ namespace mbp::div_test
 		}
 
 		using prime_lookup_t = util::narrowest_uint_for_n_bits<div_test::n_of_primes>;
-		constexpr size_t prime_factor_lookup_size = calculate_prime_factor_lookup_size();
+		constexpr size_t prime_factor_lookup_size = calculate_prime_factor_lookup_size(); // intellisense false positive
 
 		// Faster version
 		std::vector<prime_lookup_t> build_prime_factor_lookup_old()
@@ -301,7 +301,7 @@ namespace mbp::div_test
 
 				for (prime_lookup_t j = 0; j < prime_factor_lookup_size; j += p)
 				{
-					lookup[j] |= (0x1 << i);
+					lookup[j] |= (0b1 << i);
 				}
 			}
 
@@ -311,7 +311,7 @@ namespace mbp::div_test
 		const std::vector<prime_lookup_t> prime_factor_lookup = build_prime_factor_lookup_old();
 	}
 
-	// Replaces "n % prime[idx] == 0" with "lookup[n] & (1 << idx)", usually as a bittest instruction
+	// Replaces "n % prime[idx] == 0" with "lookup[n] & (1 << idx)", usually as bittest + cmov
 	__forceinline bool has_small_prime_factor(const size_t n, const prime_idx_t prime_index)
 	{
 		return (detail::prime_factor_lookup[n] & (detail::prime_lookup_t(1) << prime_index)) != 0;

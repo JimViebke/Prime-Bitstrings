@@ -350,10 +350,10 @@ namespace mbp
 				from the popcount lookup per iteration. How many times can we do this before
 				reaching its end?
 
+				Calculate this up front so the hot loop can just run until "stop".
+
 				AVX2 shuffle can handle 16 unique values, but a popcount of 0-16 is 17 values.
 				Resolve this by treating 16 (popcount of 0xFFFF) as a special case.
-
-				Calculate this up front so the hot loop can just run until "stop".
 				*/
 				size_t elements_to_FFFF = 0xFFFF - (low_17_bits >> 1);
 				const size_t iters_to_FFFF = elements_to_FFFF / (4ull * 32);

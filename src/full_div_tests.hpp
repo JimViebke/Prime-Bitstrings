@@ -113,7 +113,6 @@ namespace mbp
 
 			const uint256_t mask_lower = util::expand_bits_to_bytes(number & uint32_t(-1));
 
-
 			// Load 32+32 remainders into two 32-byte registers
 			uint256_t ymm0 = _mm256_loadu_si256((uint256_t*)&div_tests_start->remainders[0]);
 			uint256_t ymm1 = _mm256_loadu_si256((uint256_t*)&div_tests_start->remainders[32]);
@@ -129,8 +128,8 @@ namespace mbp
 				const uint256_t rems_upper = _mm256_and_si256(mask_upper, ymm1);
 
 				// Load the next remainders, one iteration ahead
-				ymm0 = _mm256_loadu_si256((uint256_t*)(((uint8_t*)&div_test.remainders) + sizeof(div_test_t) + 0));
-				ymm1 = _mm256_loadu_si256((uint256_t*)(((uint8_t*)&div_test.remainders) + sizeof(div_test_t) + 32));
+				ymm0 = _mm256_loadu_si256((uint256_t*)(&div_test.remainders[0] + sizeof(div_test_t)));
+				ymm1 = _mm256_loadu_si256((uint256_t*)(&div_test.remainders[32] + sizeof(div_test_t)));
 
 				// Calculate the horizontal sum of remainders. We have two vectors to h-sum,
 				// but they can't be immediately added together without 8-bit overflow. We also
