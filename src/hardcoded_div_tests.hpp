@@ -43,7 +43,7 @@ namespace mbp
 			1, pow_mod<4, 1, 17>::rem, pow_mod<4, 2, 17>::rem, pow_mod<4, 3, 17>::rem } };
 		constexpr static uint256_t static_pc_shuffle_mask = { .m256i_u8{
 			0, 4, 8, 12, 0, 4, 8, 12, 0, 4, 8, 12, 0, 4, 8, 12,
-			0, 4, 8, 12, 0, 4, 8, 12, 0, 4, 8, 12, 0, 4, 8, 12 } };		
+			0, 4, 8, 12, 0, 4, 8, 12, 0, 4, 8, 12, 0, 4, 8, 12 } };
 
 		const uint256_t bits_to_bytes_shuffle_mask = _mm256_loadu_si256(&static_bits_to_bytes_shuffle_mask);
 		const uint256_t and_mask = _mm256_loadu_si256(&static_and_mask);
@@ -128,9 +128,10 @@ namespace mbp
 			lo_two_bytes = _mm256_and_si256(lo_two_bytes, one_bit_mask);
 			hi_two_bytes = _mm256_and_si256(hi_two_bytes, one_bit_mask);
 
-			// popcount
+			// popcount 32 bytes -> 4 sums
 			lo_two_bytes = _mm256_sad_epu8(lo_two_bytes, _mm256_setzero_si256());
 			hi_two_bytes = _mm256_sad_epu8(hi_two_bytes, _mm256_setzero_si256());
+			// pack to get 4 sums each in the high and low lanes
 			uint256_t popcounts = _mm256_packus_epi32(lo_two_bytes, hi_two_bytes);
 
 			// add upper and lower popcounts

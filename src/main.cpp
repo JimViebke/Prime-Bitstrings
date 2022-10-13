@@ -473,10 +473,6 @@ namespace mbp
 
 
 
-			// Collect candidates that have a prime number of bits set
-			//candidates_end = prime_popcount_test(candidates, candidates_end);
-			//count_passes(b += (candidates_end - candidates));
-
 			// Collect candidates with an alternating bitsum that shares a GCD of 1 with a product of primes
 			candidates_end = gcd_test(candidates, candidates_end);
 			count_passes(c += (candidates_end - candidates));
