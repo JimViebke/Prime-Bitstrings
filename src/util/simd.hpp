@@ -1,15 +1,15 @@
 #pragma once
 
+#include "types.hpp"
+
 // Hacky way to hide the contents of zmmintrin.h
-// For some reason MSVC always includes it from immintrin.h
+// MSVC always includes it from immintrin.h
 #ifndef _ZMMINTRIN_H_INCLUDED
 #define _ZMMINTRIN_H_INCLUDED
 #endif
 
-#include "immintrin.h"
-#include "types.hpp"
-
 #include <bitset>
+#include <immintrin.h>
 #include <iostream>
 
 namespace mbp::util

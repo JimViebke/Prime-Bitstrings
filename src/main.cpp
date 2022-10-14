@@ -1,10 +1,4 @@
 
-// Hacky way to hide the contents of zmmintrin.h
-// MSVC always includes it from immintrin.h
-#ifndef _ZMMINTRIN_H_INCLUDED
-#define _ZMMINTRIN_H_INCLUDED
-#endif
-
 #include <bitset>
 #include <cassert>
 #include <filesystem>
@@ -13,10 +7,6 @@
 #include <iostream>
 #include <numeric>
 #include <sstream>
-
-#define VCL_NAMESPACE vcl
-#define MAX_VECTOR_SIZE 256
-#include "../lib/vcl/vectorclass.h"
 
 #include "bit_pattern_tests.hpp"
 #include "config.hpp"
