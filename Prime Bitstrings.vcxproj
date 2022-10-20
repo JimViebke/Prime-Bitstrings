@@ -174,7 +174,6 @@
     <ClInclude Include="src\sieve.hpp" />
     <ClInclude Include="src\trial_division\div_test_hits.hpp" />
     <ClInclude Include="src\io\io.hpp" />
-    <ClInclude Include="src\math\boost_sqrt.hpp" />
     <ClInclude Include="lib\mpir\dll\x64\Debug\config.h" />
     <ClInclude Include="lib\mpir\dll\x64\Debug\gmp-impl.h" />
     <ClInclude Include="lib\mpir\dll\x64\Debug\gmp-mparam.h" />

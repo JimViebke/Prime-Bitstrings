@@ -233,9 +233,6 @@
     <ClInclude Include="src\util\sandbox.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\math\boost_sqrt.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\util\types.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>

@@ -14,34 +14,12 @@
 #include <stdint.h>
 
 #include "config.hpp"
-#include "boost_sqrt.hpp"
 #include "util/types.hpp"
 
 namespace mbp
 {
-
-	constexpr bool brute_force_is_prime(const size_t n)
-	{
-		if (n == 0) return false;
-		if (n == 1) return false;
-
-		if (n == 2) return true;
-
-		if (n % 2 == 0) return false;
-
-		const size_t sqrt_n = size_t(franken_boost::sqrt(n));
-		for (size_t i = 3; i <= sqrt_n; i += 2)
-		{
-			if (n % i == 0) return false;
-		}
-
-		return true;
-	}
-
 	namespace detail
 	{
-		using namespace mbp;
-
 		consteval std::vector<sieve_prime_t> build_small_primes_lookup_impl()
 		{
 			std::vector<sieve_prime_t> primes;
@@ -76,15 +54,6 @@ namespace mbp
 	}
 
 	constexpr std::array small_primes_lookup = detail::build_small_primes_lookup();
-
-	template<size_t n_of_primes, size_t p_index = 1>
-	__forceinline bool b2_has_small_divisor(const size_t number)
-	{
-		if constexpr (n_of_primes == p_index)
-			return false;
-		else
-			return (number % small_primes_lookup[p_index] == 0) ? true : b2_has_small_divisor<n_of_primes, p_index + 1>(number);
-	}
 
 	bool mpir_is_prime(const mpz_class& p, gmp_randclass& r)
 	{
