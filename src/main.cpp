@@ -90,7 +90,7 @@ namespace mbp
 	#endif
 	}
 
-	void run_div_test_analysis()
+	void run_div_test_analysis(const size_t number)
 	{
 	#if analyze_div_tests
 		using namespace div_test;
@@ -120,17 +120,15 @@ namespace mbp
 		static std::stringstream moves_history;
 		moves_history << ' ' << moved;
 
+		std::stringstream ss;
 		ss << moved << " div tests changed position\n";
 		ss << '(' << moves_history.str() << ")\n\n";
 
-
-
-		static auto last_perf_time = current_time_in_ms();
+		static auto last_perf_time = util::current_time_in_ms();
 		static size_t last_n = 0;
 
-		std::stringstream ss;
 		ss << (number - bm_start) / 1'000'000'000 << " B ints searched.";
-		const auto perf_time = current_time_in_ms();
+		const auto perf_time = util::current_time_in_ms();
 		if (last_n != 0)
 		{
 			const double elapsed_seconds = double(perf_time - last_perf_time) / 1'000.0;
@@ -230,7 +228,7 @@ namespace mbp
 					next_div_test_reorder += div_test::reorder_interval;
 
 				#if analyze_div_tests
-					run_div_test_analysis();
+					run_div_test_analysis(number);
 				#endif
 				}
 
