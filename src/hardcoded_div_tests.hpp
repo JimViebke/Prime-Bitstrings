@@ -710,7 +710,7 @@ namespace mbp
 			// add the upper 16 bytes to the lower 16 bytes to get values in range 0-4, and leave the results in both lanes
 			ymm0 = _mm256_add_epi8(ymm0, _mm256_permute2x128_si256(ymm0, ymm0, 1));
 
-			// multiply 16+16 8-bit values by 32 remainders, storing partially summed results as 8+8 uint16_ts
+			// multiply 16+16 8-bit values by 16+16 remainders, storing partially summed results as 8+8 uint16_ts
 			uint256_t ymm1 = _mm256_maddubs_epi16(ymm0, rems_0_1);
 			uint256_t ymm2 = _mm256_maddubs_epi16(ymm0, rems_2_3);
 			uint256_t ymm3 = _mm256_maddubs_epi16(ymm0, rems_4_5);
