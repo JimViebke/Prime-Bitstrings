@@ -184,7 +184,7 @@ namespace mbp
 			gmp_rand.seed(mpir_ui{ 0xdeadbeef });
 
 			count_passes(std::cout << "(counting passes)\n");
-			count_passes(a = b = c = d = e = f = g = h = i = j = k = l = m = passes = 0);
+			count_passes(a = b = c = d = e = f = g = h = i = j = b13m17_dt_passes = k = l = m = passes = 0);
 		}
 
 		void run()
@@ -259,7 +259,8 @@ namespace mbp
 			log_pass_counts("Passed 10-rem tests:   ", h, g);
 			log_pass_counts("Passed 12-rem tests:   ", i, h);
 			log_pass_counts("Passed 16-rem tests:   ", j, i);
-			log_pass_counts("P. branchless divtests:", k, j);
+			log_pass_counts("Passed b13m17 test:    ", b13m17_dt_passes, j);
+			log_pass_counts("P. branchless divtests:", k, b13m17_dt_passes);
 			log_pass_counts("P. branching divtests: ", l, k);
 			log_pass_counts("Passed b2 BPSW test:   ", m, l);
 		}
@@ -500,6 +501,10 @@ namespace mbp
 			candidates_end = div_tests_with_16_rems<on_fast_path>(candidates, candidates_end);
 			count_passes(j += (candidates_end - candidates));
 
+			// base 13 mod 17 (4 remainders, 8 candidates)
+			candidates_end = base13_mod17_div_test<on_fast_path>(candidates, candidates_end);
+			count_passes(b13m17_dt_passes += (candidates_end - candidates));
+
 
 
 			// Check for small prime factors across all bases
@@ -566,7 +571,7 @@ namespace mbp
 		gmp_randclass gmp_rand{ gmp_randinit_mt };
 		mpz_class mpz_number = 0ull;
 
-		count_passes(size_t a, b, c, d, e, f, g, h, i, j, k, l, m, passes);
+		count_passes(size_t a, b, c, d, e, f, g, h, i, j, b13m17_dt_passes, k, l, m, passes);
 	};
 
 } // namespace mbp

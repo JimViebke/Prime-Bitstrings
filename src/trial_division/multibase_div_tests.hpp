@@ -76,6 +76,9 @@ namespace mbp::div_test
 					if (base == 11 && p == 17) continue;
 					if (base == 12 && p == 17) continue;
 
+					// 4 remainders, set 2
+					if (base == 13 && p == 17) continue;
+
 				#if !analyze_div_tests or suppress_extra_div_tests
 					if (base == 4 && p == 3) continue; //  base  4^n % 3 unused
 					if (base == 5 && p == 3) continue; //  base  5^n % 3 unused
@@ -338,26 +341,36 @@ namespace mbp::div_test
 	namespace detail
 	{
 		template<size_t divisor, size_t base, size_t mask, size_t place_value>
-		__forceinline void recursive_is_divisible_by(size_t& rem, const size_t number)
+		__forceinline void get_sum_of_rems(size_t& rem, const size_t number)
 		{
 			rem += pop_count(number & (mask << place_value)) * pow_mod<base, place_value, divisor>::rem;
 			if constexpr (place_value > 0)
-				recursive_is_divisible_by<divisor, base, mask, place_value - 1>(rem, number);
+				get_sum_of_rems<divisor, base, mask, place_value - 1>(rem, number);
 		}
+
+		template<size_t divisor, typename base_t>
+		__forceinline size_t get_sum_of_rems(const size_t number)
+		{
+			constexpr size_t base = base_t::val;
+			static_assert(base >= 3 && base <= up_to_base);
+			constexpr size_t bitmask = bitmask_for<base, divisor>::val;
+			size_t rem = 0;
+			get_sum_of_rems<divisor, base, bitmask, period_of<bitmask>::val - 1>(rem, number);
+			return rem;
+		}
+	}
+
+	template<size_t divisor, typename base_t>
+	__forceinline size_t get_upper_sum_of_rems(const size_t number)
+	{
+		constexpr size_t upper_bits_mask = size_t(-1) << 32;
+		return detail::get_sum_of_rems<divisor, base_t>(number & upper_bits_mask);
 	}
 
 	template<size_t divisor, typename base_t>
 	__forceinline bool recursive_is_divisible_by(const size_t number)
 	{
-		using namespace detail;
-
-		constexpr size_t base = base_t::val;
-		static_assert(base >= 3 && base <= up_to_base);
-		constexpr size_t bitmask = bitmask_for<base, divisor>::val;
-		size_t rem = 0;
-
-		recursive_is_divisible_by<divisor, base, bitmask, period_of<bitmask>::val - 1>(rem, number);
-
+		size_t rem = detail::get_sum_of_rems<divisor, base_t>(number);
 		return has_small_prime_factor(rem, get_prime_index<divisor>::idx);
 	}
 

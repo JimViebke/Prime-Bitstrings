@@ -1,0 +1,132 @@
+(5 billion ints / 2) / 15,015 elements in sieve == ~166,500 outer loop iterations
+
+Passed sieve:       364,185,008 / ~166,500 ~= 2187 candidates pass per main loop iteration
+Passed prime test:  106,664,988 / ~166,500 ~=  640 candidates pass per main loop iteration
+Passed GCD test:     69,038,656 / ~166,500 ~=  414 candidates pass per main loop iteration
+Passed div tests:        79,102 / ~166,500 ~=   <1 candidates pass per main loop iteration
+
+(50 billion ints / 2) / 15,015 elements in sieve == ~1,665,001 outer loop iterations
+
+Passed sieve:          3,641,822,781  (removed ~ 86%)    / 1,665,001 ~= 2187 candidates pass per main loop iteration
+Passed popcount test:  1,018,718,058  (removed ~ 73%)    / 1,665,001 ~=  611 candidates pass per main loop iteration
+Passed GCD test:         570,902,363  (removed ~ 44%)    / 1,665,001 ~=  342 candidates pass per main loop iteration
+Passed 4-rem tests:      307,099,507  (removed ~ 47%)    / 1,665,001 ~=  184 candidates pass per main loop iteration
+Passed 3-rem tests:      205,671,302  (removed ~ 34%)    / 1,665,001 ~=  123 candidates pass per main loop iteration
+Passed 6-rem tests:      124,069,310  (removed ~ 40%)    / 1,665,001 ~=   74 candidates pass per main loop iteration
+Passed 5-rem tests:       84,814,502  (removed ~ 32%)    / 1,665,001 ~=   51 candidates pass per main loop iteration
+Passed 10-rem tests:      63,647,773  (removed ~ 25%)    / 1,665,001 ~=   38 candidates pass per main loop iteration
+Passed 12-rem tests:      50,163,808  (removed ~ 22%)    / 1,665,001 ~=   30 candidates pass per main loop iteration
+Passed full div tests:       645,993  (removed ~ 99%)    / 1,665,001 ~=   <1 candidates pass per main loop iteration
+
+Same as above, but work in sieve steps of 3*43 == 12,907 outer loop iterations:
+
+Passed sieve:          3,641,822,781  (removed ~ 86%)    / 12,907 ~= 282,158 candidates pass per main loop iteration
+Passed popcount test:  1,018,718,058  (removed ~ 73%)    / 12,907 ~=  78,927 candidates pass per main loop iteration
+Passed GCD test:         570,902,363  (removed ~ 44%)    / 12,907 ~=  44,231 candidates pass per main loop iteration
+Passed 4-rem tests:      307,099,507  (removed ~ 47%)    / 12,907 ~=  23,793 candidates pass per main loop iteration
+Passed 3-rem tests:      205,671,302  (removed ~ 34%)    / 12,907 ~=  15,934 candidates pass per main loop iteration
+Passed 6-rem tests:      124,069,310  (removed ~ 40%)    / 12,907 ~=   9,612 candidates pass per main loop iteration
+Passed 5-rem tests:       84,814,502  (removed ~ 32%)    / 12,907 ~=   6,571 candidates pass per main loop iteration
+Passed 10-rem tests:      63,647,773  (removed ~ 25%)    / 12,907 ~=   4,931 candidates pass per main loop iteration
+Passed 12-rem tests:      50,163,808  (removed ~ 22%)    / 12,907 ~=   3,886 candidates pass per main loop iteration
+Passed full div tests:       645,993  (removed ~ 99%)    / 12,907 ~=      50 candidates pass per main loop iteration
+Passed b2 BPSW test:         267,032  (removed ~ 59%)    / 12,907 ~=      20 candidates pass per main loop iteration
+
+Increase max remainders from 50 to 64:
+
+Passed sieve:          3,641,822,781  (removed ~ 86%) (282,158 candidates pass per main loop iteration)
+Passed popcount test:  1,018,718,058  (removed ~ 73%) ( 78,927 candidates pass per main loop iteration)
+Passed GCD test:         570,902,363  (removed ~ 44%) ( 44,231 candidates pass per main loop iteration)
+Passed 4-rem tests:      307,099,507  (removed ~ 47%) ( 23,793 candidates pass per main loop iteration)
+Passed 3-rem tests:      205,671,302  (removed ~ 34%) ( 15,934 candidates pass per main loop iteration)
+Passed 6-rem tests:      124,069,310  (removed ~ 40%) (  9,612 candidates pass per main loop iteration)
+Passed 5-rem tests:       84,814,502  (removed ~ 32%) (  6,571 candidates pass per main loop iteration)
+Passed 10-rem tests:      63,647,773  (removed ~ 25%) (  4,931 candidates pass per main loop iteration)
+Passed 12-rem tests:      50,163,808  (removed ~ 22%) (  3,886 candidates pass per main loop iteration)
+Passed full div tests:       471,733  (removed ~100%) (     37 candidates pass per main loop iteration)
+Passed b2 BPSW test:         194,953  (removed ~ 59%) (     15 candidates pass per main loop iteration)
+
+Increase max remainders to 64+, split 5 div tests into branchless loop:
+
+(50 billion ints / 2) / (15,015 elements in sieve * 3*43 sieve steps) + rounding and overlap == 1,665,003 outer loop iterations
+
+Passed sieve:          3,641,822,781 (removed ~ 86%)
+Passed popcount test:  1,018,718,058 (removed ~ 73%)
+Passed GCD test:         570,902,363 (removed ~ 44%)
+Passed 4-rem tests:      307,099,507 (removed ~ 47%)
+Passed 3-rem tests:      205,671,302 (removed ~ 34%)
+Passed 6-rem tests:      124,069,310 (removed ~ 40%)
+Passed 5-rem tests:       84,814,502 (removed ~ 32%)
+Passed 10-rem tests:      63,647,773 (removed ~ 25%)
+Passed 12-rem tests:      50,163,808 (removed ~ 22%)
+P. branchless divtests:   36,377,662 (removed ~ 28%)
+P. branching divtests:       272,611 (removed ~100%)
+Passed b2 BPSW test:         112,749 (removed ~ 59%)
+
+Add 16-rem div tests:
+
+Passed sieve:          3,641,822,781 (removed ~ 86%) (~282,158 candidates pass per main loop iteration)
+Passed popcount test:  1,018,718,058 (removed ~ 73%) (~ 78,927 candidates pass per main loop iteration)
+Passed GCD test:         570,902,363 (removed ~ 44%) (~ 44,231 candidates pass per main loop iteration)
+Passed 4-rem tests:      307,099,507 (removed ~ 47%) (~ 23,793 candidates pass per main loop iteration)
+Passed 3-rem tests:      205,671,302 (removed ~ 34%) (~ 15,934 candidates pass per main loop iteration)
+Passed 6-rem tests:      124,069,310 (removed ~ 40%) (~  9,612 candidates pass per main loop iteration)
+Passed 5-rem tests:       84,814,502 (removed ~ 32%) (~  6,571 candidates pass per main loop iteration)
+Passed 10-rem tests:      63,647,773 (removed ~ 25%) (~  4,931 candidates pass per main loop iteration)
+Passed 12-rem tests:      50,163,808 (removed ~ 22%) (~  3,886 candidates pass per main loop iteration)
+Passed 16-rem tests:      32,869,195 (removed ~ 35%) (~  2,546 candidates pass per main loop iteration)
+P. branchless divtests:   23,734,575 (removed ~ 28%) (~  1,838 candidates pass per main loop iteration)
+P. branching divtests:       272,611 (removed ~ 99%) (~     21 candidates pass per main loop iteration)
+Passed b2 BPSW test:         112,749 (removed ~ 59%) (~      8 candidates pass per main loop iteration)
+
+Filter popcounts while copying static sieve:
+
+Passed static sieve and
+  popcount filter:     2,682,191,638 (removed ~ 90%) (~207,809 candidates pass per main loop iteration)
+Passed sieve:          1,018,718,058 (removed ~ 63%) (~ 78,927 candidates pass per main loop iteration)
+Passed GCD test:         570,902,363 (removed ~ 44%) (~ 44,231 candidates pass per main loop iteration)
+Passed 4-rem tests:      307,099,507 (removed ~ 47%) (~ 23,793 candidates pass per main loop iteration)
+Passed 3-rem tests:      205,671,302 (removed ~ 34%) (~ 15,934 candidates pass per main loop iteration)
+Passed 6-rem tests:      124,069,310 (removed ~ 40%) (~  9,612 candidates pass per main loop iteration)
+Passed 5-rem tests:       84,814,502 (removed ~ 32%) (~  6,571 candidates pass per main loop iteration)
+Passed 10-rem tests:      63,647,773 (removed ~ 25%) (~  4,931 candidates pass per main loop iteration)
+Passed 12-rem tests:      50,163,808 (removed ~ 22%) (~  3,886 candidates pass per main loop iteration)
+Passed 16-rem tests:      32,869,195 (removed ~ 35%) (~  2,546 candidates pass per main loop iteration)
+P. branchless divtests:   23,734,575 (removed ~ 28%) (~  1,838 candidates pass per main loop iteration)
+P. branching divtests:       272,611 (removed ~ 99%) (~     21 candidates pass per main loop iteration)
+Passed b2 BPSW test:         112,749 (removed ~ 59%) (~      8 candidates pass per main loop iteration)
+
+Add base 13 to div tests:
+
+Passed static sieve and
+  popcount filter:     2,682,191,638 (removed ~ 90%) (~207,809 candidates pass per main loop iteration)
+Passed sieve:          1,018,718,058 (removed ~ 63%) (~ 78,927 candidates pass per main loop iteration)
+Passed GCD test:         570,902,363 (removed ~ 44%) (~ 44,231 candidates pass per main loop iteration)
+Passed 4-rem tests:      307,099,507 (removed ~ 47%) (~ 23,793 candidates pass per main loop iteration)
+Passed 3-rem tests:      205,671,302 (removed ~ 34%) (~ 15,934 candidates pass per main loop iteration)
+Passed 6-rem tests:      124,069,310 (removed ~ 40%) (~  9,612 candidates pass per main loop iteration)
+Passed 5-rem tests:       84,814,502 (removed ~ 32%) (~  6,571 candidates pass per main loop iteration)
+Passed 10-rem tests:      63,647,773 (removed ~ 25%) (~  4,931 candidates pass per main loop iteration)
+Passed 12-rem tests:      50,163,808 (removed ~ 22%) (~  3,886 candidates pass per main loop iteration)
+Passed 16-rem tests:      32,869,195 (removed ~ 35%) (~  2,546 candidates pass per main loop iteration)
+P. branchless divtests:   21,678,335 (removed ~ 35%) (~  1,679 candidates pass per main loop iteration)
+P. branching divtests:       143,979 (removed ~100%) (~     11 candidates pass per main loop iteration)
+Passed b2 BPSW test:          59,542 (removed ~ 59%) (~      4 candidates pass per main loop iteration)
+
+Hardcode b13m17 tests:
+
+Passed static sieve and
+  popcount filter:     2,682,191,638 (removed ~ 90%) (~207,809 candidates pass per main loop iteration)
+Passed sieve:          1,018,718,058 (removed ~ 63%) (~ 78,927 candidates pass per main loop iteration)
+Passed GCD test:         570,902,363 (removed ~ 44%) (~ 44,231 candidates pass per main loop iteration)
+Passed 4-rem tests:      307,099,507 (removed ~ 47%) (~ 23,793 candidates pass per main loop iteration)
+Passed 3-rem tests:      205,671,302 (removed ~ 34%) (~ 15,934 candidates pass per main loop iteration)
+Passed 6-rem tests:      124,069,310 (removed ~ 40%) (~  9,612 candidates pass per main loop iteration)
+Passed 5-rem tests:       84,814,502 (removed ~ 32%) (~  6,571 candidates pass per main loop iteration)
+Passed 10-rem tests:      63,647,773 (removed ~ 25%) (~  4,931 candidates pass per main loop iteration)
+Passed 12-rem tests:      50,163,808 (removed ~ 22%) (~  3,886 candidates pass per main loop iteration)
+Passed 16-rem tests:      32,869,195 (removed ~ 35%) (~  2,546 candidates pass per main loop iteration)
+Passed b13m17 test:       27,711,972 (removed ~ 16%) (~  2,147 candidates pass per main loop iteration)
+P. branchless divtests:   19,978,442 (removed ~ 28%) (~  1,547 candidates pass per main loop iteration)
+P. branching divtests:       143,979 (removed ~100%) (~     11 candidates pass per main loop iteration)
+Passed b2 BPSW test:          59,542 (removed ~ 59%) (~      4 candidates pass per main loop iteration)

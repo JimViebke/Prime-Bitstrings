@@ -6,14 +6,30 @@
 
 namespace mbp
 {
+	namespace detail
+	{
+		template<size_t base, size_t prime>
+		consteval uint256_t build_4rem_shuffle_lookup()
+		{
+			uint256_t lookup{ .m256i_u8 = { 0 } };
+			for (size_t i = 0; i < 16; ++i)
+			{
+				if (i & 0x1) lookup.m256i_u8[i] += pow_mod<base, 0, prime>::rem;
+				if (i & 0x2) lookup.m256i_u8[i] += pow_mod<base, 1, prime>::rem;
+				if (i & 0x4) lookup.m256i_u8[i] += pow_mod<base, 2, prime>::rem;
+				if (i & 0x8) lookup.m256i_u8[i] += pow_mod<base, 3, prime>::rem;
+				lookup.m256i_u8[i + 16] = lookup.m256i_u8[i]; // duplicate into upper lane
+			}
+			return lookup;
+		}
+	}
+
 	template<bool on_fast_path>
 	tests_are_inlined size_t* div_tests_with_four_rems(size_t* input,
 													   const size_t* const candidates_end)
 	{
 		using namespace div_test;
 		using namespace div_test::detail;
-
-		constexpr size_t upper_bits_mask = size_t(-1) << 32;
 
 		// Intellisense may generate a number of false positives here
 		constexpr size_t bitmask = bitmask_for<3, 5>::val;
@@ -22,160 +38,177 @@ namespace mbp
 					  bitmask == bitmask_for<4, 17>::val);
 		static_assert(period_of<bitmask>::val == 4);
 
-		constexpr static uint256_t static_bits_to_bytes_shuffle_mask = { .m256i_u8{
-			0, 0, 1, 1, 2, 2, 3, 3,
-			0, 0, 1, 1, 2, 2, 3, 3,
-			8, 8, 9, 9, 10, 10, 11, 11, // access eight bytes higher in the upper lane
-			8, 8, 9, 9, 10, 10, 11, 11 } };
-		constexpr static uint256_t static_and_mask = { .m256i_u64 = {
-			0x10'01'10'01'10'01'10'01,
-			0x20'02'20'02'20'02'20'02,
-			0x10'01'10'01'10'01'10'01,
-			0x20'02'20'02'20'02'20'02 } };
-		constexpr static uint256_t static_remainders = { .m256i_u8{
-			1, pow_mod<3, 1, 5>::rem, pow_mod<3, 2, 5>::rem, pow_mod<3, 3, 5>::rem,
-			1, pow_mod<5, 1, 13>::rem, pow_mod<5, 2, 13>::rem, pow_mod<5, 3, 13>::rem,
-			1, pow_mod<8, 1, 13>::rem, pow_mod<8, 2, 13>::rem, pow_mod<8, 3, 13>::rem,
-			1, pow_mod<4, 1, 17>::rem, pow_mod<4, 2, 17>::rem, pow_mod<4, 3, 17>::rem,
-			1, pow_mod<3, 1, 5>::rem, pow_mod<3, 2, 5>::rem, pow_mod<3, 3, 5>::rem,
-			1, pow_mod<5, 1, 13>::rem, pow_mod<5, 2, 13>::rem, pow_mod<5, 3, 13>::rem,
-			1, pow_mod<8, 1, 13>::rem, pow_mod<8, 2, 13>::rem, pow_mod<8, 3, 13>::rem,
-			1, pow_mod<4, 1, 17>::rem, pow_mod<4, 2, 17>::rem, pow_mod<4, 3, 17>::rem } };
-		constexpr static uint256_t static_pc_shuffle_mask = { .m256i_u8{
-			0, 4, 8, 12, 0, 4, 8, 12, 0, 4, 8, 12, 0, 4, 8, 12,
-			0, 4, 8, 12, 0, 4, 8, 12, 0, 4, 8, 12, 0, 4, 8, 12 } };
+		const prime_lookup_t* const pf_lookup_ptr = prime_factor_lookup.data();
 
-		const uint256_t bits_to_bytes_shuffle_mask = _mm256_loadu_si256(&static_bits_to_bytes_shuffle_mask);
-		const uint256_t and_mask = _mm256_loadu_si256(&static_and_mask);
-		const uint256_t one_bit_mask = _mm256_set1_epi8(0x1);
-
-		uint256_t high_four_bytes;
-		{
-			uint128_t xmm_numbers = _mm_loadu_si128((uint128_t*)input);
-			uint256_t numbers = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_numbers), xmm_numbers, 1);
-			numbers = _mm256_srli_si256(numbers, 4); // shift by four bytes
-
-			uint256_t lo_two_bytes = _mm256_shuffle_epi8(numbers, bits_to_bytes_shuffle_mask);
-			uint256_t hi_two_bytes = _mm256_srli_epi64(numbers, 2); // bitshift
-			hi_two_bytes = _mm256_shuffle_epi8(hi_two_bytes, bits_to_bytes_shuffle_mask);
-			lo_two_bytes = _mm256_andnot_si256(lo_two_bytes, and_mask);
-			hi_two_bytes = _mm256_andnot_si256(hi_two_bytes, and_mask);
-			lo_two_bytes = _mm256_cmpeq_epi8(lo_two_bytes, _mm256_setzero_si256());
-			hi_two_bytes = _mm256_cmpeq_epi8(hi_two_bytes, _mm256_setzero_si256());
-			lo_two_bytes = _mm256_and_si256(lo_two_bytes, one_bit_mask);
-			hi_two_bytes = _mm256_and_si256(hi_two_bytes, one_bit_mask);
-
-			lo_two_bytes = _mm256_sad_epu8(lo_two_bytes, _mm256_setzero_si256());
-			hi_two_bytes = _mm256_sad_epu8(hi_two_bytes, _mm256_setzero_si256());
-			high_four_bytes = _mm256_packus_epi32(lo_two_bytes, hi_two_bytes);
-		}
-
-		const uint256_t remainders = _mm256_loadu_si256(&static_remainders);
-		const uint256_t pc_shuffle_mask = _mm256_loadu_si256(&static_pc_shuffle_mask);
-		const uint256_t zx_and_mask = _mm256_set1_epi32(0x00'00'FF'FF);
-
-		// load 8+8 bytes into the lower half of a ymm register, then duplicate it into the top half
-		uint128_t xmm_numbers = _mm_loadu_si128((uint128_t*)input);
-		uint256_t numbers = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_numbers), xmm_numbers, 1);
-
-		const prime_lookup_t* const prime_factor_lookup_ptr = prime_factor_lookup.data();
-
-		size_t upper_bits_a = (*input) & upper_bits_mask;
-		size_t upper_bits_b = (*(input + 1)) & upper_bits_mask;
-
-		const size_t* const candidates_end_rounded = candidates_end - (size_t(candidates_end - input) & 0b1);
 		size_t* output = input;
 
-		for (; input < candidates_end_rounded; )
+		if constexpr (on_fast_path)
 		{
-			const size_t number_a = *input;
-			const size_t number_b = *(input + 1);
+			const size_t* const candidates_end_rounded = candidates_end - (size_t(candidates_end - input) & 0b111);
 
-			if constexpr (!on_fast_path)
+			constexpr static uint256_t static_nybble_lookup_a = mbp::detail::build_4rem_shuffle_lookup<3, 5>();
+			constexpr static uint256_t static_nybble_lookup_b = mbp::detail::build_4rem_shuffle_lookup<5, 13>();
+			constexpr static uint256_t static_nybble_lookup_c = mbp::detail::build_4rem_shuffle_lookup<8, 13>();
+			constexpr static uint256_t static_nybble_lookup_d = mbp::detail::build_4rem_shuffle_lookup<4, 17>();
+
+			const uint256_t nybble_mask = _mm256_set1_epi8(0b0000'1111);
+			const uint256_t nybble_lookup_a = _mm256_loadu_si256(&static_nybble_lookup_a);
+			const uint256_t nybble_lookup_b = _mm256_loadu_si256(&static_nybble_lookup_b);
+			const uint256_t nybble_lookup_c = _mm256_loadu_si256(&static_nybble_lookup_c);
+			const uint256_t nybble_lookup_d = _mm256_loadu_si256(&static_nybble_lookup_d);
+
+			// calculate upper sum of remainders
+			const size_t number_upper = (*input) & (size_t(-1) << 32);
+			const size_t upc_0 = pop_count(number_upper & (bitmask << 0));
+			size_t b3m5_urem = upc_0;
+			size_t b8m13_urem = upc_0;
+			size_t b5m13_urem = upc_0;
+			size_t b4m17_urem = upc_0;
+			const size_t upc_1 = pop_count(number_upper & (bitmask << 1));
+			b3m5_urem += upc_1 * pow_mod<3, 1, 5>::rem;
+			b5m13_urem += upc_1 * pow_mod<5, 1, 13>::rem;
+			b8m13_urem += upc_1 * pow_mod<8, 1, 13>::rem;
+			b4m17_urem += upc_1 * pow_mod<4, 1, 17>::rem;
+			const size_t upc_2 = pop_count(number_upper & (bitmask << 2));
+			b3m5_urem += upc_2 * pow_mod<3, 2, 5>::rem;
+			b5m13_urem += upc_2 * pow_mod<5, 2, 13>::rem;
+			b8m13_urem += upc_2 * pow_mod<8, 2, 13>::rem;
+			b4m17_urem += upc_2 * pow_mod<4, 2, 17>::rem;
+			const size_t upc_3 = pop_count(number_upper & (bitmask << 3));
+			b3m5_urem += upc_3 * pow_mod<3, 3, 5>::rem;
+			b5m13_urem += upc_3 * pow_mod<5, 3, 13>::rem;
+			b8m13_urem += upc_3 * pow_mod<8, 3, 13>::rem;
+			b4m17_urem += upc_3 * pow_mod<4, 3, 17>::rem;
+			const prime_lookup_t* const pf_lookup_ptr_a = pf_lookup_ptr + b3m5_urem;
+			const prime_lookup_t* const pf_lookup_ptr_b = pf_lookup_ptr + b5m13_urem;
+			const prime_lookup_t* const pf_lookup_ptr_c = pf_lookup_ptr + b8m13_urem;
+			const prime_lookup_t* const pf_lookup_ptr_d = pf_lookup_ptr + b4m17_urem;
+
+			for (; input < candidates_end_rounded; )
 			{
-				if ((number_a & upper_bits_mask) != upper_bits_a ||
-					(number_b & upper_bits_mask) != upper_bits_b)
-				{
-					upper_bits_a = number_a & upper_bits_mask;
-					upper_bits_b = number_b & upper_bits_mask;
+				// load 8 candidates into two registers
+				uint256_t ymm0 = _mm256_loadu_si256((uint256_t*)(input + 0));
+				uint256_t ymm1 = _mm256_loadu_si256((uint256_t*)(input + 4));
 
-					high_four_bytes = _mm256_srli_si256(numbers, 4); // shift by four bytes
+				// we only want the bottom 32 bits of our 8 candidates
+				ymm0 = _mm256_blend_epi32(ymm0, _mm256_slli_epi64(ymm1, 32), 0b10'10'10'10);
 
-					uint256_t lo_two_bytes = _mm256_shuffle_epi8(high_four_bytes, bits_to_bytes_shuffle_mask);
-					uint256_t hi_two_bytes = _mm256_srli_epi64(high_four_bytes, 2); // shift by 2 bits
-					hi_two_bytes = _mm256_shuffle_epi8(hi_two_bytes, bits_to_bytes_shuffle_mask);
-					lo_two_bytes = _mm256_andnot_si256(lo_two_bytes, and_mask);
-					hi_two_bytes = _mm256_andnot_si256(hi_two_bytes, and_mask);
-					lo_two_bytes = _mm256_cmpeq_epi8(lo_two_bytes, _mm256_setzero_si256());
-					hi_two_bytes = _mm256_cmpeq_epi8(hi_two_bytes, _mm256_setzero_si256());
-					lo_two_bytes = _mm256_and_si256(lo_two_bytes, one_bit_mask);
-					hi_two_bytes = _mm256_and_si256(hi_two_bytes, one_bit_mask);
+				// select the high and low halves of each byte
+				const uint256_t lo_nybbles = _mm256_and_si256(ymm0, nybble_mask);
+				const uint256_t hi_nybbles = _mm256_and_si256(_mm256_srli_epi64(ymm0, 4), nybble_mask);
 
-					lo_two_bytes = _mm256_sad_epu8(lo_two_bytes, _mm256_setzero_si256());
-					hi_two_bytes = _mm256_sad_epu8(hi_two_bytes, _mm256_setzero_si256());
-					high_four_bytes = _mm256_packus_epi32(lo_two_bytes, hi_two_bytes);
-				}
+				// replace the bits of each nybble with their remainder
+				const uint256_t lo_nybbles_a = _mm256_shuffle_epi8(nybble_lookup_a, lo_nybbles);
+				const uint256_t hi_nybbles_a = _mm256_shuffle_epi8(nybble_lookup_a, hi_nybbles);
+				const uint256_t candidates_0426_a = _mm256_unpacklo_epi32(lo_nybbles_a, hi_nybbles_a);
+				const uint256_t candidates_1537_a = _mm256_unpackhi_epi32(lo_nybbles_a, hi_nybbles_a);
+				const uint256_t sums_0426_a = _mm256_sad_epu8(candidates_0426_a, _mm256_setzero_si256());
+				const uint256_t sums_1537_a = _mm256_sad_epu8(candidates_1537_a, _mm256_setzero_si256());
+
+				const uint256_t lo_nybbles_b = _mm256_shuffle_epi8(nybble_lookup_b, lo_nybbles);
+				const uint256_t hi_nybbles_b = _mm256_shuffle_epi8(nybble_lookup_b, hi_nybbles);
+				const uint256_t candidates_0426_b = _mm256_unpacklo_epi32(lo_nybbles_b, hi_nybbles_b);
+				const uint256_t candidates_1537_b = _mm256_unpackhi_epi32(lo_nybbles_b, hi_nybbles_b);
+				const uint256_t sums_0426_b = _mm256_sad_epu8(candidates_0426_b, _mm256_setzero_si256());
+				const uint256_t sums_1537_b = _mm256_sad_epu8(candidates_1537_b, _mm256_setzero_si256());
+
+				const uint256_t lo_nybbles_c = _mm256_shuffle_epi8(nybble_lookup_c, lo_nybbles);
+				const uint256_t hi_nybbles_c = _mm256_shuffle_epi8(nybble_lookup_c, hi_nybbles);
+				const uint256_t candidates_0426_c = _mm256_unpacklo_epi32(lo_nybbles_c, hi_nybbles_c);
+				const uint256_t candidates_1537_c = _mm256_unpackhi_epi32(lo_nybbles_c, hi_nybbles_c);
+				const uint256_t sums_0426_c = _mm256_sad_epu8(candidates_0426_c, _mm256_setzero_si256());
+				const uint256_t sums_1537_c = _mm256_sad_epu8(candidates_1537_c, _mm256_setzero_si256());
+
+				const uint256_t lo_nybbles_d = _mm256_shuffle_epi8(nybble_lookup_d, lo_nybbles);
+				const uint256_t hi_nybbles_d = _mm256_shuffle_epi8(nybble_lookup_d, hi_nybbles);
+				const uint256_t candidates_0426_d = _mm256_unpacklo_epi32(lo_nybbles_d, hi_nybbles_d);
+				const uint256_t candidates_1537_d = _mm256_unpackhi_epi32(lo_nybbles_d, hi_nybbles_d);
+				const uint256_t sums_0426_d = _mm256_sad_epu8(candidates_0426_d, _mm256_setzero_si256());
+				const uint256_t sums_1537_d = _mm256_sad_epu8(candidates_1537_d, _mm256_setzero_si256());
+
+				const uint128_t sums_26_a = _mm256_extracti128_si256(sums_0426_a, 1);
+				const uint128_t sums_37_a = _mm256_extracti128_si256(sums_1537_a, 1);
+
+				const uint128_t sums_26_b = _mm256_extracti128_si256(sums_0426_b, 1);
+				const uint128_t sums_37_b = _mm256_extracti128_si256(sums_1537_b, 1);
+
+				const uint128_t sums_26_c = _mm256_extracti128_si256(sums_0426_c, 1);
+				const uint128_t sums_37_c = _mm256_extracti128_si256(sums_1537_c, 1);
+
+				const uint128_t sums_26_d = _mm256_extracti128_si256(sums_0426_d, 1);
+				const uint128_t sums_37_d = _mm256_extracti128_si256(sums_1537_d, 1);
+
+				// Only advance the pointer if the number is still a candidate, that is,
+				// the relevant bit from each lookup is 0
+
+				size_t merged_masks_0 = 0;
+				merged_masks_0 |= (pf_lookup_ptr_a[sums_0426_a.m256i_u64[0]] >> get_prime_index<5>::idx);
+				merged_masks_0 |= (pf_lookup_ptr_b[sums_0426_b.m256i_u64[0]] >> get_prime_index<13>::idx);
+				merged_masks_0 |= (pf_lookup_ptr_c[sums_0426_c.m256i_u64[0]] >> get_prime_index<13>::idx);
+				merged_masks_0 |= (pf_lookup_ptr_d[sums_0426_d.m256i_u64[0]] >> get_prime_index<17>::idx);
+				*output = *input++; // always copy
+				output += ~merged_masks_0 & 0b1; // branchless conditional increment
+
+				size_t merged_masks_1 = 0;
+				merged_masks_1 |= (pf_lookup_ptr_a[sums_1537_a.m256i_u64[0]] >> get_prime_index<5>::idx);
+				merged_masks_1 |= (pf_lookup_ptr_b[sums_1537_b.m256i_u64[0]] >> get_prime_index<13>::idx);
+				merged_masks_1 |= (pf_lookup_ptr_c[sums_1537_c.m256i_u64[0]] >> get_prime_index<13>::idx);
+				merged_masks_1 |= (pf_lookup_ptr_d[sums_1537_d.m256i_u64[0]] >> get_prime_index<17>::idx);
+				*output = *input++;
+				output += ~merged_masks_1 & 0b1;
+
+				size_t merged_masks_2 = 0;
+				merged_masks_2 |= (pf_lookup_ptr_a[sums_26_a.m128i_u64[0]] >> get_prime_index<5>::idx);
+				merged_masks_2 |= (pf_lookup_ptr_b[sums_26_b.m128i_u64[0]] >> get_prime_index<13>::idx);
+				merged_masks_2 |= (pf_lookup_ptr_c[sums_26_c.m128i_u64[0]] >> get_prime_index<13>::idx);
+				merged_masks_2 |= (pf_lookup_ptr_d[sums_26_d.m128i_u64[0]] >> get_prime_index<17>::idx);
+				*output = *input++;
+				output += ~merged_masks_2 & 0b1;
+
+				size_t merged_masks_3 = 0;
+				merged_masks_3 |= (pf_lookup_ptr_a[sums_37_a.m128i_u64[0]] >> get_prime_index<5>::idx);
+				merged_masks_3 |= (pf_lookup_ptr_b[sums_37_b.m128i_u64[0]] >> get_prime_index<13>::idx);
+				merged_masks_3 |= (pf_lookup_ptr_c[sums_37_c.m128i_u64[0]] >> get_prime_index<13>::idx);
+				merged_masks_3 |= (pf_lookup_ptr_d[sums_37_d.m128i_u64[0]] >> get_prime_index<17>::idx);
+				*output = *input++;
+				output += ~merged_masks_3 & 0b1;
+
+				size_t merged_masks_4 = 0;
+				merged_masks_4 |= (pf_lookup_ptr_a[sums_0426_a.m256i_u64[1]] >> get_prime_index<5>::idx);
+				merged_masks_4 |= (pf_lookup_ptr_b[sums_0426_b.m256i_u64[1]] >> get_prime_index<13>::idx);
+				merged_masks_4 |= (pf_lookup_ptr_c[sums_0426_c.m256i_u64[1]] >> get_prime_index<13>::idx);
+				merged_masks_4 |= (pf_lookup_ptr_d[sums_0426_d.m256i_u64[1]] >> get_prime_index<17>::idx);
+				*output = *input++;
+				output += ~merged_masks_4 & 0b1;
+
+				size_t merged_masks_5 = 0;
+				merged_masks_5 |= (pf_lookup_ptr_a[sums_1537_a.m256i_u64[1]] >> get_prime_index<5>::idx);
+				merged_masks_5 |= (pf_lookup_ptr_b[sums_1537_b.m256i_u64[1]] >> get_prime_index<13>::idx);
+				merged_masks_5 |= (pf_lookup_ptr_c[sums_1537_c.m256i_u64[1]] >> get_prime_index<13>::idx);
+				merged_masks_5 |= (pf_lookup_ptr_d[sums_1537_d.m256i_u64[1]] >> get_prime_index<17>::idx);
+				*output = *input++;
+				output += ~merged_masks_5 & 0b1;
+
+				size_t merged_masks_6 = 0;
+				merged_masks_6 |= (pf_lookup_ptr_a[sums_26_a.m128i_u64[1]] >> get_prime_index<5>::idx);
+				merged_masks_6 |= (pf_lookup_ptr_b[sums_26_b.m128i_u64[1]] >> get_prime_index<13>::idx);
+				merged_masks_6 |= (pf_lookup_ptr_c[sums_26_c.m128i_u64[1]] >> get_prime_index<13>::idx);
+				merged_masks_6 |= (pf_lookup_ptr_d[sums_26_d.m128i_u64[1]] >> get_prime_index<17>::idx);
+				*output = *input++;
+				output += ~merged_masks_6 & 0b1;
+
+				size_t merged_masks_7 = 0;
+				merged_masks_7 |= (pf_lookup_ptr_a[sums_37_a.m128i_u64[1]] >> get_prime_index<5>::idx);
+				merged_masks_7 |= (pf_lookup_ptr_b[sums_37_b.m128i_u64[1]] >> get_prime_index<13>::idx);
+				merged_masks_7 |= (pf_lookup_ptr_c[sums_37_c.m128i_u64[1]] >> get_prime_index<13>::idx);
+				merged_masks_7 |= (pf_lookup_ptr_d[sums_37_d.m128i_u64[1]] >> get_prime_index<17>::idx);
+				*output = *input++;
+				output += ~merged_masks_7 & 0b1;
 			}
-
-			// Convert the low 16 bits of each candidate to 16 bytes, and repeat for the next 16 bits
-			uint256_t lo_two_bytes = _mm256_shuffle_epi8(numbers, bits_to_bytes_shuffle_mask);
-			uint256_t hi_two_bytes = _mm256_srli_epi64(numbers, 2); // shift by 2 bits
-			hi_two_bytes = _mm256_shuffle_epi8(hi_two_bytes, bits_to_bytes_shuffle_mask);
-			lo_two_bytes = _mm256_andnot_si256(lo_two_bytes, and_mask);
-			hi_two_bytes = _mm256_andnot_si256(hi_two_bytes, and_mask);
-			lo_two_bytes = _mm256_cmpeq_epi8(lo_two_bytes, _mm256_setzero_si256());
-			hi_two_bytes = _mm256_cmpeq_epi8(hi_two_bytes, _mm256_setzero_si256());
-			lo_two_bytes = _mm256_and_si256(lo_two_bytes, one_bit_mask);
-			hi_two_bytes = _mm256_and_si256(hi_two_bytes, one_bit_mask);
-
-			// popcount 32 bytes -> 4 sums
-			lo_two_bytes = _mm256_sad_epu8(lo_two_bytes, _mm256_setzero_si256());
-			hi_two_bytes = _mm256_sad_epu8(hi_two_bytes, _mm256_setzero_si256());
-			// pack to get 4 sums each in the high and low lanes
-			uint256_t popcounts = _mm256_packus_epi32(lo_two_bytes, hi_two_bytes);
-
-			// add upper and lower popcounts
-			popcounts = _mm256_add_epi32(popcounts, high_four_bytes);
-			// duplicate popcounts x4
-			popcounts = _mm256_shuffle_epi8(popcounts, pc_shuffle_mask);
-
-			// multiply and partially sum pcs and remainders (4 sets of 4 remainders for two candidates)
-			uint256_t sums = _mm256_maddubs_epi16(popcounts, remainders); // 16 bit sums
-			// shift and add to get final sums
-			sums = _mm256_add_epi16(sums, _mm256_srli_si256(sums, 2)); // still 16 bit sums
-			// clear every other u16 to zero-extend to 32-bit sums
-			sums = _mm256_and_si256(sums, zx_and_mask);
-
-			size_t merged_masks_a = 0;
-			merged_masks_a |= (prime_factor_lookup_ptr[sums.m256i_u32[0]] >> get_prime_index<5>::idx);
-			merged_masks_a |= (prime_factor_lookup_ptr[sums.m256i_u32[1]] >> get_prime_index<13>::idx);
-			merged_masks_a |= (prime_factor_lookup_ptr[sums.m256i_u32[2]] >> get_prime_index<13>::idx);
-			merged_masks_a |= (prime_factor_lookup_ptr[sums.m256i_u32[3]] >> get_prime_index<17>::idx);
-
-			uint128_t sums_b = _mm256_extracti128_si256(sums, 1);
-			size_t merged_masks_b = 0;
-			merged_masks_b |= (prime_factor_lookup_ptr[sums_b.m128i_u32[0]] >> get_prime_index<5>::idx);
-			merged_masks_b |= (prime_factor_lookup_ptr[sums_b.m128i_u32[1]] >> get_prime_index<13>::idx);
-			merged_masks_b |= (prime_factor_lookup_ptr[sums_b.m128i_u32[2]] >> get_prime_index<13>::idx);
-			merged_masks_b |= (prime_factor_lookup_ptr[sums_b.m128i_u32[3]] >> get_prime_index<17>::idx);
-
-			// load early for the next loop
-			input += 2;
-			xmm_numbers = _mm_loadu_si128((uint128_t*)input);
-			numbers = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_numbers), xmm_numbers, 1);
-
-			// Only advance the pointer if the number is still a candidate, that is,
-			// the relevant bit from each lookup is 0
-
-			*output = number_a;
-			output += ((~merged_masks_a) & 0b1);
-
-			*output = number_b;
-			output += ((~merged_masks_b) & 0b1);
 		}
 
-		// handle possible last element, using the simpler scalar method
-		if (input < candidates_end)
+		// handle any remaining elements
+		for (; input < candidates_end; ++input)
 		{
 			const size_t number = *input;
 			// always write
@@ -206,11 +239,11 @@ namespace mbp
 			b4m17_rem += pc_3 * pow_mod<4, 3, 17>::rem;
 
 			size_t merged_masks = 0;
-			merged_masks |= (prime_factor_lookup_ptr[b3m5_rem] >> get_prime_index<5>::idx);
-			merged_masks |= (prime_factor_lookup_ptr[b5m13_rem] >> get_prime_index<13>::idx);
-			merged_masks |= (prime_factor_lookup_ptr[b8m13_rem] >> get_prime_index<13>::idx);
-			merged_masks |= (prime_factor_lookup_ptr[b4m17_rem] >> get_prime_index<17>::idx);
-			output += ((~merged_masks) & 0b1);
+			merged_masks |= (pf_lookup_ptr[b3m5_rem] >> get_prime_index<5>::idx);
+			merged_masks |= (pf_lookup_ptr[b5m13_rem] >> get_prime_index<13>::idx);
+			merged_masks |= (pf_lookup_ptr[b8m13_rem] >> get_prime_index<13>::idx);
+			merged_masks |= (pf_lookup_ptr[b4m17_rem] >> get_prime_index<17>::idx);
+			output += ~merged_masks & 0b1;
 		}
 
 		return output;
@@ -882,4 +915,110 @@ namespace mbp
 		return output;
 	}
 
+	template<bool on_fast_path>
+	tests_are_inlined size_t* base13_mod17_div_test(size_t* input,
+													const size_t* const candidates_end)
+	{
+		using namespace div_test;
+		using namespace div_test::detail;
+
+		constexpr size_t bitmask = bitmask_for<13, 17>::val;
+		static_assert(period_of<bitmask>::val == 4);
+
+		size_t* output = input;
+
+		if constexpr (on_fast_path)
+		{
+			constexpr static uint256_t static_nybble_lookup = mbp::detail::build_4rem_shuffle_lookup<13, 17>();
+
+			const uint256_t nybble_mask = _mm256_set1_epi8(0b0000'1111);
+			const uint256_t nybble_lookup = _mm256_loadu_si256(&static_nybble_lookup);
+
+			const uint32_t* pf_lookup_ptr = prime_factor_lookup.data();
+			const size_t* const candidates_end_rounded = candidates_end - (size_t(candidates_end - input) % 8);
+
+			// the upper 32 bits don't change, calculate their sum of remainders
+			pf_lookup_ptr += get_upper_sum_of_rems<17, in_base<13>>(*input);
+
+			for (; input < candidates_end_rounded; )
+			{
+				// load 8 candidates into two registers
+				uint256_t ymm0 = _mm256_loadu_si256((uint256_t*)(input + 0));
+				uint256_t ymm1 = _mm256_loadu_si256((uint256_t*)(input + 4));
+
+				// we only want the bottom 32 bits of our 8 candidates
+				ymm0 = _mm256_blend_epi32(ymm0, _mm256_slli_epi64(ymm1, 32), 0b10'10'10'10);
+
+				// select the high and low halves of each byte
+				uint256_t lo_nybbles = _mm256_and_si256(ymm0, nybble_mask);
+				uint256_t hi_nybbles = _mm256_and_si256(_mm256_srli_epi64(ymm0, 4), nybble_mask);
+
+				// replace the bits of each nybble with their remainder
+				lo_nybbles = _mm256_shuffle_epi8(nybble_lookup, lo_nybbles);
+				hi_nybbles = _mm256_shuffle_epi8(nybble_lookup, hi_nybbles);
+
+				uint256_t candidates_0426 = _mm256_unpacklo_epi32(lo_nybbles, hi_nybbles);
+				uint256_t candidates_1537 = _mm256_unpackhi_epi32(lo_nybbles, hi_nybbles);
+
+				uint256_t sums_0426 = _mm256_sad_epu8(candidates_0426, _mm256_setzero_si256());
+				uint256_t sums_1537 = _mm256_sad_epu8(candidates_1537, _mm256_setzero_si256());
+
+				// Extract upper lanes
+				uint128_t sums_26 = _mm256_extracti128_si256(sums_0426, 1);
+				uint128_t sums_37 = _mm256_extracti128_si256(sums_1537, 1);
+
+				*output = *input++; // always copy
+				uint32_t mask_a = pf_lookup_ptr[sums_0426.m256i_u64[0]] >> get_prime_index<17>::idx;
+				output += ~mask_a & 1; // branchless conditional increment
+
+				*output = *input++;
+				uint32_t mask_b = pf_lookup_ptr[sums_1537.m256i_u64[0]] >> get_prime_index<17>::idx;
+				output += ~mask_b & 1;
+
+				*output = *input++;
+				uint32_t mask_c = pf_lookup_ptr[sums_26.m128i_u64[0]] >> get_prime_index<17>::idx;
+				output += ~mask_c & 1;
+
+				*output = *input++;
+				uint32_t mask_d = pf_lookup_ptr[sums_37.m128i_u64[0]] >> get_prime_index<17>::idx;
+				output += ~mask_d & 1;
+
+				*output = *input++;
+				uint32_t mask_e = pf_lookup_ptr[sums_0426.m256i_u64[1]] >> get_prime_index<17>::idx;
+				output += ~mask_e & 1;
+
+				*output = *input++;
+				uint32_t mask_f = pf_lookup_ptr[sums_1537.m256i_u64[1]] >> get_prime_index<17>::idx;
+				output += ~mask_f & 1;
+
+				*output = *input++;
+				uint32_t mask_g = pf_lookup_ptr[sums_26.m128i_u64[1]] >> get_prime_index<17>::idx;
+				output += ~mask_g & 1;
+
+				*output = *input++;
+				uint32_t mask_h = pf_lookup_ptr[sums_37.m128i_u64[1]] >> get_prime_index<17>::idx;
+				output += ~mask_h & 1;
+			} // end for
+		} // end if on_fast_path
+
+		// handle any elements not handled by the fast loop
+		for (; input < candidates_end; ++input)
+		{
+			// read, then always write
+			const size_t candidate = *input;
+			*output = candidate;
+
+			size_t sum = 0;
+			sum += pop_count(candidate & (bitmask << 0)) * pow_mod<13, 0, 17>::rem;
+			sum += pop_count(candidate & (bitmask << 1)) * pow_mod<13, 1, 17>::rem;
+			sum += pop_count(candidate & (bitmask << 2)) * pow_mod<13, 2, 17>::rem;
+			sum += pop_count(candidate & (bitmask << 3)) * pow_mod<13, 3, 17>::rem;
+
+			// conditionally increment
+			size_t lookup = prime_factor_lookup[sum] >> get_prime_index<17>::idx;
+			output += ((~lookup) & 0b1);
+		}
+
+		return output;
+	}
 }
