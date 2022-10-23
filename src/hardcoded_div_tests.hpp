@@ -759,68 +759,124 @@ namespace mbp
 		// base  9 % 17:   8 remainders: 1   9  13  15   16   8   4   2
 		// base  6 % 37: 2*4 remainders: 1   6  36  31
 		// base  8 % 17:   8 remainders: 1   8  13   2   16   9   4  15
-		constexpr static uint8_t alignas(64) static_rems[4][8] = {
-			{ 1, 12, 28, 17, 1, 12, 28, 17 },
-			{ 1, 9, 13, 15, 16, 8, 4, 2 },
-			{ 1, 6, 36, 31, 1, 6, 36, 31 },
-			{ 1, 8, 13, 2, 16, 9, 4, 15 } };
-		// The remainder 36 means these tests can have the bitstring folded to a factor of 4, but
-		// not 8. 4*36 < 255, but 8*36 > 255
+		constexpr static uint256_t static_rems_0_1 = { .m256i_u8{
+			1, 12, 28, 17, 1, 12, 28, 17,
+			1, 9, 13, 15, 16, 8, 4, 2,
+			1, 12, 28, 17, 1, 12, 28, 17,
+			1, 9, 13, 15, 16, 8, 4, 2 } };
+		constexpr static uint256_t static_rems_2_3 = { .m256i_u8{
+			1, 6, 36, 31, 1, 6, 36, 31,
+			1, 8, 13, 2, 16, 9, 4, 15,
+			1, 6, 36, 31, 1, 6, 36, 31,
+			1, 8, 13, 2, 16, 9, 4, 15 } };
 
-		const uint256_t rems = _mm256_loadu_si256((uint256_t*)&static_rems[0]);
+		constexpr static uint256_t static_bits_to_bytes_shuffle_mask = { .m256i_u8{
+			0, 0, 1, 1, 2, 2, 3, 3,
+			0, 0, 1, 1, 2, 2, 3, 3,
+			8, 8, 9, 9, 10, 10, 11, 11, // access eight bytes higher in the upper lane
+			8, 8, 9, 9, 10, 10, 11, 11 } };
+		constexpr static uint256_t static_and_mask = { .m256i_u64 = {
+			0x10'01'10'01'10'01'10'01,
+			0x20'02'20'02'20'02'20'02,
+			0x10'01'10'01'10'01'10'01,
+			0x20'02'20'02'20'02'20'02 } };
+
+		const uint256_t rems_0_1 = _mm256_loadu_si256(&static_rems_0_1);
+		const uint256_t rems_2_3 = _mm256_loadu_si256(&static_rems_2_3);
+
+		const uint256_t bits_to_bytes_shuffle_mask = _mm256_loadu_si256(&static_bits_to_bytes_shuffle_mask);
+		const uint256_t and_mask = _mm256_loadu_si256(&static_and_mask);
+		const uint256_t one_bit_mask = _mm256_set1_epi8(0x1);
 
 		size_t* output = input;
-		size_t number = *input;
 
-		size_t upper_bits = number & upper_bits_mask;
-		uint256_t upper_bytes = _mm256_and_si256(util::expand_bits_to_bytes(number >> 32),
-												 _mm256_set1_epi8(0x01));
+		size_t number_a = *input;
+		size_t number_b = *(input + 1);
 
-		for (; input < candidates_end; )
+		size_t upper_bits_a = number_a & upper_bits_mask;
+		size_t upper_bits_b = number_b & upper_bits_mask;
+
+		uint256_t upper_bytes = _mm256_and_si256(util::expand_bits_to_bytes(number_a >> 32),
+												 one_bit_mask);
+
+		for (; input < candidates_end; input += 2)
 		{
+			const size_t number_a = *input;
+			const size_t number_b = *(input + 1);
+
 			if constexpr (!on_fast_path)
 			{
+				// todo
+
 				// Upper 32 bits only change every 4B integers - re-calculate when stale
-				if ((number & upper_bits_mask) != upper_bits)
+				if ((number_a & upper_bits_mask) != upper_bits_a)
 				{
-					upper_bits = number & upper_bits_mask;
-					upper_bytes = _mm256_and_si256(util::expand_bits_to_bytes(number >> 32),
-												   _mm256_set1_epi8(0x01)); // convert 0xFF -> 0x01
+					upper_bits_a = number_a & upper_bits_mask;
+					upper_bytes = _mm256_and_si256(util::expand_bits_to_bytes(number_a >> 32),
+												   one_bit_mask); // convert 0xFF -> 0x01
 				}
 			}
 
-			uint256_t lower_bytes = _mm256_and_si256(util::expand_bits_to_bytes(number & uint32_t(-1)),
-													 _mm256_set1_epi8(0x01)); // convert 0xFF -> 0x01
+			// load two candidates
+			const uint128_t xmm_numbers = _mm_loadu_si128((uint128_t*)input);
+			const uint256_t numbers = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_numbers), xmm_numbers, 1);
 
-			// always write
-			*output = number;
-			// load one iteration ahead
-			++input;
-			number = *input;
+			// Convert the low 16 bits of each candidate to 16 bytes, and repeat for the next 16 bits
+			uint256_t lo_two_bytes = _mm256_shuffle_epi8(numbers, bits_to_bytes_shuffle_mask);
+			uint256_t hi_two_bytes = _mm256_srli_epi64(numbers, 2); // shift by 2 bits
+			hi_two_bytes = _mm256_shuffle_epi8(hi_two_bytes, bits_to_bytes_shuffle_mask);
+			lo_two_bytes = _mm256_andnot_si256(lo_two_bytes, and_mask);
+			hi_two_bytes = _mm256_andnot_si256(hi_two_bytes, and_mask);
+			lo_two_bytes = _mm256_cmpeq_epi8(lo_two_bytes, _mm256_setzero_si256());
+			hi_two_bytes = _mm256_cmpeq_epi8(hi_two_bytes, _mm256_setzero_si256());
+			lo_two_bytes = _mm256_and_si256(lo_two_bytes, one_bit_mask);
+			hi_two_bytes = _mm256_and_si256(hi_two_bytes, one_bit_mask);
+
+			// add bytes to get 16+16 values in the range of 0-2
+			uint256_t lower_bytes = _mm256_add_epi8(lo_two_bytes, hi_two_bytes);
+			// swap upper and lower half of each lane, and add to get values in range 0-4
+			lower_bytes = _mm256_add_epi8(lower_bytes, _mm256_shuffle_epi32(lower_bytes, 0b01'00'11'10));
+
+			// we could add lower 4 and upper 4 bytes here, but I think that can be done later
+
+			// multiply 2 sets of 2 copies of 8 rems with 2 tests, then 2 more tests
+			uint256_t sums_0_1 = _mm256_maddubs_epi16(lower_bytes, rems_0_1);
+			uint256_t sums_2_3 = _mm256_maddubs_epi16(lower_bytes, rems_2_3);
+
+			// h-sum partial sums to 4x sums
+			sums_0_1 = _mm256_sad_epu8(sums_0_1, _mm256_setzero_si256());
+			sums_2_3 = _mm256_sad_epu8(sums_2_3, _mm256_setzero_si256());
+
+
+
 
 			// add the upper 32 bytes to the lower 32 bytes to get values in range 0-2
 			uint256_t ymm0 = _mm256_add_epi8(lower_bytes, upper_bytes);
 
-			// add the upper 16 bytes to the lower 16 bytes to get values in range 0-4, and leave the results in both lanes
-			ymm0 = _mm256_add_epi8(ymm0, _mm256_permute2x128_si256(ymm0, ymm0, 1));
-
 			// multiply 16+16 8-bit values by 32 remainders, storing partially summed results as 8+8 uint16_ts
-			uint256_t ymm1 = _mm256_maddubs_epi16(ymm0, rems);
+			uint256_t ymm1 = _mm256_maddubs_epi16(ymm0, rems_0_1);
 
 			// [ some final add step(s) ]
 
 			// extract high lanes
 			const uint128_t xmm1 = _mm256_extracti128_si256(ymm0, 1);
 
-			prime_lookup_t merged_lookups = 0;
-			merged_lookups |= prime_factor_lookup[ymm0.m256i_i64[0]];
-			merged_lookups |= prime_factor_lookup[ymm0.m256i_i64[1]];
-			merged_lookups |= prime_factor_lookup[xmm1.m128i_i64[0]];
-			merged_lookups |= prime_factor_lookup[xmm1.m128i_i64[1]];
+			prime_lookup_t merged_lookups_a = 0;
+			merged_lookups_a |= prime_factor_lookup[ymm0.m256i_i64[0]];
+			merged_lookups_a |= prime_factor_lookup[ymm0.m256i_i64[1]];
+			merged_lookups_a |= prime_factor_lookup[xmm1.m128i_i64[0]];
+			merged_lookups_a |= prime_factor_lookup[xmm1.m128i_i64[1]];
 
-			// Only advance the pointer if the nth bit was 0 in all lookups
-			// Invert the bit we care about, move it to the 0th position, and mask to select it
-			// output += (~merged_lookups >> get_prime_index<17>::idx) & 0b1;
+			prime_lookup_t merged_lookups_b = 0;
+
+			// Only advance the pointer if the number is still a candidate, that is,
+			// the relevant bit from each lookup is 0
+
+			*output = number_a;
+			output += ((~merged_lookups_a) & 0b1);
+
+			*output = number_b;
+			output += ((~merged_lookups_b) & 0b1);
 		}
 
 		return output;
