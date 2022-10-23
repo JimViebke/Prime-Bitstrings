@@ -83,6 +83,7 @@ namespace mbp::div_test
 					if (base == 8 && p == 3) continue; //  base  8^n % 3 unused
 					if (base == 10 && p == 3) continue; // base 10^n % 3 unused
 					if (base == 11 && p == 3) continue; // base 11^n % 3 unused
+					if (base == 13 && p == 3) continue; // base 13^n % 3 unused
 
 					if (base == 4 && p == 5) continue; //  base  4^n % 5 unused
 					if (base == 6 && p == 5) continue; //  base  6^n % 5 unused
@@ -90,20 +91,23 @@ namespace mbp::div_test
 					if (base == 9 && p == 5) continue; //  base  9^n % 5 unused
 					if (base == 11 && p == 5) continue; // base 11^n % 5 unused
 					if (base == 12 && p == 5) continue; // base 12^n % 5 unused
+					if (base == 13 && p == 5) continue; // base 13^n % 5 unused
 
 					if (base == 6 && p == 7) continue; //  base  6^n % 7 unused
 					if (base == 8 && p == 7) continue; //  base  8^n % 7 unused
 					if (base == 9 && p == 7) continue; //  base  9^n % 7 unused
+					if (base == 13 && p == 7) continue; //  base 13 % 7 unused
 
 					if (base == 10 && p == 11) continue; // base 10^n % 11 unused
 					if (base == 12 && p == 11) continue; // base 12^n % 11 unused
+					if (base == 13 && p == 11) continue; // base 13^n % 11 unused
 
 					if (base == 12 && p == 13) continue; // base 12^n % 13 unused
 
 					// If two div tests are effectively identical, remove one
 					if (base == 8 && p == 5) continue; //  base  8^n % 5 is congruent to 3^n % 5
 					if (base == 10 && p == 7) continue; // base 10^n % 7 is congruent to 3^n % 7
-					if (base == 11 && p == 7) continue; // base 11^n % 7 is congruent to 4^n % 7 
+					if (base == 11 && p == 7) continue; // base 11^n % 7 is congruent to 4^n % 7
 					if (base == 12 && p == 7) continue; // base 12^n % 7 is congruent to 5^n % 7
 
 				#endif

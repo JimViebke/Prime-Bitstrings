@@ -552,7 +552,10 @@ namespace mbp
 				mpz_number.set_str(bin_str, 12);
 				if (!mpir_is_prime(mpz_number, gmp_rand)) { log_result(candidate, 11); continue; }
 
-				log_result(candidate, 12);
+				mpz_number.set_str(bin_str, 13);
+				if (!mpir_is_prime(mpz_number, gmp_rand)) { log_result(candidate, 12); continue; }
+
+				log_result(candidate, 13);
 			}
 		}
 

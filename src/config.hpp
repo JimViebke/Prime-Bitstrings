@@ -44,7 +44,7 @@ namespace mbp
 	namespace div_test
 	{
 		constexpr size_t n_of_primes = 32; // default: 32
-		constexpr size_t up_to_base = 12; // default: 12
+		constexpr size_t up_to_base = 13; // default: 12
 
 		constexpr size_t reorder_interval = 10'000'000'000; // default: 10 B
 	}
