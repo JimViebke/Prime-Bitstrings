@@ -140,6 +140,8 @@ namespace mbp
 
 		last_perf_time = perf_time;
 		last_n = number;
+	#else
+		number; // suppress "unused formal parameter" warning
 	#endif
 	}
 
@@ -228,7 +230,8 @@ namespace mbp
 					next_div_test_reorder += div_test::reorder_interval;
 
 				#if analyze_div_tests
-					run_div_test_analysis(number);
+					print_div_tests();
+					//run_div_test_analysis(number);
 				#endif
 				}
 
