@@ -38,13 +38,13 @@ namespace mbp
 	// For a 50B benchmark, combinations of 3*43*12907 yield the same pass counts as 1
 	constexpr size_t sieve_steps = 3ull * 43ull; // default: 3ull * 43ull
 
-	const size_t sieve_primes_cap = 2200; // default: 2200
+	const size_t sieve_primes_cap = 937; // default: 937
 
 	// trial division tests in bases 3..n
 	namespace div_test
 	{
 		constexpr size_t n_of_primes = 32; // default: 32
-		constexpr size_t up_to_base = 13; // default: 12
+		constexpr size_t up_to_base = 13; // default: 13
 
 		constexpr size_t reorder_interval = 10'000'000'000; // default: 10 B
 	}
@@ -85,8 +85,8 @@ namespace mbp
 	auto w = std::setw; \
 	std::cout << str << w(10) << count << " (removed ~" << w(3) << 100 - (count * 100 / count_before) << "%) (~" << w(6) << count / passes << " candidates pass per main loop iteration)\n"; }
 #else
-#define log_pass_counts(...)
 #define count_passes(...)
+#define log_pass_counts(...)
 #endif
 
 #if 1 // toggle inlining on sieve, GCD, and div tests

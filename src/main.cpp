@@ -147,6 +147,150 @@ namespace mbp
 
 
 
+	// Out and in must be aligned on a multiple of 32 bytes.
+	// Size must be at least 4 * 32 bytes.
+	template<size_t n_bytes>
+	__forceinline void copy_static_sieve_with_bit_pattern_filters(uint256_t* out,
+																  const uint256_t* in,
+																  size_t number)
+	{
+		constexpr size_t high_bits_mask = size_t(-1) << (16 + 1); // 64 bits == 47 high bits + (16 + 1)
+		constexpr size_t low_17_bits_mask = ~high_bits_mask;
+
+		constexpr size_t prime_lookup = build_tiny_primes_lookup() >> 1; // preshift by 1 because the bottom bit is always set
+
+		constexpr size_t leftover_bytes = n_bytes % (32 * 4);
+		const uint256_t* const aligned_end = in + ((n_bytes - leftover_bytes) / 32);
+
+		// while in != aligned_end:
+		// - iterate by 4*32 blocks until we hit aligned_end, or a rollover of bits 1-16, whichever happens first
+		// - if we broke before aligned_end, we hit a rollover
+		// - - handle the next 4*32 blocks manually, then continue
+		// handle end stuff
+
+		for (; in != aligned_end; )
+		{
+			// set up the popcount lookup pointer
+			const size_t bits_1_16 = (number & low_17_bits_mask) >> 1;
+			const uint256_t* pc_lookup_ptr = (uint256_t*)&pc_lookup[bits_1_16];
+
+			// set up the gcd lookup pointer
+			const auto outer_even_pc = pop_count(number & 0x5555555555555555 & ~(0xFFFFull << 1));
+			const auto outer_odd__pc = pop_count(number & 0xAAAAAAAAAAAAAAAA & ~(0xFFFFull << 1));
+			const auto idx = (outer_even_pc - outer_odd__pc) + 23; // +23 to normalize -23,24 to 0,47
+			const uint256_t* gcd_lookup_ptr = (uint256_t*)(&gcd_lookup[idx][bits_1_16]);
+
+			/*
+			We are iterating 4*32 elements at a time, therefore we are reading 4*32 elements
+			from the lookups per iteration. How many times can we do this before reaching
+			their ends?
+
+			Calculate this up front so the hot loop can just run until "stop".
+
+			AVX2 shuffle can handle 16 unique values, but a popcount of 0-16 is 17 values.
+			Resolve this by treating 16 (popcount of 0xFFFF) as a special case.
+			*/
+			size_t elements_to_FFFF = 0xFFFF - bits_1_16;
+			const size_t iters_to_FFFF = elements_to_FFFF / (4ull * 32);
+
+			const size_t iters_to_aligned_end = (aligned_end - in) / 4; // 4 reads of 32b each
+
+			const size_t n_iters = std::min(iters_to_FFFF, iters_to_aligned_end);
+			const uint256_t* const stop = in + (n_iters * 4); // *4 because ptr resolution is 32b, not 32*4
+
+			// generate a 16+16 element lookup to mark which popcounts of bits 1-16 add up to a valid prime
+			const size_t high_bits = number & high_bits_mask;
+			const uint16_t shifted_prime_lookup = uint16_t(prime_lookup >> pop_count(high_bits));
+			const uint256_t valid_pcs = util::expand_16_bits_to_bytes(shifted_prime_lookup);
+
+			// process blocks of 4*32 bytes
+			for (; in != stop; in += 4, out += 4, pc_lookup_ptr += 4, gcd_lookup_ptr += 4)
+			{
+				merge_static_sieve_with_bit_pattern_filters(out, in, pc_lookup_ptr, valid_pcs, gcd_lookup_ptr);
+			}
+
+			number += n_iters * (32ull * 4 * 2);
+
+			// if we are not at aligned_end, we are at a rollover
+			// (an 0xFFFF << 1 occurs in the next 4*32 bytes)
+			if (in != aligned_end)
+			{
+				elements_to_FFFF -= n_iters * 32 * 4;
+
+				// elements_to_FFFF should be less than 128.
+				// >= 128 would mean that the 0xFFFF case does not occur in this 4*32 block
+
+				// handle 4 32-bit blocks
+				for (size_t block = 0; block < 4; ++block, number += 32ull * 2)
+				{
+					uint256_t mask{};
+
+					if (elements_to_FFFF >= 32) // copy 32 more bytes using existing data
+					{
+						elements_to_FFFF -= 32;
+						uint256_t pc_mask = _mm256_load_si256(pc_lookup_ptr + block);
+						const uint256_t gcd_mask = _mm256_load_si256(gcd_lookup_ptr + block);
+						pc_mask = _mm256_shuffle_epi8(valid_pcs, pc_mask);
+						mask = _mm256_and_si256(pc_mask, gcd_mask);
+					}
+					else // handle 32 elements manually
+					{
+						mask = manually_generate_bit_pattern_filters(number);
+					}
+
+					uint256_t ymm = _mm256_load_si256(in + block);
+					ymm = _mm256_and_si256(ymm, mask);
+					_mm256_store_si256(out + block, ymm);
+				} // end block loop
+
+				in += 4;
+				out += 4;
+				// number is already incremented
+				// pc and gcd lookup ptrs will be recalculated in the next iteration
+
+			} // end if (in != aligned_end)
+		} // end main copy/merge loop
+
+		// <32*4 bytes left. Generate instructions for 0-3 aligned copies.
+
+		if constexpr (leftover_bytes >= 32 * 1)
+		{
+			const uint256_t mask = manually_generate_bit_pattern_filters(number);
+			const uint256_t ymm = _mm256_load_si256(in++);
+			_mm256_store_si256(out++, _mm256_and_si256(ymm, mask));
+			number += 32ull * 2;
+		}
+		if constexpr (leftover_bytes >= 32 * 2)
+		{
+			const uint256_t mask = manually_generate_bit_pattern_filters(number);
+			const uint256_t ymm = _mm256_load_si256(in++);
+			_mm256_store_si256(out++, _mm256_and_si256(ymm, mask));
+			number += 32ull * 2;
+		}
+		if constexpr (leftover_bytes >= 32 * 3)
+		{
+			const uint256_t mask = manually_generate_bit_pattern_filters(number);
+			const uint256_t ymm = _mm256_load_si256(in++);
+			_mm256_store_si256(out++, _mm256_and_si256(ymm, mask));
+			number += 32ull * 2;
+		}
+
+		// <32 bytes left. Generate instructions for 0-1 unaligned copies.
+
+		constexpr size_t adjust = 32 - (leftover_bytes % 32);
+		if constexpr (adjust > 0)
+		{
+			in = (uint256_t*)(((uint8_t*)in) - adjust);
+			out = (uint256_t*)(((uint8_t*)out) - adjust);
+
+			const uint256_t mask = manually_generate_bit_pattern_filters(number - (adjust * 2));
+			const uint256_t ymm = _mm256_loadu_si256(in);
+			_mm256_storeu_si256(out, _mm256_and_si256(ymm, mask));
+		}
+	}
+
+
+
 	static alignas(64) sieve_container sieve;
 
 	// 2x the expected number of candidates from the sieve passes
@@ -168,7 +312,8 @@ namespace mbp
 			gmp_rand.seed(mpir_ui{ 0xdeadbeef });
 
 			count_passes(std::cout << "(counting passes)\n");
-			count_passes(a = b = d = e = f = g = h = i = j = b13m17_dt_passes = k = l = m = passes = 0);
+			count_passes(ps15 = ps3 = a = d = e = f = g = h = i = 0);
+			count_passes(j = b13m17_dt_passes = k = l = m = passes = 0);
 		}
 
 		void run()
@@ -234,8 +379,9 @@ namespace mbp
 
 			log_pass_counts("Passed static sieve and\n"\
 							"  bit pattern filters: ", a, (bm_size / 2));
-			log_pass_counts("Passed sieve:          ", b, a);
-			log_pass_counts("Passed 4-rem tests:    ", d, b);
+			log_pass_counts("Passed sieve, part 1:  ", ps15, a);
+			log_pass_counts("Passed sieve, part 2:  ", ps3, ps15);
+			log_pass_counts("Passed 4-rem tests:    ", d, ps3);
 			log_pass_counts("Passed 3-rem tests:    ", e, d);
 			log_pass_counts("Passed 6-rem tests:    ", f, e);
 			log_pass_counts("Passed 5-rem tests:    ", g, f);
@@ -249,147 +395,6 @@ namespace mbp
 		}
 
 	private:
-		// Out and in must be aligned on a multiple of 32 bytes.
-		// Size must be at least 4 * 32 bytes.
-		template<size_t n_bytes>
-		__forceinline void copy_static_sieve_with_bit_pattern_filters(uint256_t* out,
-																	  const uint256_t* in,
-																	  size_t number)
-		{
-			constexpr size_t high_bits_mask = size_t(-1) << (16 + 1); // 64 bits == 47 high bits + (16 + 1)
-			constexpr size_t low_17_bits_mask = ~high_bits_mask;
-
-			constexpr size_t prime_lookup = build_tiny_primes_lookup() >> 1; // preshift by 1 because the bottom bit is always set
-
-			constexpr size_t leftover_bytes = n_bytes % (32 * 4);
-			const uint256_t* const aligned_end = in + ((n_bytes - leftover_bytes) / 32);
-
-			// while in != aligned_end:
-			// - iterate by 4*32 blocks until we hit aligned_end, or a rollover of bits 1-16, whichever happens first
-			// - if we broke before aligned_end, we hit a rollover
-			// - - handle the next 4*32 blocks manually, then continue
-			// handle end stuff
-
-			for (; in != aligned_end; )
-			{
-				// set up the popcount lookup pointer
-				const size_t bits_1_16 = (number & low_17_bits_mask) >> 1;
-				const uint256_t* pc_lookup_ptr = (uint256_t*)&pc_lookup[bits_1_16];
-
-				// set up the gcd lookup pointer
-				const auto outer_even_pc = pop_count(number & 0x5555555555555555 & ~(0xFFFFull << 1));
-				const auto outer_odd__pc = pop_count(number & 0xAAAAAAAAAAAAAAAA & ~(0xFFFFull << 1));
-				const auto idx = (outer_even_pc - outer_odd__pc) + 23; // +23 to normalize -23,24 to 0,47
-				const uint256_t* gcd_lookup_ptr = (uint256_t*)(&gcd_lookup[idx][bits_1_16]);
-
-				/*
-				We are iterating 4*32 elements at a time, therefore we are reading 4*32 elements
-				from the lookups per iteration. How many times can we do this before reaching
-				their ends?
-
-				Calculate this up front so the hot loop can just run until "stop".
-
-				AVX2 shuffle can handle 16 unique values, but a popcount of 0-16 is 17 values.
-				Resolve this by treating 16 (popcount of 0xFFFF) as a special case.
-				*/
-				size_t elements_to_FFFF = 0xFFFF - bits_1_16;
-				const size_t iters_to_FFFF = elements_to_FFFF / (4ull * 32);
-
-				const size_t iters_to_aligned_end = (aligned_end - in) / 4; // 4 reads of 32b each
-
-				const size_t n_iters = std::min(iters_to_FFFF, iters_to_aligned_end);
-				const uint256_t* const stop = in + (n_iters * 4); // *4 because ptr resolution is 32b, not 32*4
-
-				// generate a 16+16 element lookup to mark which popcounts of bits 1-16 add up to a valid prime
-				const size_t high_bits = number & high_bits_mask;
-				const uint16_t shifted_prime_lookup = uint16_t(prime_lookup >> pop_count(high_bits));
-				const uint256_t valid_pcs = util::expand_16_bits_to_bytes(shifted_prime_lookup);
-
-				// process blocks of 4*32 bytes
-				for (; in != stop; in += 4, out += 4, pc_lookup_ptr += 4, gcd_lookup_ptr += 4)
-				{
-					merge_static_sieve_with_bit_pattern_filters(out, in, pc_lookup_ptr, valid_pcs, gcd_lookup_ptr);
-				}
-
-				number += n_iters * (32ull * 4 * 2);
-
-				// if we are not at aligned_end, we are at a rollover
-				// (an 0xFFFF << 1 occurs in the next 4*32 bytes)
-				if (in != aligned_end)
-				{
-					elements_to_FFFF -= n_iters * 32 * 4;
-
-					// elements_to_FFFF should be less than 128.
-					// >= 128 would mean that the 0xFFFF case does not occur in this 4*32 block
-
-					// handle 4 32-bit blocks
-					for (size_t block = 0; block < 4; ++block, number += 32ull * 2)
-					{
-						uint256_t mask{};
-
-						if (elements_to_FFFF >= 32) // copy 32 more bytes using existing data
-						{
-							elements_to_FFFF -= 32;
-							uint256_t pc_mask = _mm256_load_si256(pc_lookup_ptr + block);
-							const uint256_t gcd_mask = _mm256_load_si256(gcd_lookup_ptr + block);
-							pc_mask = _mm256_shuffle_epi8(valid_pcs, pc_mask);
-							mask = _mm256_and_si256(pc_mask, gcd_mask);
-						}
-						else // handle 32 elements manually
-						{
-							mask = manually_generate_bit_pattern_filters(number);
-						}
-
-						uint256_t ymm = _mm256_load_si256(in + block);
-						ymm = _mm256_and_si256(ymm, mask);
-						_mm256_store_si256(out + block, ymm);
-					} // end block loop
-
-					in += 4;
-					out += 4;
-					// number is already incremented
-					// pc and gcd lookup ptrs will be recalculated in the next iteration
-
-				} // end if (in != aligned_end)
-			} // end main copy/merge loop
-
-			// <32*4 bytes left. Generate instructions for 0-3 aligned copies.
-
-			if constexpr (leftover_bytes >= 32 * 1)
-			{
-				const uint256_t mask = manually_generate_bit_pattern_filters(number);
-				const uint256_t ymm = _mm256_load_si256(in++);
-				_mm256_store_si256(out++, _mm256_and_si256(ymm, mask));
-				number += 32ull * 2;
-			}
-			if constexpr (leftover_bytes >= 32 * 2)
-			{
-				const uint256_t mask = manually_generate_bit_pattern_filters(number);
-				const uint256_t ymm = _mm256_load_si256(in++);
-				_mm256_store_si256(out++, _mm256_and_si256(ymm, mask));
-				number += 32ull * 2;
-			}
-			if constexpr (leftover_bytes >= 32 * 3)
-			{
-				const uint256_t mask = manually_generate_bit_pattern_filters(number);
-				const uint256_t ymm = _mm256_load_si256(in++);
-				_mm256_store_si256(out++, _mm256_and_si256(ymm, mask));
-				number += 32ull * 2;
-			}
-
-			// <32 bytes left. Generate instructions for 0-1 unaligned copies.
-
-			constexpr size_t adjust = 32 - (leftover_bytes % 32);
-			if constexpr (adjust > 0)
-			{
-				in = (uint256_t*)(((uint8_t*)in) - adjust);
-				out = (uint256_t*)(((uint8_t*)out) - adjust);
-
-				const uint256_t mask = manually_generate_bit_pattern_filters(number - (adjust * 2));
-				const uint256_t ymm = _mm256_loadu_si256(in);
-				_mm256_storeu_si256(out, _mm256_and_si256(ymm, mask));
-			}
-		}
 
 		template<bool on_fast_path>
 		void main_loop(const size_t number)
@@ -406,14 +411,14 @@ namespace mbp
 					number + (sieve_step * sieve.size() * 2));
 				count_passes(a += util::vector_count_ones(sieve.data(), sieve.size()));
 
-				partial_sieve(sieve);
+				partial_sieve(sieve
+							  count_passes(, ps15, ps3));
 
 				// Collect candidates that have not been marked composite by the sieve
 				candidates_end = gather_sieve_results(candidates_end, sieve.data(),
 													  sieve.data() + sieve.size(),
 													  number + (sieve_step * sieve.size() * 2));
 			}
-			count_passes(b += (candidates_end - candidates));
 
 
 
@@ -517,7 +522,7 @@ namespace mbp
 		gmp_randclass gmp_rand{ gmp_randinit_mt };
 		mpz_class mpz_number = 0ull;
 
-		count_passes(size_t a, b, d, e, f, g, h, i, j, b13m17_dt_passes, k, l, m, passes);
+		count_passes(size_t ps15, ps3, a, d, e, f, g, h, i, j, b13m17_dt_passes, k, l, m, passes);
 	};
 
 } // namespace mbp

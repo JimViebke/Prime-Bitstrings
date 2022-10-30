@@ -36,7 +36,6 @@ namespace mbp
 		// compile-time error if we don't find a valid answer
 	}
 	constexpr sieve_prime_t last_prime_for_stepping_by_fifteen = get_threshold((5 + 1) * 15);
-	constexpr sieve_prime_t last_prime_for_stepping_by_threes = get_threshold(16);
 
 	using sieve_offset_t = util::narrowest_uint_for_val<static_sieve_size>;
 	std::vector<sieve_offset_t> sieve_offsets_cache(small_primes_lookup.size());
@@ -53,7 +52,7 @@ namespace mbp
 			{
 				p *= 15;
 			}
-			else if (p <= last_prime_for_stepping_by_threes)
+			else // step by threes
 			{
 				p *= 3;
 			}
@@ -74,19 +73,14 @@ namespace mbp
 		}
 	}
 
-	void partial_sieve(sieve_container& sieve)
-	{
-		// *2 because we always take at least one step, and still need step*p padding
-		static_assert(last_prime_for_stepping_by_fifteen < static_sieve_size / (15 * 2));
-		static_assert(last_prime_for_stepping_by_fifteen < last_prime_for_stepping_by_threes);
-		static_assert(last_prime_for_stepping_by_threes < static_sieve_size / (3 * 2));
 
+
+	void partial_sieve_by_15(sieve_container& sieve,
+							 const sieve_prime_t*& prime_ptr,
+							 sieve_prime_t*& offset_cache_ptr)
+	{
 		sieve_t* sieve_begin = sieve.data();
 		const sieve_t* const sieve_end = sieve_begin + sieve.size();
-
-		// Start with the first prime not in the static sieve
-		const sieve_prime_t* prime_ptr = small_primes_lookup.data() + static_sieve_primes.size() + 1;
-		sieve_prime_t* offset_cache_ptr = sieve_offsets_cache.data() + static_sieve_primes.size() + 1;
 
 		size_t next_p = *prime_ptr;
 		sieve_t* next_offset = sieve_begin + *offset_cache_ptr;
@@ -160,10 +154,20 @@ namespace mbp
 
 			if (p == last_prime_for_stepping_by_fifteen) break;
 		}
+	}
 
-		// Sieve larger primes by smaller strides, using 3*p instead of 15*p
+	void partial_sieve_by_3(sieve_container& sieve,
+							const sieve_prime_t*& prime_ptr,
+							sieve_prime_t*& offset_cache_ptr)
+	{
+		sieve_t* sieve_begin = sieve.data();
+		const sieve_t* const sieve_end = sieve_begin + sieve.size();
+		const sieve_prime_t* const small_primes_end = small_primes_lookup.data() + small_primes_lookup.size();
 
-		for (;;)
+		size_t next_p = *prime_ptr;
+		sieve_t* next_offset = sieve_begin + *offset_cache_ptr;
+
+		for (; prime_ptr < small_primes_end; ++prime_ptr, ++offset_cache_ptr)
 		{
 			const size_t p = next_p;
 			next_p = *(prime_ptr + 1);
@@ -191,75 +195,23 @@ namespace mbp
 			*(((j + (2 * p)) < sieve_end) ? (j + (2 * p)) : j) = false;
 
 			*offset_cache_ptr = sieve_prime_t((j + (3 * p)) - sieve_end);
-
-			++prime_ptr;
-			++offset_cache_ptr;
-
-			if (p == last_prime_for_stepping_by_threes) break;
 		}
+	}
 
-		// Sieve the remaining primes, which are likely too large relative to the sieve size
-		// to benefit from stepping by more than p.
+	void partial_sieve(sieve_container& sieve
+					   count_passes(, size_t& ps15, size_t& ps3))
+	{
+		// Start with the first prime not in the static sieve
+		const sieve_prime_t* prime_ptr = small_primes_lookup.data() + static_sieve_primes.size() + 1;
+		sieve_prime_t* offset_cache_ptr = sieve_offsets_cache.data() + static_sieve_primes.size() + 1;
 
-		for (; prime_ptr < small_primes_lookup.data() + small_primes_lookup.size();
-			 ++prime_ptr, ++offset_cache_ptr)
-		{
-			const size_t p = next_p;
-			next_p = *(prime_ptr + 1);
+		// Sieve small primes by strides of 15*p
+		partial_sieve_by_15(sieve, prime_ptr, offset_cache_ptr);
+		count_passes(ps15 += util::vector_count_ones(sieve.data(), sieve.size()));
 
-			sieve_t* j = next_offset;
-			next_offset = sieve_begin + *(offset_cache_ptr + 1);
-
-			do
-			{
-				*j = false;
-				j += p;
-			} while (j < sieve_end);
-
-			*offset_cache_ptr = sieve_prime_t(j - sieve_end);
-
-			/*
-			sieve_t* const j_start = j;
-
-		#define try_next_write(n) \
-			j = (j_start + p*n < sieve_end) ? (j_start + p*n) : j; \
-			*j = false;
-			// end define
-
-			// 6 hardcoded writes
-			*(j + p * 0) = false;
-			*(j + p * 1) = false;
-			*(j + p * 2) = false;
-			*(j + p * 3) = false;
-			*(j + p * 4) = false; // 5
-			*(j + p * 5) = false;
-
-			// Set j to the last written byte
-			j += p * 5;
-
-			// Use cmovs to make any further writes required
-			try_next_write(6);
-			try_next_write(7);
-			try_next_write(8);
-			try_next_write(9); // 10
-			try_next_write(10);
-			try_next_write(11);
-			try_next_write(12);
-			try_next_write(13);
-			try_next_write(14); // 15
-			try_next_write(15); // 16
-
-			// Instead of stepping by p until we pass the end of the sieve, calculate at
-			// compile time the max and min possible number of writes. Hardcode the min
-			// possible writes, and use cmovs to make up the difference.
-			constexpr size_t fewest_possible_writes_required = sieve_container().size() / small_primes_lookup.back();
-			constexpr size_t most_possible_writes_required = sieve_container().size() / last_prime_for_stepping_by_threes;
-			static_assert(fewest_possible_writes_required == 6); // Intellisense false-positive
-			static_assert(most_possible_writes_required == 16); // Intellisense false-positive
-
-			*offset_cache_ptr = sieve_prime_t((j + p) - sieve_end);
-			*/
-		}
+		// Sieve larger primes by smaller strides of 3*p
+		partial_sieve_by_3(sieve, prime_ptr, offset_cache_ptr);
+		count_passes(ps3 += util::vector_count_ones(sieve.data(), sieve.size()));
 	}
 
 	tests_are_inlined size_t* gather_sieve_results(size_t* candidates,
