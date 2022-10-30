@@ -107,37 +107,4 @@ namespace mbp
 		return gcd(b, a % b);
 	}
 
-	consteval size_t build_gcd_lookup()
-	{
-		// The second arg to gcd() is a product of primes 3 through 13.
-		// This should be 2 through 13, but the alternating bitsum can't be 2:
-		// If a + b == (a prime number >11), then abs(a - b) is odd and never has 2 as a factor.
-
-		size_t lookup = 0;
-
-		// set bit i high if the GCD of (i, [product of primes]) is 1
-		for (size_t i = 0; i < 32; ++i)
-		{
-			lookup |= size_t(gcd(i, size_t(3 * 5 * 7 * 11 * 13)) == 1ull) << (32 - i);
-			lookup |= size_t(gcd(i, size_t(3 * 5 * 7 * 11 * 13)) == 1ull) << (32 + i);
-		}
-
-		return lookup;
-
-		/*
-		Loop impl 1:
-			lookup |= size_t(gcd(i, size_t(3 * 5 * 7 * 11 * 13)) == 1ull) << i;
-
-		Use:
-			(lookup & (1ull << abs(pca - pcb))) == 0
-
-		Loop impl 2:
-			lookup |= size_t(gcd(i, size_t(3 * 5 * 7 * 11 * 13)) == 1ull) << (32 - i);
-			lookup |= size_t(gcd(i, size_t(3 * 5 * 7 * 11 * 13)) == 1ull) << (32 + i);
-
-		Use:
-			(lookup & (1ull << (pca + 32 - pcb))) == 0
-		*/
-	}
-
 }

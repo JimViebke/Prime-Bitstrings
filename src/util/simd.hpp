@@ -47,11 +47,10 @@ namespace mbp::util
 		uint256_t ymm0 = _mm256_set1_epi32(val);
 		ymm0 = _mm256_shuffle_epi8(ymm0, shuffle_mask);
 		ymm0 = _mm256_andnot_si256(ymm0, and_mask);
-		ymm0 = _mm256_cmpeq_epi8(ymm0, _mm256_setzero_si256());
-		return ymm0;
+		return _mm256_cmpeq_epi8(ymm0, _mm256_setzero_si256());
 	}
 
-	// Convert a 32-bit bitmask to a 32-byte/256-bit bitmask. Adapted from the above.
+	// Convert a 16-bit bitmask to a 32-byte/256-bit bitmask. Adapted from the above.
 	__forceinline uint256_t expand_16_bits_to_bytes(uint16_t val)
 	{
 		const uint256_t shuffle_mask = _mm256_set_epi64x(0x0101010101010101, 0x0000000000000000, 0x0101010101010101, 0x0000000000000000);
@@ -60,8 +59,7 @@ namespace mbp::util
 		uint256_t ymm0 = _mm256_set1_epi16(val);
 		ymm0 = _mm256_shuffle_epi8(ymm0, shuffle_mask);
 		ymm0 = _mm256_andnot_si256(ymm0, and_mask);
-		ymm0 = _mm256_cmpeq_epi8(ymm0, _mm256_setzero_si256());
-		return ymm0;
+		return _mm256_cmpeq_epi8(ymm0, _mm256_setzero_si256());
 	}
 
 	template<typename scalar_t, typename vector_t>
