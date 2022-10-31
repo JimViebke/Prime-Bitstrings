@@ -312,8 +312,8 @@ namespace mbp
 			gmp_rand.seed(mpir_ui{ 0xdeadbeef });
 
 			count_passes(std::cout << "(counting passes)\n");
-			count_passes(ps15 = ps3 = a = d = e = f = g = h = i = 0);
-			count_passes(j = b13m17_dt_passes = k = l = m = passes = 0);
+			count_passes(a = ps15 = ps3 = b = c = d = e = f = 0);
+			count_passes(g = h = i = j = k = l = m = passes = 0);
 		}
 
 		void run()
@@ -381,17 +381,18 @@ namespace mbp
 							"  bit pattern filters: ", a, (bm_size / 2));
 			log_pass_counts("Passed sieve, part 1:  ", ps15, a);
 			log_pass_counts("Passed sieve, part 2:  ", ps3, ps15);
-			log_pass_counts("Passed 4-rem tests:    ", d, ps3);
-			log_pass_counts("Passed 3-rem tests:    ", e, d);
-			log_pass_counts("Passed 6-rem tests:    ", f, e);
-			log_pass_counts("Passed 5-rem tests:    ", g, f);
-			log_pass_counts("Passed 10-rem tests:   ", h, g);
+			log_pass_counts("Passed 4-rem tests:    ", b, ps3);
+			log_pass_counts("Passed b13m17 test:    ", c, b);
+			log_pass_counts("Passed 3-rem tests:    ", d, c);
+			log_pass_counts("Passed 6-rem tests:    ", e, d);
+			log_pass_counts("Passed 5-rem tests:    ", f, e);
+			log_pass_counts("Passed 10-rem tests:   ", g, f);
+			log_pass_counts("Passed 16-rem tests:   ", h, g);
 			log_pass_counts("Passed 12-rem tests:   ", i, h);
-			log_pass_counts("Passed 16-rem tests:   ", j, i);
-			log_pass_counts("Passed b13m17 test:    ", b13m17_dt_passes, j);
-			log_pass_counts("P. branchless divtests:", k, b13m17_dt_passes);
-			log_pass_counts("P. branching divtests: ", l, k);
-			log_pass_counts("Passed b2 BPSW test:   ", m, l);
+			log_pass_counts("P. branchless divtests:", j, i);
+			log_pass_counts("P. branching divtests: ", k, j);
+			log_pass_counts("Passed b2 BPSW test:   ", l, k);
+			log_pass_counts("Passed b3 prime test:  ", m, l);
 		}
 
 	private:
@@ -426,44 +427,44 @@ namespace mbp
 
 			// base 3 mod 5, base 4 mod 17, and bases 5 and 8 mod 13 (4 remainders)
 			candidates_end = div_tests_with_four_rems<on_fast_path>(candidates, candidates_end);
-			count_passes(d += (candidates_end - candidates));
+			count_passes(b += (candidates_end - candidates));
+
+			// base 13 mod 17 (4 remainders, 8 candidates)
+			candidates_end = base13_mod17_div_test<on_fast_path>(candidates, candidates_end);
+			count_passes(c += (candidates_end - candidates));
 
 			// base 4 mod 7, and bases 3 and 9 mod 13 (3 remainders)
 			candidates_end = div_tests_with_three_rems(candidates, candidates_end);
-			count_passes(e += (candidates_end - candidates));
+			count_passes(d += (candidates_end - candidates));
 
 			// bases 3 and 5 mod 7, and 4 and 10 mod 13 (6 remainders)
 			candidates_end = div_tests_with_six_rems(candidates, candidates_end);
-			count_passes(f += (candidates_end - candidates));
+			count_passes(e += (candidates_end - candidates));
 
 			// bases 3, 4, 5, and 9 mod 11 (5 remainders)
 			candidates_end = div_tests_with_five_rems(candidates, candidates_end);
-			count_passes(g += (candidates_end - candidates));
+			count_passes(f += (candidates_end - candidates));
 
 			// bases 6, 7, and 8 mod 11 (10 remainders)
 			candidates_end = div_tests_with_10_rems<on_fast_path>(candidates, candidates_end);
+			count_passes(g += (candidates_end - candidates));
+
+			// bases 3, 5, 6, 7, 10, 11 and 12 mod 17 (16 remainders)
+			candidates_end = div_tests_with_16_rems<on_fast_path>(candidates, candidates_end);
 			count_passes(h += (candidates_end - candidates));
 
 			// bases 6, 7, and 11 mod 13 (12 remainders)
 			candidates_end = div_tests_with_12_rems<on_fast_path>(candidates, candidates_end);
 			count_passes(i += (candidates_end - candidates));
 
-			// bases 3, 5, 6, 7, 10, 11 and 12 mod 17 (16 remainders)
-			candidates_end = div_tests_with_16_rems<on_fast_path>(candidates, candidates_end);
-			count_passes(j += (candidates_end - candidates));
-
-			// base 13 mod 17 (4 remainders, 8 candidates)
-			candidates_end = base13_mod17_div_test<on_fast_path>(candidates, candidates_end);
-			count_passes(b13m17_dt_passes += (candidates_end - candidates));
-
 
 
 			// Check for small prime factors across all bases
 			candidates_end = branchless_div_tests<on_fast_path>(candidates, candidates_end, div_test::div_tests.data(), 5);
-			count_passes(k += (candidates_end - candidates));
+			count_passes(j += (candidates_end - candidates));
 
 			candidates_end = multibase_div_tests<on_fast_path>(candidates, candidates_end, div_test::div_tests.data() + 5);
-			count_passes(l += (candidates_end - candidates));
+			count_passes(k += (candidates_end - candidates));
 
 
 
@@ -473,8 +474,7 @@ namespace mbp
 				const size_t candidate = *candidate_ptr;
 
 				if (!franken::mpir_is_likely_prime_BPSW(candidate)) continue;
-
-				count_passes(++m);
+				count_passes(++l);
 
 				// convert uint64_t to char array of ['0', '1'...] for MPIR
 				char bin_str[64 + 1];
@@ -483,6 +483,7 @@ namespace mbp
 
 				mpz_number.set_str(bin_str, 3);
 				if (!franken::mpir_is_prime(mpz_number, gmp_rand, div_test::n_of_primes - 1)) continue;
+				count_passes(++m);
 
 				mpz_number.set_str(bin_str, 4);
 				if (!franken::mpir_is_prime(mpz_number, gmp_rand, div_test::n_of_primes - 1)) continue;
@@ -522,7 +523,7 @@ namespace mbp
 		gmp_randclass gmp_rand{ gmp_randinit_mt };
 		mpz_class mpz_number = 0ull;
 
-		count_passes(size_t ps15, ps3, a, d, e, f, g, h, i, j, b13m17_dt_passes, k, l, m, passes);
+		count_passes(size_t a, ps15, ps3, b, c, d, e, f, g, h, i, j, k, l, m, passes);
 	};
 
 } // namespace mbp
