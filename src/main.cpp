@@ -415,10 +415,8 @@ namespace mbp
 				partial_sieve(sieve
 							  count_passes(, ps15, ps3));
 
-				// Collect candidates that have not been marked composite by the sieve
-				candidates_end = gather_sieve_results(candidates_end, sieve.data(),
-													  sieve.data() + sieve.size(),
-													  number + (sieve_step * sieve.size() * 2));
+				candidates_end = gather_sieve_results_vectorized<sieve.size()>(
+					candidates_end, sieve.data(), number + (sieve_step * sieve.size() * 2));
 			}
 
 

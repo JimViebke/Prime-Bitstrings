@@ -59,10 +59,10 @@ namespace mbp
 
 		for (size_t idx = 0; idx < 32; ++idx, number += 2)
 		{
-			const auto valid_pc = tiny_primes_lookup >> pop_count(number); // & 1
+			const auto valid_pc = tiny_primes_lookup >> pop_count(number);
 
 			const auto valid_gcd = tiny_gcd_lookup >> abs(pop_count(number & 0x5555555555555555) -
-														  pop_count(number & 0xAAAAAAAAAAAAAAAA)); // & 1
+														  pop_count(number & 0xAAAAAAAAAAAAAAAA));
 
 			mask.m256i_u8[idx] = valid_pc & valid_gcd & 1u;
 		}

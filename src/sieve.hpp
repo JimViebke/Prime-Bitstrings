@@ -371,4 +371,157 @@ namespace mbp
 
 		return candidates;
 	}
+
+	template<size_t n_bytes>
+	size_t* gather_sieve_results_vectorized(size_t* candidates,
+											const sieve_t* sieve_ptr,
+											size_t number)
+	{
+		static_assert(sizeof(sieve_t) == 1);
+
+		constexpr size_t block_size_in_bytes = n_bytes / 4;
+
+		const uint256_t one_bytes = _mm256_set1_epi8(1);
+
+		const sieve_t* block_0 = sieve_ptr;
+		const sieve_t* block_1 = sieve_ptr + (block_size_in_bytes * 1);
+		const sieve_t* block_2 = sieve_ptr + (block_size_in_bytes * 2);
+		const sieve_t* block_3 = sieve_ptr + (block_size_in_bytes * 3);
+
+		// load ahead
+		uint256_t ymm0 = _mm256_loadu_si256((uint256_t*)block_0);
+		uint256_t ymm1 = _mm256_loadu_si256((uint256_t*)block_1);
+		uint256_t ymm2 = _mm256_loadu_si256((uint256_t*)block_2);
+		uint256_t ymm3 = _mm256_loadu_si256((uint256_t*)block_3);
+
+		size_t safe_reads = block_size_in_bytes / 32;
+
+		do
+		{
+			do
+			{
+				ymm0 = _mm256_cmpeq_epi8(ymm0, one_bytes);
+				const uint32_t mask0 = (uint32_t)_mm256_movemask_epi8(ymm0);
+				const uint32_t trailing_zeroes0 = _tzcnt_u32(mask0);
+				const uint32_t mask0_is_non_zero = !!mask0; // map 0 -> 0; non-zero -> 1
+				block_0 += trailing_zeroes0 + mask0_is_non_zero; // advance ptr and number by (tzc + 1) or 32, whichever is smaller
+				ymm0 = _mm256_loadu_si256((uint256_t*)block_0); // load one iteration ahead
+				*candidates = number + (2 * (block_0 - sieve_ptr)) - 2; // always store to avoid a branch			
+				candidates += mask0_is_non_zero; // keep the candidate (increment the pointer) unless mask is 0
+
+				ymm1 = _mm256_cmpeq_epi8(ymm1, one_bytes);
+				const uint32_t mask1 = (uint32_t)_mm256_movemask_epi8(ymm1);
+				const uint32_t trailing_zeroes1 = _tzcnt_u32(mask1);
+				const uint32_t mask1_is_non_zero = !!mask1;
+				block_1 += trailing_zeroes1 + mask1_is_non_zero;
+				ymm1 = _mm256_loadu_si256((uint256_t*)block_1);
+				*candidates = number + (2 * (block_1 - sieve_ptr)) - 2;
+				candidates += mask1_is_non_zero;
+
+				ymm2 = _mm256_cmpeq_epi8(ymm2, one_bytes);
+				const uint32_t mask2 = (uint32_t)_mm256_movemask_epi8(ymm2);
+				const uint32_t trailing_zeroes2 = _tzcnt_u32(mask2);
+				const uint32_t mask2_is_non_zero = !!mask2;
+				block_2 += trailing_zeroes2 + mask2_is_non_zero;
+				ymm2 = _mm256_loadu_si256((uint256_t*)block_2);
+				*candidates = number + (2 * (block_2 - sieve_ptr)) - 2;
+				candidates += mask2_is_non_zero;
+
+				ymm3 = _mm256_cmpeq_epi8(ymm3, one_bytes);
+				const uint32_t mask3 = (uint32_t)_mm256_movemask_epi8(ymm3);
+				const uint32_t trailing_zeroes3 = _tzcnt_u32(mask3);
+				const uint32_t mask3_is_non_zero = !!mask3;
+				block_3 += trailing_zeroes3 + mask3_is_non_zero;
+				ymm3 = _mm256_loadu_si256((uint256_t*)block_3);
+				*candidates = number + (2 * (block_3 - sieve_ptr)) - 2;
+				candidates += mask3_is_non_zero;
+			} while (--safe_reads != 0);
+
+			const size_t block_0_bytes_left = sieve_ptr + (block_size_in_bytes * 1) - block_0;
+			const size_t block_1_bytes_left = sieve_ptr + (block_size_in_bytes * 2) - block_1;
+			const size_t block_2_bytes_left = sieve_ptr + (block_size_in_bytes * 3) - block_2;
+			const size_t block_3_bytes_left = sieve_ptr + n_bytes - block_3;
+
+			safe_reads = std::min(std::min(block_0_bytes_left,
+										   block_1_bytes_left),
+								  std::min(block_2_bytes_left,
+										   block_3_bytes_left)) / 32;
+		} while (safe_reads != 0);
+
+		// At least one ptr is within 32 bytes of the end of its block.
+
+		while ((sieve_ptr + (block_size_in_bytes * 1) - block_0) >= 32)
+		{
+			ymm0 = _mm256_cmpeq_epi8(ymm0, one_bytes);
+			const uint32_t mask0 = (uint32_t)_mm256_movemask_epi8(ymm0);
+			const uint32_t trailing_zeroes0 = _tzcnt_u32(mask0);
+			const uint32_t mask0_is_non_zero = !!mask0;
+			block_0 += trailing_zeroes0 + mask0_is_non_zero;
+			ymm0 = _mm256_loadu_si256((uint256_t*)block_0);
+			*candidates = number + (2 * (block_0 - sieve_ptr)) - 2;
+			candidates += mask0_is_non_zero;
+		}
+		while ((sieve_ptr + (block_size_in_bytes * 2) - block_1) >= 32)
+		{
+			ymm1 = _mm256_cmpeq_epi8(ymm1, one_bytes);
+			const uint32_t mask1 = (uint32_t)_mm256_movemask_epi8(ymm1);
+			const uint32_t trailing_zeroes1 = _tzcnt_u32(mask1);
+			const uint32_t mask1_is_non_zero = !!mask1;
+			block_1 += trailing_zeroes1 + mask1_is_non_zero;
+			ymm1 = _mm256_loadu_si256((uint256_t*)block_1);
+			*candidates = number + (2 * (block_1 - sieve_ptr)) - 2;
+			candidates += mask1_is_non_zero;
+		}
+		while ((sieve_ptr + (block_size_in_bytes * 3) - block_2) >= 32)
+		{
+			ymm2 = _mm256_cmpeq_epi8(ymm2, one_bytes);
+			const uint32_t mask2 = (uint32_t)_mm256_movemask_epi8(ymm2);
+			const uint32_t trailing_zeroes2 = _tzcnt_u32(mask2);
+			const uint32_t mask2_is_non_zero = !!mask2;
+			block_2 += trailing_zeroes2 + mask2_is_non_zero;
+			ymm2 = _mm256_loadu_si256((uint256_t*)block_2);
+			*candidates = number + (2 * (block_2 - sieve_ptr)) - 2;
+			candidates += mask2_is_non_zero;
+		}
+		while ((sieve_ptr + n_bytes - block_3) >= 32)
+		{
+			ymm3 = _mm256_cmpeq_epi8(ymm3, one_bytes);
+			const uint32_t mask3 = (uint32_t)_mm256_movemask_epi8(ymm3);
+			const uint32_t trailing_zeroes3 = _tzcnt_u32(mask3);
+			const uint32_t mask3_is_non_zero = !!mask3;
+			block_3 += trailing_zeroes3 + mask3_is_non_zero;
+			ymm3 = _mm256_loadu_si256((uint256_t*)block_3);
+			*candidates = number + (2 * (block_3 - sieve_ptr)) - 2;
+			candidates += mask3_is_non_zero;
+		}
+
+		// Handle any remaining elements.
+
+		for (; block_0 < sieve_ptr + (block_size_in_bytes * 1); ++block_0)
+		{
+			*candidates = number + 2 * (block_0 - sieve_ptr);
+			candidates += *block_0;
+		}
+
+		for (; block_1 < sieve_ptr + (block_size_in_bytes * 2); ++block_1)
+		{
+			*candidates = number + 2 * (block_1 - sieve_ptr);
+			candidates += *block_1;
+		}
+
+		for (; block_2 < sieve_ptr + (block_size_in_bytes * 3); ++block_2)
+		{
+			*candidates = number + 2 * (block_2 - sieve_ptr);
+			candidates += *block_2;
+		}
+
+		for (; block_3 < sieve_ptr + n_bytes; ++block_3)
+		{
+			*candidates = number + 2 * (block_3 - sieve_ptr);
+			candidates += *block_3;
+		}
+
+		return candidates;
+	}
+
 }
