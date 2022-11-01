@@ -67,4 +67,13 @@ namespace mbp::util
 
 	template<uint64_t val>
 	using narrowest_uint_for_val = decltype(util_detail::narrowest_uint_for_val<val>());
+
+	// via https://stackoverflow.com/a/12996028/2924233
+	uint64_t hash(uint64_t x)
+	{
+		x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9;
+		x = (x ^ (x >> 27)) * 0x94d049bb133111eb;
+		x = x ^ (x >> 31);
+		return x;
+	}
 }

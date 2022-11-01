@@ -3,6 +3,8 @@
 #include <array>
 #include <numeric>
 
+#include "util/utility.hpp"
+
 namespace mbp
 {
 	/*
@@ -83,7 +85,8 @@ namespace mbp
 #define count_passes(...) __VA_ARGS__
 #define log_pass_counts(str, count, count_before) { \
 	auto w = std::setw; \
-	std::cout << str << w(10) << count << " (removed ~" << w(3) << 100 - (count * 100 / count_before) << "%) (~" << w(6) << count / passes << " candidates pass per main loop iteration)\n"; }
+	std::cout << str << w(10) << count << " (removed ~" << w(3) << 100 - (count * 100 / count_before) << "%) (~" << w(6) << count / passes << " candidates pass per main loop iteration)\n"; \
+	pc_hash = util::hash(pc_hash ^ count); }
 #else
 #define count_passes(...)
 #define log_pass_counts(...)

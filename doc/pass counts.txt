@@ -203,3 +203,5 @@ P. branchless divtests:   22,412,265 (removed ~ 28%) (~  1,736 candidates pass p
 P. branching divtests:       161,434 (removed ~100%) (~     12 candidates pass per main loop iteration)
 Passed b2 BPSW test:          59,542 (removed ~ 64%) (~      4 candidates pass per main loop iteration)
 Passed b3 prime test:         10,029 (removed ~ 84%) (~      0 candidates pass per main loop iteration)
+
+hash of pass counts: 55da5e235e7ec916

@@ -312,8 +312,8 @@ namespace mbp
 			gmp_rand.seed(mpir_ui{ 0xdeadbeef });
 
 			count_passes(std::cout << "(counting passes)\n");
-			count_passes(a = ps15 = ps3 = b = c = d = e = f = 0);
-			count_passes(g = h = i = j = k = l = m = passes = 0);
+			count_passes(a = ps15 = ps3 = b = c = d = e = f = g = 0);
+			count_passes(h = i = j = k = l = m = passes = pc_hash = 0);
 		}
 
 		void run()
@@ -393,6 +393,8 @@ namespace mbp
 			log_pass_counts("P. branching divtests: ", k, j);
 			log_pass_counts("Passed b2 BPSW test:   ", l, k);
 			log_pass_counts("Passed b3 prime test:  ", m, l);
+			count_passes(std::cout << "\nhash of pass counts: " <<
+						 std::hex << pc_hash << std::dec << '\n');
 		}
 
 	private:
@@ -521,7 +523,7 @@ namespace mbp
 		gmp_randclass gmp_rand{ gmp_randinit_mt };
 		mpz_class mpz_number = 0ull;
 
-		count_passes(size_t a, ps15, ps3, b, c, d, e, f, g, h, i, j, k, l, m, passes);
+		count_passes(size_t a, ps15, ps3, b, c, d, e, f, g, h, i, j, k, l, m, passes, pc_hash = 0);
 	};
 
 } // namespace mbp
