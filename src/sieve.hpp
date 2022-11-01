@@ -214,179 +214,54 @@ namespace mbp
 		count_passes(ps3 += util::vector_count_ones(sieve.data(), sieve.size()));
 	}
 
-	tests_are_inlined size_t* gather_sieve_results(size_t* candidates,
-												   const sieve_t* sieve_ptr, const sieve_t* const sieve_end,
-												   size_t number)
+	namespace detail
 	{
-		static_assert(static_sieve_size % 15 == 0);
-
-		// By scanning the sieve in steps of 3*5 == 15, we know every 3rd and every 5th value is false.
-		// We can save work by never checking those ones:
-		// 
-		// 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14   <-- offset
-		//    x  x     x        x  x        x     x  x   <-- values to check
-		// x        x     x  x        x  x     x         <-- values to ignore
-		//
-		// In this case, we scan the sieve in steps of 3*5*7 == 105, which allows us to skip a few more
-		// always-composite values, and only read the remaining 48 / 105.
-
-		// "Offsets" stores the indexes that we must check, working from sieve_ptr.
-		// sieve_ptr is aligned on a multiple of 3*5*7 from the beginning of the sieve,
-		// which itself has stricter alignment on the number line.
-		constexpr std::array<size_t, 48> offsets = []() consteval {
-			std::array<size_t, 48> offsets{};
-			size_t idx = 0;
-			// Find the offsets that are not divisible by 3, 5, or 7
-			for (size_t n = 1; n <= (3ull * 5 * 7); ++n)
-				if (n % 3 != 0 && n % 5 != 0 && n % 7 != 0)
-					offsets[idx++] = n;
-
-			// The offset must be multiplied by 2 when calculating the bitstring, because the sieve only represents odd values.
-			// There is a performance gotcha here: when this offset reaches 128, almost half of the encoded instructions below
-			// become slightly larger, and no longer fit in 16 bytes. We can fix this by advancing both "number" and
-			// "sieve_ptr" halfway through the loop, and then continuing with new, smaller offsets. We make these offsets smaller
-			// by subtracting offset[23], the midpoint, from each of the following 24 offsets.
-			for (size_t n = 24; n < offsets.size(); ++n)
-				offsets[n] -= offsets[23];
-
-			return offsets;
-		}();
-
-		for (; sieve_ptr < sieve_end;
-			 sieve_ptr += (3ull * 5 * 7) - offsets[23],
-			 number += (3ull * 5 * 7 * 2) - (offsets[23] * 2))
+		__forceinline void vectorized_gather_step(const sieve_t*& ptr, uint256_t& ymm,
+												  size_t*& candidates, const size_t number,
+												  const sieve_t* const sieve_begin)
 		{
-			auto it = offsets.cbegin();
+			ymm = _mm256_cmpeq_epi8(ymm, _mm256_set1_epi8(1));
+			const uint32_t mask = (uint32_t)_mm256_movemask_epi8(ymm);
+			const uint32_t trailing_zeroes = _tzcnt_u32(mask);
+			const uint32_t mask_is_non_zero = !!mask; // map 0 -> 0; non-zero -> 1
 
-			*candidates = number + *it * 2; // unconditionally store number + offset*2
-			candidates += *(sieve_ptr + *it++); // conditionally increment
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++); // write #5
+			ptr += trailing_zeroes + mask_is_non_zero; // advance ptr and number by (tzc + 1) or 32, whichever is smaller
+			ymm = _mm256_loadu_si256((uint256_t*)ptr); // load next block early
 
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++); // 10
-
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++); // 15
-
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++); // 20
-
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-
-			number += *it * 2;
-			sieve_ptr += *it++;
-			*candidates = number;
-			candidates += *(sieve_ptr); // 24 is a special case - see above
-
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++); // 25
-
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++); // 30
-
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++); // 35
-
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++); // 40
-
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++); // 45
-
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++);
-			*candidates = number + *it * 2;
-			candidates += *(sieve_ptr + *it++); // 48
+			*candidates = number + (2 * (ptr - sieve_begin)) - 2; // always store to avoid a branch			
+			candidates += mask_is_non_zero; // keep the candidate (increment the pointer) unless mask is 0
 		}
 
-		return candidates;
+		__forceinline void scalar_gather(const sieve_t*& ptr, const sieve_t* const block_end,
+										 size_t*& candidates, const size_t number,
+										 const sieve_t* const sieve_begin)
+		{
+			for (; ptr < block_end; ++ptr)
+			{
+				*candidates = number + 2 * (ptr - sieve_begin);
+				candidates += *ptr;
+			}
+		}
 	}
 
 	template<size_t n_bytes>
 	size_t* gather_sieve_results_vectorized(size_t* candidates,
 											const sieve_t* sieve_ptr,
-											size_t number)
+											const size_t number)
 	{
 		static_assert(sizeof(sieve_t) == 1);
 
 		constexpr size_t block_size_in_bytes = n_bytes / 4;
 
-		const uint256_t one_bytes = _mm256_set1_epi8(1);
-
 		const sieve_t* block_0 = sieve_ptr;
 		const sieve_t* block_1 = sieve_ptr + (block_size_in_bytes * 1);
 		const sieve_t* block_2 = sieve_ptr + (block_size_in_bytes * 2);
 		const sieve_t* block_3 = sieve_ptr + (block_size_in_bytes * 3);
+
+		const sieve_t* block_0_end = block_1;
+		const sieve_t* block_1_end = block_2;
+		const sieve_t* block_2_end = block_3;
+		const sieve_t* block_3_end = sieve_ptr + n_bytes;
 
 		// load ahead
 		uint256_t ymm0 = _mm256_loadu_si256((uint256_t*)block_0);
@@ -394,132 +269,138 @@ namespace mbp
 		uint256_t ymm2 = _mm256_loadu_si256((uint256_t*)block_2);
 		uint256_t ymm3 = _mm256_loadu_si256((uint256_t*)block_3);
 
+
+
+		// Gather from 4 locations in parallel
+
 		size_t safe_reads = block_size_in_bytes / 32;
 
 		do
 		{
 			do
 			{
-				ymm0 = _mm256_cmpeq_epi8(ymm0, one_bytes);
-				const uint32_t mask0 = (uint32_t)_mm256_movemask_epi8(ymm0);
-				const uint32_t trailing_zeroes0 = _tzcnt_u32(mask0);
-				const uint32_t mask0_is_non_zero = !!mask0; // map 0 -> 0; non-zero -> 1
-				block_0 += trailing_zeroes0 + mask0_is_non_zero; // advance ptr and number by (tzc + 1) or 32, whichever is smaller
-				ymm0 = _mm256_loadu_si256((uint256_t*)block_0); // load one iteration ahead
-				*candidates = number + (2 * (block_0 - sieve_ptr)) - 2; // always store to avoid a branch			
-				candidates += mask0_is_non_zero; // keep the candidate (increment the pointer) unless mask is 0
-
-				ymm1 = _mm256_cmpeq_epi8(ymm1, one_bytes);
-				const uint32_t mask1 = (uint32_t)_mm256_movemask_epi8(ymm1);
-				const uint32_t trailing_zeroes1 = _tzcnt_u32(mask1);
-				const uint32_t mask1_is_non_zero = !!mask1;
-				block_1 += trailing_zeroes1 + mask1_is_non_zero;
-				ymm1 = _mm256_loadu_si256((uint256_t*)block_1);
-				*candidates = number + (2 * (block_1 - sieve_ptr)) - 2;
-				candidates += mask1_is_non_zero;
-
-				ymm2 = _mm256_cmpeq_epi8(ymm2, one_bytes);
-				const uint32_t mask2 = (uint32_t)_mm256_movemask_epi8(ymm2);
-				const uint32_t trailing_zeroes2 = _tzcnt_u32(mask2);
-				const uint32_t mask2_is_non_zero = !!mask2;
-				block_2 += trailing_zeroes2 + mask2_is_non_zero;
-				ymm2 = _mm256_loadu_si256((uint256_t*)block_2);
-				*candidates = number + (2 * (block_2 - sieve_ptr)) - 2;
-				candidates += mask2_is_non_zero;
-
-				ymm3 = _mm256_cmpeq_epi8(ymm3, one_bytes);
-				const uint32_t mask3 = (uint32_t)_mm256_movemask_epi8(ymm3);
-				const uint32_t trailing_zeroes3 = _tzcnt_u32(mask3);
-				const uint32_t mask3_is_non_zero = !!mask3;
-				block_3 += trailing_zeroes3 + mask3_is_non_zero;
-				ymm3 = _mm256_loadu_si256((uint256_t*)block_3);
-				*candidates = number + (2 * (block_3 - sieve_ptr)) - 2;
-				candidates += mask3_is_non_zero;
+				detail::vectorized_gather_step(block_0, ymm0, candidates, number, sieve_ptr);
+				detail::vectorized_gather_step(block_1, ymm1, candidates, number, sieve_ptr);
+				detail::vectorized_gather_step(block_2, ymm2, candidates, number, sieve_ptr);
+				detail::vectorized_gather_step(block_3, ymm3, candidates, number, sieve_ptr);
 			} while (--safe_reads != 0);
 
-			const size_t block_0_bytes_left = sieve_ptr + (block_size_in_bytes * 1) - block_0;
-			const size_t block_1_bytes_left = sieve_ptr + (block_size_in_bytes * 2) - block_1;
-			const size_t block_2_bytes_left = sieve_ptr + (block_size_in_bytes * 3) - block_2;
-			const size_t block_3_bytes_left = sieve_ptr + n_bytes - block_3;
-
-			safe_reads = std::min(std::min(block_0_bytes_left,
-										   block_1_bytes_left),
-								  std::min(block_2_bytes_left,
-										   block_3_bytes_left)) / 32;
+			safe_reads = util::min(block_0_end - block_0,
+								   block_1_end - block_1,
+								   block_2_end - block_2,
+								   block_3_end - block_3) / 32;
 		} while (safe_reads != 0);
 
 		// At least one ptr is within 32 bytes of the end of its block.
+		// If it is one of the first three blocks, swap with block 3 for cleanup
 
-		while ((sieve_ptr + (block_size_in_bytes * 1) - block_0) >= 32)
+		if (block_0_end - block_0 < 32)
 		{
-			ymm0 = _mm256_cmpeq_epi8(ymm0, one_bytes);
-			const uint32_t mask0 = (uint32_t)_mm256_movemask_epi8(ymm0);
-			const uint32_t trailing_zeroes0 = _tzcnt_u32(mask0);
-			const uint32_t mask0_is_non_zero = !!mask0;
-			block_0 += trailing_zeroes0 + mask0_is_non_zero;
-			ymm0 = _mm256_loadu_si256((uint256_t*)block_0);
-			*candidates = number + (2 * (block_0 - sieve_ptr)) - 2;
-			candidates += mask0_is_non_zero;
+			std::swap(block_0, block_3);
+			std::swap(block_0_end, block_3_end);
+			std::swap(ymm0, ymm3);
 		}
-		while ((sieve_ptr + (block_size_in_bytes * 2) - block_1) >= 32)
+		else if (block_1_end - block_1 < 32)
 		{
-			ymm1 = _mm256_cmpeq_epi8(ymm1, one_bytes);
-			const uint32_t mask1 = (uint32_t)_mm256_movemask_epi8(ymm1);
-			const uint32_t trailing_zeroes1 = _tzcnt_u32(mask1);
-			const uint32_t mask1_is_non_zero = !!mask1;
-			block_1 += trailing_zeroes1 + mask1_is_non_zero;
-			ymm1 = _mm256_loadu_si256((uint256_t*)block_1);
-			*candidates = number + (2 * (block_1 - sieve_ptr)) - 2;
-			candidates += mask1_is_non_zero;
+			std::swap(block_1, block_3);
+			std::swap(block_1_end, block_3_end);
+			std::swap(ymm1, ymm3);
 		}
-		while ((sieve_ptr + (block_size_in_bytes * 3) - block_2) >= 32)
+		else if (block_2_end - block_2 < 32)
 		{
-			ymm2 = _mm256_cmpeq_epi8(ymm2, one_bytes);
-			const uint32_t mask2 = (uint32_t)_mm256_movemask_epi8(ymm2);
-			const uint32_t trailing_zeroes2 = _tzcnt_u32(mask2);
-			const uint32_t mask2_is_non_zero = !!mask2;
-			block_2 += trailing_zeroes2 + mask2_is_non_zero;
-			ymm2 = _mm256_loadu_si256((uint256_t*)block_2);
-			*candidates = number + (2 * (block_2 - sieve_ptr)) - 2;
-			candidates += mask2_is_non_zero;
-		}
-		while ((sieve_ptr + n_bytes - block_3) >= 32)
-		{
-			ymm3 = _mm256_cmpeq_epi8(ymm3, one_bytes);
-			const uint32_t mask3 = (uint32_t)_mm256_movemask_epi8(ymm3);
-			const uint32_t trailing_zeroes3 = _tzcnt_u32(mask3);
-			const uint32_t mask3_is_non_zero = !!mask3;
-			block_3 += trailing_zeroes3 + mask3_is_non_zero;
-			ymm3 = _mm256_loadu_si256((uint256_t*)block_3);
-			*candidates = number + (2 * (block_3 - sieve_ptr)) - 2;
-			candidates += mask3_is_non_zero;
+			std::swap(block_2, block_3);
+			std::swap(block_2_end, block_3_end);
+			std::swap(ymm2, ymm3);
 		}
 
-		// Handle any remaining elements.
+		// in all cases, finish whatever block 3 is now
+		detail::scalar_gather(block_3, block_3_end, candidates, number, sieve_ptr);
 
-		for (; block_0 < sieve_ptr + (block_size_in_bytes * 1); ++block_0)
+
+
+		// Gather from 3 locations in parallel
+
+		// recalculate
+		safe_reads = util::min(block_0_end - block_0,
+							   block_1_end - block_1,
+							   block_2_end - block_2) / 32;
+
+		while (safe_reads != 0)
 		{
-			*candidates = number + 2 * (block_0 - sieve_ptr);
-			candidates += *block_0;
+			do
+			{
+				detail::vectorized_gather_step(block_0, ymm0, candidates, number, sieve_ptr);
+				detail::vectorized_gather_step(block_1, ymm1, candidates, number, sieve_ptr);
+				detail::vectorized_gather_step(block_2, ymm2, candidates, number, sieve_ptr);
+			} while (--safe_reads != 0);
+
+			safe_reads = util::min(block_0_end - block_0,
+								   block_1_end - block_1,
+								   block_2_end - block_2) / 32;
 		}
 
-		for (; block_1 < sieve_ptr + (block_size_in_bytes * 2); ++block_1)
+		if (block_0_end - block_0 < 32)
 		{
-			*candidates = number + 2 * (block_1 - sieve_ptr);
-			candidates += *block_1;
+			std::swap(block_0, block_2);
+			std::swap(block_0_end, block_2_end);
+			std::swap(ymm0, ymm2);
+		}
+		else if (block_1_end - block_1 < 32)
+		{
+			std::swap(block_1, block_2);
+			std::swap(block_1_end, block_2_end);
+			std::swap(ymm1, ymm2);
 		}
 
-		for (; block_2 < sieve_ptr + (block_size_in_bytes * 3); ++block_2)
+		detail::scalar_gather(block_2, block_2_end, candidates, number, sieve_ptr);
+
+
+
+		// Gather from 2 locations in parallel
+
+		safe_reads = util::min(block_0_end - block_0,
+							   block_1_end - block_1) / 32;
+
+		while (safe_reads != 0)
 		{
-			*candidates = number + 2 * (block_2 - sieve_ptr);
-			candidates += *block_2;
+			do
+			{
+				detail::vectorized_gather_step(block_0, ymm0, candidates, number, sieve_ptr);
+				detail::vectorized_gather_step(block_1, ymm1, candidates, number, sieve_ptr);
+			} while (--safe_reads != 0);
+
+			safe_reads = util::min(block_0_end - block_0,
+								   block_1_end - block_1) / 32;
 		}
 
-		for (; block_3 < sieve_ptr + n_bytes; ++block_3)
+		if (block_0_end - block_0 < 32)
 		{
-			*candidates = number + 2 * (block_3 - sieve_ptr);
-			candidates += *block_3;
+			std::swap(block_0, block_1);
+			std::swap(block_0_end, block_1_end);
+			std::swap(ymm0, ymm1);
 		}
+
+		detail::scalar_gather(block_1, block_1_end, candidates, number, sieve_ptr);
+
+
+
+		// Gather from remaining pointer
+
+		safe_reads = (block_0_end - block_0) / 32;
+
+		while (safe_reads != 0)
+		{
+			do
+			{
+				detail::vectorized_gather_step(block_0, ymm0, candidates, number, sieve_ptr);
+			} while (--safe_reads != 0);
+
+			safe_reads = (block_0_end - block_0) / 32;
+		}
+
+		detail::scalar_gather(block_0, block_0_end, candidates, number, sieve_ptr);
+
+
 
 		return candidates;
 	}
