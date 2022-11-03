@@ -247,17 +247,10 @@ namespace mbp
 
 		size_t* output = input;
 
-		size_t next = *input;
+		size_t number = *input;
 
 		for (; input < candidates_end; )
 		{
-			const size_t number = next;
-			++input;
-			next = *input; // load one iteration ahead
-
-			// always write
-			*output = number;
-
 			const size_t pc_0 = pop_count(number & (bitmask << 0));
 			size_t b4_m7_rem = pc_0;
 			size_t b3_m13_rem = pc_0;
@@ -272,14 +265,17 @@ namespace mbp
 			b4_m7_rem += pc_2 * pow_mod<4, 2, 7>::rem;
 			b3_m13_rem += pc_2 * pow_mod<3, 2, 13>::rem;
 			b9_m13_rem += pc_2 * pow_mod<9, 2, 13>::rem;
+						
+			*output = number; // always write
+			number = *++input; // load ahead
 
 			// Only advance the pointer if the number is still a candidate
 			size_t merged_masks = 0;
-			merged_masks |= (prime_factor_lookup_ptr[b4_m7_rem] & (1ull << get_prime_index<7>::idx));
-			merged_masks |= (prime_factor_lookup_ptr[b3_m13_rem] & (1ull << get_prime_index<13>::idx));
-			merged_masks |= (prime_factor_lookup_ptr[b9_m13_rem] & (1ull << get_prime_index<13>::idx));
+			merged_masks |= (prime_factor_lookup_ptr[b4_m7_rem] >> get_prime_index<7>::idx);
+			merged_masks |= (prime_factor_lookup_ptr[b3_m13_rem] >> get_prime_index<13>::idx);
+			merged_masks |= (prime_factor_lookup_ptr[b9_m13_rem] >> get_prime_index<13>::idx);
 
-			output += !merged_masks;
+			output += ~merged_masks & 0b1;
 		}
 
 		return output;
@@ -371,12 +367,12 @@ namespace mbp
 
 			// Only advance the pointer if the number is still a candidate
 			size_t merged_masks = 0;
-			merged_masks |= (prime_factor_lookup_ptr[xmm0.m128i_u32[0]] & (1ull << get_prime_index<7>::idx));
-			merged_masks |= (prime_factor_lookup_ptr[xmm0.m128i_u32[1]] & (1ull << get_prime_index<7>::idx));
-			merged_masks |= (prime_factor_lookup_ptr[xmm0.m128i_u32[2]] & (1ull << get_prime_index<13>::idx));
-			merged_masks |= (prime_factor_lookup_ptr[xmm0.m128i_u32[3]] & (1ull << get_prime_index<13>::idx));
+			merged_masks |= (prime_factor_lookup_ptr[xmm0.m128i_u32[0]] >> get_prime_index<7>::idx);
+			merged_masks |= (prime_factor_lookup_ptr[xmm0.m128i_u32[1]] >> get_prime_index<7>::idx);
+			merged_masks |= (prime_factor_lookup_ptr[xmm0.m128i_u32[2]] >> get_prime_index<13>::idx);
+			merged_masks |= (prime_factor_lookup_ptr[xmm0.m128i_u32[3]] >> get_prime_index<13>::idx);
 
-			output += !merged_masks;
+			output += ~merged_masks & 0b1;
 		}
 
 		return output;
@@ -453,18 +449,15 @@ namespace mbp
 			xmm0 = _mm_add_epi32(xmm0, xmm2);
 			xmm0 = _mm_add_epi32(xmm0, xmm4);
 
+			// Only advance the pointer if the number is still a candidate
 			size_t merged_lookups = prime_factor_lookup_ptr[xmm0.m128i_u32[0]];
 			merged_lookups |= prime_factor_lookup_ptr[xmm0.m128i_u32[1]];
 			merged_lookups |= prime_factor_lookup_ptr[xmm0.m128i_u32[2]];
 			merged_lookups |= prime_factor_lookup_ptr[xmm0.m128i_u32[3]];
 
-			constexpr size_t mask = (1ull << get_prime_index<11>::idx);
+			merged_lookups >>= get_prime_index<11>::idx;
 
-			// Only advance the pointer if each test's selected bit was 0
-			output += !(merged_lookups & mask);
-
-			// alternatively, use avx gather(), and(), and testz()
-			//output += _mm_testz_si128(xmm0, prime_mask); // compute bitwise AND, return 1 if result is 0, else return 0
+			output += ~merged_lookups & 0b1;
 		}
 
 		return output;
@@ -560,12 +553,14 @@ namespace mbp
 			const auto b7_rem = util::vcl_hadd_x(_mm256_add_epi8(ymm2, ymm3));
 			const auto b8_rem = util::vcl_hadd_x(_mm256_add_epi8(ymm4, ymm5));
 
+			// Only advance the pointer if the number is still a candidate
 			size_t merged_lookups = prime_factor_lookup[b6_rem];
 			merged_lookups |= prime_factor_lookup[b7_rem];
 			merged_lookups |= prime_factor_lookup[b8_rem];
 
-			// Only advance the pointer if the nth bit was 0 in all lookups
-			if ((merged_lookups & (prime_lookup_t(1u) << get_prime_index<11>::idx)) == 0) ++output;
+			merged_lookups >>= get_prime_index<11>::idx;
+
+			output += ~merged_lookups & 0b1;
 		}
 
 		return output;
@@ -655,12 +650,14 @@ namespace mbp
 			const auto b7_rem = util::vcl_hadd_x(_mm256_add_epi8(ymm2, ymm3));
 			const auto b11_rem = util::vcl_hadd_x(_mm256_add_epi8(ymm4, ymm5));
 
+			// Only advance the pointer if the number is still a candidate
 			prime_lookup_t merged_lookups = prime_factor_lookup[b6_rem];
 			merged_lookups |= prime_factor_lookup[b7_rem];
 			merged_lookups |= prime_factor_lookup[b11_rem];
 
-			// Only advance the pointer if the nth bit was 0 in all lookups
-			if ((merged_lookups & (prime_lookup_t(1u) << get_prime_index<13>::idx)) == 0) ++output;
+			merged_lookups >>= get_prime_index<13>::idx;
+			
+			output += ~merged_lookups & 0b1;
 		}
 
 		return output;
@@ -998,7 +995,7 @@ namespace mbp
 
 			// conditionally increment
 			size_t lookup = prime_factor_lookup[sum] >> get_prime_index<17>::idx;
-			output += ((~lookup) & 0b1);
+			output += ~lookup & 0b1;
 		}
 
 		return output;

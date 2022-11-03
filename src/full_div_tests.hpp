@@ -39,10 +39,8 @@ namespace mbp
 			const prime_lookup_t* pf_lookup_preinc = prime_factor_lookup.data() +
 				util::vcl_hadd_x(_mm256_and_si256(util::expand_bits_to_bytes(upper_bits >> 32), ymm1));
 
-			for (; input < shrinking_end; ++input)
+			for (; input < shrinking_end; )
 			{
-				*output = number; // always write
-
 				if constexpr (!on_fast_path)
 				{
 					// Upper 32 bits only change every 4B integers - re-calculate when stale
@@ -56,14 +54,15 @@ namespace mbp
 
 				const uint256_t mask_lower = util::expand_bits_to_bytes(number & uint32_t(-1));
 
-				// load one iteration ahead
-				number = *(input + 1);
+				*output = number; // always write
+				number = *++input; // load one iteration ahead
 
 				const uint256_t rems_lower = _mm256_and_si256(mask_lower, ymm0);
 				const auto rem = util::vcl_hadd_x(rems_lower);
 
 				// increment only if we haven't found a prime factor yet
-				output += ((pf_lookup_preinc[rem] & (prime_lookup_t(1) << div_test.prime_idx)) == 0);
+				size_t lookup = pf_lookup_preinc[rem] >> div_test.prime_idx;
+				output += ~lookup & 0b1;
 			}
 
 			div_test.hits += uint32_t(input - output);
