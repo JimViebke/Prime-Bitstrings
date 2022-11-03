@@ -94,49 +94,26 @@ namespace mbp
 				ymm0 = _mm256_blend_epi32(ymm0, _mm256_slli_epi64(ymm1, 32), 0b10'10'10'10);
 
 				// select the high and low halves of each byte
-				const uint256_t lo_nybbles = _mm256_and_si256(ymm0, nybble_mask);
-				const uint256_t hi_nybbles = _mm256_and_si256(_mm256_srli_epi64(ymm0, 4), nybble_mask);
+				const uint256_t nybbles_lo = _mm256_and_si256(ymm0, nybble_mask);
+				const uint256_t nybbles_hi = _mm256_and_si256(_mm256_srli_epi64(ymm0, 4), nybble_mask);
 
 				// replace the bits of each nybble with their remainder
-				const uint256_t lo_nybbles_a = _mm256_shuffle_epi8(nybble_lookup_a, lo_nybbles);
-				const uint256_t hi_nybbles_a = _mm256_shuffle_epi8(nybble_lookup_a, hi_nybbles);
-				const uint256_t candidates_0426_a = _mm256_unpacklo_epi32(lo_nybbles_a, hi_nybbles_a);
-				const uint256_t candidates_1537_a = _mm256_unpackhi_epi32(lo_nybbles_a, hi_nybbles_a);
-				const uint256_t sums_0426_a = _mm256_sad_epu8(candidates_0426_a, _mm256_setzero_si256());
-				const uint256_t sums_1537_a = _mm256_sad_epu8(candidates_1537_a, _mm256_setzero_si256());
-
-				const uint256_t lo_nybbles_b = _mm256_shuffle_epi8(nybble_lookup_b, lo_nybbles);
-				const uint256_t hi_nybbles_b = _mm256_shuffle_epi8(nybble_lookup_b, hi_nybbles);
-				const uint256_t candidates_0426_b = _mm256_unpacklo_epi32(lo_nybbles_b, hi_nybbles_b);
-				const uint256_t candidates_1537_b = _mm256_unpackhi_epi32(lo_nybbles_b, hi_nybbles_b);
-				const uint256_t sums_0426_b = _mm256_sad_epu8(candidates_0426_b, _mm256_setzero_si256());
-				const uint256_t sums_1537_b = _mm256_sad_epu8(candidates_1537_b, _mm256_setzero_si256());
-
-				const uint256_t lo_nybbles_c = _mm256_shuffle_epi8(nybble_lookup_c, lo_nybbles);
-				const uint256_t hi_nybbles_c = _mm256_shuffle_epi8(nybble_lookup_c, hi_nybbles);
-				const uint256_t candidates_0426_c = _mm256_unpacklo_epi32(lo_nybbles_c, hi_nybbles_c);
-				const uint256_t candidates_1537_c = _mm256_unpackhi_epi32(lo_nybbles_c, hi_nybbles_c);
-				const uint256_t sums_0426_c = _mm256_sad_epu8(candidates_0426_c, _mm256_setzero_si256());
-				const uint256_t sums_1537_c = _mm256_sad_epu8(candidates_1537_c, _mm256_setzero_si256());
-
-				const uint256_t lo_nybbles_d = _mm256_shuffle_epi8(nybble_lookup_d, lo_nybbles);
-				const uint256_t hi_nybbles_d = _mm256_shuffle_epi8(nybble_lookup_d, hi_nybbles);
-				const uint256_t candidates_0426_d = _mm256_unpacklo_epi32(lo_nybbles_d, hi_nybbles_d);
-				const uint256_t candidates_1537_d = _mm256_unpackhi_epi32(lo_nybbles_d, hi_nybbles_d);
-				const uint256_t sums_0426_d = _mm256_sad_epu8(candidates_0426_d, _mm256_setzero_si256());
-				const uint256_t sums_1537_d = _mm256_sad_epu8(candidates_1537_d, _mm256_setzero_si256());
-
-				const uint128_t sums_26_a = _mm256_extracti128_si256(sums_0426_a, 1);
-				const uint128_t sums_37_a = _mm256_extracti128_si256(sums_1537_a, 1);
-
-				const uint128_t sums_26_b = _mm256_extracti128_si256(sums_0426_b, 1);
-				const uint128_t sums_37_b = _mm256_extracti128_si256(sums_1537_b, 1);
-
-				const uint128_t sums_26_c = _mm256_extracti128_si256(sums_0426_c, 1);
-				const uint128_t sums_37_c = _mm256_extracti128_si256(sums_1537_c, 1);
-
-				const uint128_t sums_26_d = _mm256_extracti128_si256(sums_0426_d, 1);
-				const uint128_t sums_37_d = _mm256_extracti128_si256(sums_1537_d, 1);
+				uint256_t rems_lo = _mm256_shuffle_epi8(nybble_lookup_a, nybbles_lo);
+				uint256_t rems_hi = _mm256_shuffle_epi8(nybble_lookup_a, nybbles_hi);
+				const uint256_t sums_0426_a = _mm256_sad_epu8(_mm256_unpacklo_epi32(rems_lo, rems_hi), _mm256_setzero_si256());
+				const uint256_t sums_1537_a = _mm256_sad_epu8(_mm256_unpackhi_epi32(rems_lo, rems_hi), _mm256_setzero_si256());
+				rems_lo = _mm256_shuffle_epi8(nybble_lookup_b, nybbles_lo);
+				rems_hi = _mm256_shuffle_epi8(nybble_lookup_b, nybbles_hi);
+				const uint256_t sums_0426_b = _mm256_sad_epu8(_mm256_unpacklo_epi32(rems_lo, rems_hi), _mm256_setzero_si256());
+				const uint256_t sums_1537_b = _mm256_sad_epu8(_mm256_unpackhi_epi32(rems_lo, rems_hi), _mm256_setzero_si256());
+				rems_lo = _mm256_shuffle_epi8(nybble_lookup_c, nybbles_lo);
+				rems_hi = _mm256_shuffle_epi8(nybble_lookup_c, nybbles_hi);
+				const uint256_t sums_0426_c = _mm256_sad_epu8(_mm256_unpacklo_epi32(rems_lo, rems_hi), _mm256_setzero_si256());
+				const uint256_t sums_1537_c = _mm256_sad_epu8(_mm256_unpackhi_epi32(rems_lo, rems_hi), _mm256_setzero_si256());
+				rems_lo = _mm256_shuffle_epi8(nybble_lookup_d, nybbles_lo);
+				rems_hi = _mm256_shuffle_epi8(nybble_lookup_d, nybbles_hi);
+				const uint256_t sums_0426_d = _mm256_sad_epu8(_mm256_unpacklo_epi32(rems_lo, rems_hi), _mm256_setzero_si256());
+				const uint256_t sums_1537_d = _mm256_sad_epu8(_mm256_unpackhi_epi32(rems_lo, rems_hi), _mm256_setzero_si256());
 
 				// Only advance the pointer if the number is still a candidate, that is,
 				// the relevant bit from each lookup is 0
@@ -148,6 +125,11 @@ namespace mbp
 				merged_masks_0 |= (pf_lookup_ptr_d[sums_0426_d.m256i_u64[0]] >> get_prime_index<17>::idx);
 				*output = *input++; // always copy
 				output += ~merged_masks_0 & 0b1; // branchless conditional increment
+				size_t merged_masks_4 = 0;
+				merged_masks_4 |= (pf_lookup_ptr_a[sums_0426_a.m256i_u64[1]] >> get_prime_index<5>::idx);
+				merged_masks_4 |= (pf_lookup_ptr_b[sums_0426_b.m256i_u64[1]] >> get_prime_index<13>::idx);
+				merged_masks_4 |= (pf_lookup_ptr_c[sums_0426_c.m256i_u64[1]] >> get_prime_index<13>::idx);
+				merged_masks_4 |= (pf_lookup_ptr_d[sums_0426_d.m256i_u64[1]] >> get_prime_index<17>::idx);
 
 				size_t merged_masks_1 = 0;
 				merged_masks_1 |= (pf_lookup_ptr_a[sums_1537_a.m256i_u64[0]] >> get_prime_index<5>::idx);
@@ -156,52 +138,52 @@ namespace mbp
 				merged_masks_1 |= (pf_lookup_ptr_d[sums_1537_d.m256i_u64[0]] >> get_prime_index<17>::idx);
 				*output = *input++;
 				output += ~merged_masks_1 & 0b1;
-
-				size_t merged_masks_2 = 0;
-				merged_masks_2 |= (pf_lookup_ptr_a[sums_26_a.m128i_u64[0]] >> get_prime_index<5>::idx);
-				merged_masks_2 |= (pf_lookup_ptr_b[sums_26_b.m128i_u64[0]] >> get_prime_index<13>::idx);
-				merged_masks_2 |= (pf_lookup_ptr_c[sums_26_c.m128i_u64[0]] >> get_prime_index<13>::idx);
-				merged_masks_2 |= (pf_lookup_ptr_d[sums_26_d.m128i_u64[0]] >> get_prime_index<17>::idx);
-				*output = *input++;
-				output += ~merged_masks_2 & 0b1;
-
-				size_t merged_masks_3 = 0;
-				merged_masks_3 |= (pf_lookup_ptr_a[sums_37_a.m128i_u64[0]] >> get_prime_index<5>::idx);
-				merged_masks_3 |= (pf_lookup_ptr_b[sums_37_b.m128i_u64[0]] >> get_prime_index<13>::idx);
-				merged_masks_3 |= (pf_lookup_ptr_c[sums_37_c.m128i_u64[0]] >> get_prime_index<13>::idx);
-				merged_masks_3 |= (pf_lookup_ptr_d[sums_37_d.m128i_u64[0]] >> get_prime_index<17>::idx);
-				*output = *input++;
-				output += ~merged_masks_3 & 0b1;
-
-				size_t merged_masks_4 = 0;
-				merged_masks_4 |= (pf_lookup_ptr_a[sums_0426_a.m256i_u64[1]] >> get_prime_index<5>::idx);
-				merged_masks_4 |= (pf_lookup_ptr_b[sums_0426_b.m256i_u64[1]] >> get_prime_index<13>::idx);
-				merged_masks_4 |= (pf_lookup_ptr_c[sums_0426_c.m256i_u64[1]] >> get_prime_index<13>::idx);
-				merged_masks_4 |= (pf_lookup_ptr_d[sums_0426_d.m256i_u64[1]] >> get_prime_index<17>::idx);
-				*output = *input++;
-				output += ~merged_masks_4 & 0b1;
-
 				size_t merged_masks_5 = 0;
 				merged_masks_5 |= (pf_lookup_ptr_a[sums_1537_a.m256i_u64[1]] >> get_prime_index<5>::idx);
 				merged_masks_5 |= (pf_lookup_ptr_b[sums_1537_b.m256i_u64[1]] >> get_prime_index<13>::idx);
 				merged_masks_5 |= (pf_lookup_ptr_c[sums_1537_c.m256i_u64[1]] >> get_prime_index<13>::idx);
 				merged_masks_5 |= (pf_lookup_ptr_d[sums_1537_d.m256i_u64[1]] >> get_prime_index<17>::idx);
+
+				uint128_t hi_a = _mm256_extracti128_si256(sums_0426_a, 1);
+				uint128_t hi_b = _mm256_extracti128_si256(sums_0426_b, 1);
+				uint128_t hi_c = _mm256_extracti128_si256(sums_0426_c, 1);
+				uint128_t hi_d = _mm256_extracti128_si256(sums_0426_d, 1);
+				size_t merged_masks_2 = 0;
+				merged_masks_2 |= (pf_lookup_ptr_a[hi_a.m128i_u64[0]] >> get_prime_index<5>::idx);
+				merged_masks_2 |= (pf_lookup_ptr_b[hi_b.m128i_u64[0]] >> get_prime_index<13>::idx);
+				merged_masks_2 |= (pf_lookup_ptr_c[hi_c.m128i_u64[0]] >> get_prime_index<13>::idx);
+				merged_masks_2 |= (pf_lookup_ptr_d[hi_d.m128i_u64[0]] >> get_prime_index<17>::idx);
+				*output = *input++;
+				output += ~merged_masks_2 & 0b1;
+				size_t merged_masks_6 = 0;
+				merged_masks_6 |= (pf_lookup_ptr_a[hi_a.m128i_u64[1]] >> get_prime_index<5>::idx);
+				merged_masks_6 |= (pf_lookup_ptr_b[hi_b.m128i_u64[1]] >> get_prime_index<13>::idx);
+				merged_masks_6 |= (pf_lookup_ptr_c[hi_c.m128i_u64[1]] >> get_prime_index<13>::idx);
+				merged_masks_6 |= (pf_lookup_ptr_d[hi_d.m128i_u64[1]] >> get_prime_index<17>::idx);
+
+				hi_a = _mm256_extracti128_si256(sums_1537_a, 1);
+				hi_b = _mm256_extracti128_si256(sums_1537_b, 1);
+				hi_c = _mm256_extracti128_si256(sums_1537_c, 1);
+				hi_d = _mm256_extracti128_si256(sums_1537_d, 1);
+				size_t merged_masks_3 = 0;
+				merged_masks_3 |= (pf_lookup_ptr_a[hi_a.m128i_u64[0]] >> get_prime_index<5>::idx);
+				merged_masks_3 |= (pf_lookup_ptr_b[hi_b.m128i_u64[0]] >> get_prime_index<13>::idx);
+				merged_masks_3 |= (pf_lookup_ptr_c[hi_c.m128i_u64[0]] >> get_prime_index<13>::idx);
+				merged_masks_3 |= (pf_lookup_ptr_d[hi_d.m128i_u64[0]] >> get_prime_index<17>::idx);
+				*output = *input++;
+				output += ~merged_masks_3 & 0b1;
+				*output = *input++;
+				output += ~merged_masks_4 & 0b1;
 				*output = *input++;
 				output += ~merged_masks_5 & 0b1;
-
-				size_t merged_masks_6 = 0;
-				merged_masks_6 |= (pf_lookup_ptr_a[sums_26_a.m128i_u64[1]] >> get_prime_index<5>::idx);
-				merged_masks_6 |= (pf_lookup_ptr_b[sums_26_b.m128i_u64[1]] >> get_prime_index<13>::idx);
-				merged_masks_6 |= (pf_lookup_ptr_c[sums_26_c.m128i_u64[1]] >> get_prime_index<13>::idx);
-				merged_masks_6 |= (pf_lookup_ptr_d[sums_26_d.m128i_u64[1]] >> get_prime_index<17>::idx);
 				*output = *input++;
 				output += ~merged_masks_6 & 0b1;
 
 				size_t merged_masks_7 = 0;
-				merged_masks_7 |= (pf_lookup_ptr_a[sums_37_a.m128i_u64[1]] >> get_prime_index<5>::idx);
-				merged_masks_7 |= (pf_lookup_ptr_b[sums_37_b.m128i_u64[1]] >> get_prime_index<13>::idx);
-				merged_masks_7 |= (pf_lookup_ptr_c[sums_37_c.m128i_u64[1]] >> get_prime_index<13>::idx);
-				merged_masks_7 |= (pf_lookup_ptr_d[sums_37_d.m128i_u64[1]] >> get_prime_index<17>::idx);
+				merged_masks_7 |= (pf_lookup_ptr_a[hi_a.m128i_u64[1]] >> get_prime_index<5>::idx);
+				merged_masks_7 |= (pf_lookup_ptr_b[hi_b.m128i_u64[1]] >> get_prime_index<13>::idx);
+				merged_masks_7 |= (pf_lookup_ptr_c[hi_c.m128i_u64[1]] >> get_prime_index<13>::idx);
+				merged_masks_7 |= (pf_lookup_ptr_d[hi_d.m128i_u64[1]] >> get_prime_index<17>::idx);
 				*output = *input++;
 				output += ~merged_masks_7 & 0b1;
 			}
