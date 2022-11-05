@@ -11,7 +11,6 @@ namespace mbp
 	using sieve_container = std::array<sieve_t, static_sieve_size>;
 	consteval sieve_container generate_static_sieve()
 	{
-		// sieve_container sieve(static_sieve_size, true);
 		sieve_container sieve{}; std::fill(begin(sieve), end(sieve), true);
 
 		// for each prime, mark off all multiples
@@ -23,11 +22,7 @@ namespace mbp
 	}
 	static alignas(64) constexpr sieve_container static_sieve = generate_static_sieve();
 
-	// When sieving in steps of (some factor N) * (some prime P), we may have skipped a few multiples of P on
-	// on either end of the sieve. We handle these with a set of branchless writes on each end of the sieve.
-	// This overhead has a constant cost, which we can use to estimate the threshold at which it is no longer
-	// an optimization to pass (larger) small primes through the stepped loop. This threshold is calculated at
-	// compile time, based on requiring primes to make at least X writes, where X is a tuneable knob.
+	// Only step by 15 using primes that make at least X writes per sieving, where X is a tuneable knob.
 	consteval sieve_prime_t get_threshold(const size_t X)
 	{
 		for (size_t i = 1; i < small_primes_lookup.size(); ++i)
@@ -99,18 +94,7 @@ namespace mbp
 			sieve_t* j = next_offset;
 			next_offset = sieve_begin + *(offset_cache_ptr + 1);
 
-			// j is aligned to a multiple of 15, so we have 0-8 multiples of p *behind* j that must be crossed off.
-			// Use eight branchless writes to j-(N * p) if they exist, falling back to a write to j in each case.
-			*(((j - (14 * p)) >= sieve_begin) ? (j - (14 * p)) : j) = false;
-			*(((j - (13 * p)) >= sieve_begin) ? (j - (13 * p)) : j) = false;
-			*(((j - (11 * p)) >= sieve_begin) ? (j - (11 * p)) : j) = false;
-			*(((j - (8 * p)) >= sieve_begin) ? (j - (8 * p)) : j) = false;
-			*(((j - (7 * p)) >= sieve_begin) ? (j - (7 * p)) : j) = false;
-			*(((j - (4 * p)) >= sieve_begin) ? (j - (4 * p)) : j) = false;
-			*(((j - (2 * p)) >= sieve_begin) ? (j - (2 * p)) : j) = false;
-			*(((j - p) >= sieve_begin) ? (j - p) : j) = false;
-
-			// Stop marking 15p early, then handle cleanup after the loop.
+			// Stop marking 15*p early
 			const sieve_t* const padded_end = sieve_end - (15 * p);
 
 			// Each iteration, j points to an (already marked) multiple of p*15.
@@ -136,17 +120,7 @@ namespace mbp
 				j += (15 * p);
 			} while (j < padded_end);
 
-			// Same as above, perform any remaining writes
-			*(((j + p) < sieve_end) ? (j + p) : j) = false;
-			*(((j + (2 * p)) < sieve_end) ? (j + (2 * p)) : j) = false;
-			*(((j + (4 * p)) < sieve_end) ? (j + (4 * p)) : j) = false;
-			*(((j + (7 * p)) < sieve_end) ? (j + (7 * p)) : j) = false;
-			*(((j + (8 * p)) < sieve_end) ? (j + (8 * p)) : j) = false;
-			*(((j + (11 * p)) < sieve_end) ? (j + (11 * p)) : j) = false;
-			*(((j + (13 * p)) < sieve_end) ? (j + (13 * p)) : j) = false;
-			*(((j + (14 * p)) < sieve_end) ? (j + (14 * p)) : j) = false;
-
-			// Calculate the offset and update the cache for the next sieving
+			// Calculate and cache the offset for the next sieving
 			*offset_cache_ptr = sieve_prime_t((j + (15 * p)) - sieve_end);
 
 			++prime_ptr;
@@ -175,11 +149,6 @@ namespace mbp
 			sieve_t* j = next_offset;
 			next_offset = sieve_begin + *(offset_cache_ptr + 1);
 
-			// Same as above, we are stepping by multiples of p. Use two branchless writes
-			// before and after the loop to handle any multiples near the start and end of the sieve.
-			*(((j - (2 * p)) >= sieve_begin) ? (j - (2 * p)) : j) = false;
-			*(((j - p) >= sieve_begin) ? (j - p) : j) = false;
-
 			const sieve_t* const padded_end = sieve_end - (3 * p);
 
 			// Same as above, j points to an (already marked) multiple of p.
@@ -190,9 +159,6 @@ namespace mbp
 				*(j + (2 * p)) = false;
 				j += (3 * p);
 			} while (j < padded_end);
-
-			*(((j + p) < sieve_end) ? (j + p) : j) = false;
-			*(((j + (2 * p)) < sieve_end) ? (j + (2 * p)) : j) = false;
 
 			*offset_cache_ptr = sieve_prime_t((j + (3 * p)) - sieve_end);
 		}
