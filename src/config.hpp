@@ -31,10 +31,12 @@ namespace mbp
 	const size_t bm_stop = bm_start + bm_size;
 
 	// The size of the static sieve is the product of these numbers. Exercise caution.
-	constexpr std::array static_sieve_primes{ 3ull, 5ull, 7ull, 11ull, 13ull };
+	constexpr std::array static_sieve_primes{ 3ull, 5ull, 7ull, 11ull, 13ull, 17ull };
 
-	// For a 50B benchmark, combinations of 3*43*12907 yield the same pass counts as 1
-	constexpr size_t sieve_steps = 3ull * 43ull; // default: 3ull * 43ull
+	constexpr size_t static_sieve_size = std::accumulate(static_sieve_primes.begin(),
+														 static_sieve_primes.end(), 1ull, std::multiplies());
+
+	constexpr size_t sieve_steps = 2ull; // default 2
 
 	const size_t sieve_primes_cap = 937; // default: 937
 

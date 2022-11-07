@@ -66,6 +66,22 @@ Replacing popcount shuffle step with more lookup tables was slower
 	NT stores and loads for additional lookup tables were slower still
 Using shrx to reduce instructions while merging masks was slightly slower
 
+Best times for different sieve limits:
+	163		14857 ms
+	211		14789 ms
+	263		14780 ms
+	283		14790 ms
+	311		14795 ms
+	367		14813 ms
+
+Best times for different sieve steps:
+	1		13605 ms
+	2		13573 ms
+	10		13604 ms
+	13		13588 ms
+	3*43	13666 ms
+
+1 sieve step per main loop iteration == 97,942 main loop iterations (97,942 == 2 * 13 * 3767)
 
 
 

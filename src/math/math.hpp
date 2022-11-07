@@ -77,7 +77,7 @@ namespace mbp
 
 		uint64_t lookup = 0;
 
-		// The popcount of a p12 can't be divisible by 2, 3, 5, 7 or 11
+		// The popcount of a p13 can't be divisible by 2, 3, 5, 7 or 11
 		//lookup |= (1ull << 2);
 		//lookup |= (1ull << 3);
 		//lookup |= (1ull << 5);

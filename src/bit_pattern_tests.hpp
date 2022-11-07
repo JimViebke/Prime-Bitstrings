@@ -5,92 +5,54 @@
 
 namespace mbp
 {
-	__forceinline void merge_static_sieve_with_bit_pattern_filters(
-		uint256_t* const out,
-		const uint256_t* const static_sieve_in,
-		const uint256_t* const pc_in,
-		const uint256_t* const gcd_in,
-		const uint256_t& valid_pcs,
-		const size_t& offset)
-	{
-		uint256_t pc_mask_0 = _mm256_load_si256(pc_in + offset + 0);
-		uint256_t ymm0 = _mm256_load_si256(static_sieve_in + offset + 0);
-		uint256_t gcd_mask_0 = _mm256_load_si256(gcd_in + offset + 0);
-		pc_mask_0 = _mm256_shuffle_epi8(valid_pcs, pc_mask_0);
-		ymm0 = _mm256_and_si256(ymm0, pc_mask_0);
-		ymm0 = _mm256_and_si256(ymm0, gcd_mask_0);
-		_mm256_store_si256(out + offset + 0, ymm0);
+	constexpr size_t pow_2_16 = 1ull << 16;
 
-		uint256_t pc_mask_1 = _mm256_load_si256(pc_in + offset + 1);
-		uint256_t ymm1 = _mm256_load_si256(static_sieve_in + offset + 1);
-		uint256_t gcd_mask_1 = _mm256_load_si256(gcd_in + offset + 1);
-		pc_mask_1 = _mm256_shuffle_epi8(valid_pcs, pc_mask_1);
-		ymm1 = _mm256_and_si256(ymm1, pc_mask_1);
-		ymm1 = _mm256_and_si256(ymm1, gcd_mask_1);
-		_mm256_store_si256(out + offset + 1, ymm1);
-
-		uint256_t pc_mask_2 = _mm256_load_si256(pc_in + offset + 2);
-		uint256_t ymm2 = _mm256_load_si256(static_sieve_in + offset + 2);
-		uint256_t gcd_mask_2 = _mm256_load_si256(gcd_in + offset + 2);
-		pc_mask_2 = _mm256_shuffle_epi8(valid_pcs, pc_mask_2);
-		ymm2 = _mm256_and_si256(ymm2, pc_mask_2);
-		ymm2 = _mm256_and_si256(ymm2, gcd_mask_2);
-		_mm256_store_si256(out + offset + 2, ymm2);
-
-		uint256_t pc_mask_3 = _mm256_load_si256(pc_in + offset + 3);
-		uint256_t ymm3 = _mm256_load_si256(static_sieve_in + offset + 3);
-		uint256_t gcd_mask_3 = _mm256_load_si256(gcd_in + offset + 3);
-		pc_mask_3 = _mm256_shuffle_epi8(valid_pcs, pc_mask_3);
-		ymm3 = _mm256_and_si256(ymm3, pc_mask_3);
-		ymm3 = _mm256_and_si256(ymm3, gcd_mask_3);
-		_mm256_store_si256(out + offset + 3, ymm3);
-	}
-
-	uint256_t manually_generate_bit_pattern_filters(size_t number)
+	std::vector<std::vector<bit_array<pow_2_16>>> build_popcounts_lookup()
 	{
 		constexpr size_t tiny_primes_lookup = build_tiny_primes_lookup();
-		constexpr size_t tiny_gcd_lookup = []() consteval {
-			size_t val = 0;
-			for (size_t i = 0; i < 32; ++i)
-				val |= size_t(gcd(i, size_t(3 * 5 * 7 * 11 * 13)) == 1ull) << i;
-			return val;
-		}();
 
-		uint256_t mask{};
+		std::vector<std::vector<bit_array<pow_2_16>>> pc_lookup;
+		pc_lookup.reserve(8);
 
-		for (size_t idx = 0; idx < 32; ++idx, number += 2)
+		// for each offset
+		for (size_t bit_offset = 0; bit_offset < 8; ++bit_offset)
 		{
-			const auto valid_pc = tiny_primes_lookup >> pop_count(number);
+			auto& offset_lookup = pc_lookup.emplace_back();
+			// subtract 2 to normalize outer popcount of 2-48 to idx 0-46 (47 elements)
+			offset_lookup.reserve(47);
 
-			const auto valid_gcd = tiny_gcd_lookup >> abs(pop_count(number & 0x5555555555555555) -
-														  pop_count(number & 0xAAAAAAAAAAAAAAAA));
+			// for each outer popcount
+			for (size_t outer_pc = 2; outer_pc <= 48; ++outer_pc)
+			{
+				const size_t shifted_primes_lookup = tiny_primes_lookup >> outer_pc;
+				uint64_t* bit_array_ptr = (uint64_t*)offset_lookup.emplace_back().data();
 
-			mask.m256i_u8[idx] = valid_pc & valid_gcd & 1u;
-		}
+				// inner bits == bits 1 through 16 (not 0 through 15)
 
-		return mask;
-	}
-
-
-
-	std::vector<uint8_t> build_popcounts_lookup()
-	{
-		std::vector<uint8_t> pc_lookup;
-		pc_lookup.reserve(1ull << 16);
-
-		for (size_t i = 0; i < (1ull << 16); ++i)
-		{
-			pc_lookup.push_back(uint8_t(pop_count(i)));
+				// Start inner_bits at 0-7 instead of 0. This drops off the first 0-7 (unused) values,
+				// and has the same effect as shifting this part of the lookup left by 0-7 bits.
+				for (size_t inner_bits = bit_offset; inner_bits < pow_2_16; /* increment below */)
+				{
+					uint64_t chunk = 0;
+					for (size_t j = 0; j < 64; ++j, ++inner_bits)
+					{
+						const size_t bit = (shifted_primes_lookup >> pop_count(inner_bits)) & 1;
+						chunk |= (bit << j);
+					}
+					*bit_array_ptr = chunk;
+					++bit_array_ptr;
+				}
+			}
 		}
 
 		return pc_lookup;
 	}
-	const std::vector<uint8_t> pc_lookup = build_popcounts_lookup();
+	const std::vector<std::vector<bit_array<pow_2_16>>> pc_lookup = build_popcounts_lookup();
 
-	std::vector<std::vector<uint8_t>> build_gcd_lookup()
+	std::vector<std::vector<bit_array<pow_2_16>>> build_gcd_lookup()
 	{
 		/*
-		We have 48 "outer" bits (47 upper and 1 lower) and 16 "inner" bits.
+		We have 48 "outer" bits (47 upper and 1 lower) and 16 "inner" bits (bits 1 through 16; not 0 through 15)
 
 		With 48 outer bits, we have 24 even and 24 odd bits:
 			even bits can be 1 through 24	(bottom bit is always set)
@@ -98,12 +60,9 @@ namespace mbp
 			Added together, (even - odd) yields range: -23 to +24
 
 		Normalize outer alternating bitsum from -23,+24 to 0,47 by adding 23
-
-		Build 48 lookup tables, each containing 2^16 bytes. The byte at index i reads 1 if the bit pattern of
-		i allows for a valid GCD, 0 otherwise.
 		*/
 
-		// contains 1 bits at indexes that share a GCD of 1 with a product of primes
+		// contains a 1 bit at indexes that share a GCD of 1 with a product of primes
 		constexpr size_t tiny_gcd_lookup = []() consteval {
 			size_t val = 0;
 			for (size_t i = 0; i < 32; ++i)
@@ -113,29 +72,46 @@ namespace mbp
 			return val;
 		}();
 
-		std::vector<std::vector<uint8_t>> gcd_lookup;
-		gcd_lookup.reserve(48);
+		std::vector<std::vector<bit_array<pow_2_16>>> gcd_lookup;
+		gcd_lookup.reserve(8);
 
-		for (int outer_abs = -23; outer_abs <= 24; ++outer_abs)
+		// for each offset
+		for (size_t bit_offset = 0; bit_offset < 8; ++bit_offset)
 		{
-			std::vector<uint8_t> lookup;
-			lookup.reserve(1ull << 16);
+			auto& offset_lookup = gcd_lookup.emplace_back();
+			offset_lookup.reserve(48);
 
-			for (size_t i = 0; i < (1ull << 16); ++i)
+			// for each outer alternating bitsum
+			for (int outer_abs = -23; outer_abs <= 24; ++outer_abs)
 			{
-				// calculate the alternating bitsum of i, add "outer_abs"
-				const auto even_pc = pop_count(i & 0xAAAAAAAAAAAAAAAA); // We're generating a lookup for bits 1-16,
-				const auto odd_pc = pop_count(i & 0x5555555555555555); //  so the even/odd masks are swapped
-				const auto alternating_bitsum = (even_pc - odd_pc) + outer_abs;
+				uint64_t* bit_array_ptr = (uint64_t*)offset_lookup.emplace_back().data();
 
-				lookup.push_back(uint8_t((tiny_gcd_lookup >> abs(alternating_bitsum)) & 1));
+				// Start inner_bits at 0-7 instead of 0. This drops off the first 0-7 (unused) values,
+				// and has the same effect as shifting this part of the lookup left by 0-7 bits.
+				for (size_t inner_bits = bit_offset; inner_bits < pow_2_16; /* increment below */)
+				{
+					// combine the next 64 writes
+					uint64_t chunk = 0;
+					for (size_t j = 0; j < 64; ++j, ++inner_bits)
+					{
+						// calculate the alternating bitsum of the inner bits, add outer_abs
+						const auto even_pc = pop_count(inner_bits & 0xAAAAAAAAAAAAAAAA); // We're generating a lookup for bits 1-16,
+						const auto odd_pc = pop_count(inner_bits & 0x5555555555555555); //  so the even/odd masks are swapped
+						const auto alternating_bitsum = (even_pc - odd_pc) + outer_abs;
+
+						const size_t bit = (tiny_gcd_lookup >> abs(alternating_bitsum)) & 1;
+						chunk |= (bit << j);
+					}
+
+					*bit_array_ptr = chunk;
+					++bit_array_ptr;
+				}
 			}
-
-			gcd_lookup.push_back(lookup);
 		}
 
 		return gcd_lookup;
 	}
-	const std::vector<std::vector<uint8_t>> gcd_lookup = build_gcd_lookup();
+	// [offset 0-7][outer abs 0-47][bitstring lower bits]
+	const std::vector<std::vector<bit_array<pow_2_16>>> gcd_lookup = build_gcd_lookup();
 
 }
