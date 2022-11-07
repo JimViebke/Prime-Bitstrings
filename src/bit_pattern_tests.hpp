@@ -9,40 +9,41 @@ namespace mbp
 		uint256_t* const out,
 		const uint256_t* const static_sieve_in,
 		const uint256_t* const pc_in,
+		const uint256_t* const gcd_in,
 		const uint256_t& valid_pcs,
-		const uint256_t* const gcd_in)
+		const size_t& offset)
 	{
-		uint256_t pc_mask_0 = _mm256_load_si256(pc_in + 0);
-		uint256_t ymm0 = _mm256_load_si256(static_sieve_in + 0);
-		uint256_t gcd_mask_0 = _mm256_loadu_si256(gcd_in + 0);
+		uint256_t pc_mask_0 = _mm256_load_si256(pc_in + offset + 0);
+		uint256_t ymm0 = _mm256_load_si256(static_sieve_in + offset + 0);
+		uint256_t gcd_mask_0 = _mm256_load_si256(gcd_in + offset + 0);
 		pc_mask_0 = _mm256_shuffle_epi8(valid_pcs, pc_mask_0);
 		ymm0 = _mm256_and_si256(ymm0, pc_mask_0);
 		ymm0 = _mm256_and_si256(ymm0, gcd_mask_0);
-		_mm256_store_si256(out + 0, ymm0);
+		_mm256_store_si256(out + offset + 0, ymm0);
 
-		uint256_t pc_mask_1 = _mm256_load_si256(pc_in + 1);
-		uint256_t ymm1 = _mm256_load_si256(static_sieve_in + 1);
-		uint256_t gcd_mask_1 = _mm256_loadu_si256(gcd_in + 1);
+		uint256_t pc_mask_1 = _mm256_load_si256(pc_in + offset + 1);
+		uint256_t ymm1 = _mm256_load_si256(static_sieve_in + offset + 1);
+		uint256_t gcd_mask_1 = _mm256_load_si256(gcd_in + offset + 1);
 		pc_mask_1 = _mm256_shuffle_epi8(valid_pcs, pc_mask_1);
 		ymm1 = _mm256_and_si256(ymm1, pc_mask_1);
 		ymm1 = _mm256_and_si256(ymm1, gcd_mask_1);
-		_mm256_store_si256(out + 1, ymm1);
+		_mm256_store_si256(out + offset + 1, ymm1);
 
-		uint256_t pc_mask_2 = _mm256_load_si256(pc_in + 2);
-		uint256_t ymm2 = _mm256_load_si256(static_sieve_in + 2);
-		uint256_t gcd_mask_2 = _mm256_loadu_si256(gcd_in + 2);
+		uint256_t pc_mask_2 = _mm256_load_si256(pc_in + offset + 2);
+		uint256_t ymm2 = _mm256_load_si256(static_sieve_in + offset + 2);
+		uint256_t gcd_mask_2 = _mm256_load_si256(gcd_in + offset + 2);
 		pc_mask_2 = _mm256_shuffle_epi8(valid_pcs, pc_mask_2);
 		ymm2 = _mm256_and_si256(ymm2, pc_mask_2);
 		ymm2 = _mm256_and_si256(ymm2, gcd_mask_2);
-		_mm256_store_si256(out + 2, ymm2);
+		_mm256_store_si256(out + offset + 2, ymm2);
 
-		uint256_t pc_mask_3 = _mm256_load_si256(pc_in + 3);
-		uint256_t ymm3 = _mm256_load_si256(static_sieve_in + 3);
-		uint256_t gcd_mask_3 = _mm256_loadu_si256(gcd_in + 3);
+		uint256_t pc_mask_3 = _mm256_load_si256(pc_in + offset + 3);
+		uint256_t ymm3 = _mm256_load_si256(static_sieve_in + offset + 3);
+		uint256_t gcd_mask_3 = _mm256_load_si256(gcd_in + offset + 3);
 		pc_mask_3 = _mm256_shuffle_epi8(valid_pcs, pc_mask_3);
 		ymm3 = _mm256_and_si256(ymm3, pc_mask_3);
 		ymm3 = _mm256_and_si256(ymm3, gcd_mask_3);
-		_mm256_store_si256(out + 3, ymm3);
+		_mm256_store_si256(out + offset + 3, ymm3);
 	}
 
 	uint256_t manually_generate_bit_pattern_filters(size_t number)
@@ -74,15 +75,15 @@ namespace mbp
 
 	std::vector<uint8_t> build_popcounts_lookup()
 	{
-		std::vector<uint8_t> popcounts;
-		popcounts.reserve(1ull << 16);
+		std::vector<uint8_t> pc_lookup;
+		pc_lookup.reserve(1ull << 16);
 
 		for (size_t i = 0; i < (1ull << 16); ++i)
 		{
-			popcounts.push_back(uint8_t(pop_count(i)));
+			pc_lookup.push_back(uint8_t(pop_count(i)));
 		}
 
-		return popcounts;
+		return pc_lookup;
 	}
 	const std::vector<uint8_t> pc_lookup = build_popcounts_lookup();
 

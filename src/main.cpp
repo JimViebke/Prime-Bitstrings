@@ -154,10 +154,11 @@ namespace mbp
 																  const uint256_t* in,
 																  size_t number)
 	{
-		constexpr size_t high_bits_mask = size_t(-1) << (16 + 1); // 64 bits == 47 high bits + (16 + 1)
-		constexpr size_t low_17_bits_mask = ~high_bits_mask;
+		// 64 bits == 47 high bits + (16 "inner" bits) + 1 low bit (always set)
+		constexpr size_t bits_1_16_mask = 0xFFFFull << 1;
+		constexpr size_t outer_48_bits_mask = ~bits_1_16_mask;
 
-		constexpr size_t prime_lookup = build_tiny_primes_lookup() >> 1; // preshift by 1 because the bottom bit is always set
+		constexpr size_t prime_lookup = build_tiny_primes_lookup();
 
 		constexpr size_t leftover_bytes = n_bytes % (32 * 4);
 		const uint256_t* const aligned_end = in + ((n_bytes - leftover_bytes) / 32);
@@ -170,57 +171,56 @@ namespace mbp
 
 		for (; in != aligned_end; )
 		{
+			const size_t outer_bits = number & outer_48_bits_mask;
+			const size_t bits_1_16 = (number & bits_1_16_mask) >> 1;
+
 			// set up the popcount lookup pointer
-			const size_t bits_1_16 = (number & low_17_bits_mask) >> 1;
 			const uint256_t* pc_lookup_ptr = (uint256_t*)&pc_lookup[bits_1_16];
 
 			// set up the gcd lookup pointer
-			const auto outer_even_pc = pop_count(number & 0x5555555555555555 & ~(0xFFFFull << 1));
-			const auto outer_odd__pc = pop_count(number & 0xAAAAAAAAAAAAAAAA & ~(0xFFFFull << 1));
-			const auto idx = (outer_even_pc - outer_odd__pc) + 23; // +23 to normalize -23,24 to 0,47
-			const uint256_t* gcd_lookup_ptr = (uint256_t*)(&gcd_lookup[idx][bits_1_16]);
+			const auto outer_even_pc = pop_count(outer_bits & 0x5555555555555555);
+			const auto outer_odd_pc = pop_count(outer_bits & 0xAAAAAAAAAAAAAAAA);
+			const auto gcd_idx = (outer_even_pc - outer_odd_pc) + 23; // +23 to normalize -23,24 to 0,47
+			const uint256_t* gcd_lookup_ptr = (uint256_t*)&gcd_lookup[gcd_idx][bits_1_16];
 
 			/*
 			We are iterating 4*32 elements at a time, therefore we are reading 4*32 elements
 			from the lookups per iteration. How many times can we do this before reaching
 			their ends?
 
-			Calculate this up front so the hot loop can just run until "stop".
-
-			AVX2 shuffle can handle 16 unique values, but a popcount of 0-16 is 17 values.
-			Resolve this by treating 16 (popcount of 0xFFFF) as a special case.
+			Calculate this up front so the hot loop can run using a simpler conditoin.
 			*/
-			size_t elements_to_FFFF = 0xFFFF - bits_1_16;
-			const size_t iters_to_FFFF = elements_to_FFFF / (4ull * 32);
+			size_t elements_to_FFFF = 0xFFFF - bits_1_16; // elements to rollover
 
-			const size_t iters_to_aligned_end = (aligned_end - in) / 4; // 4 reads of 32b each
-
-			const size_t n_iters = std::min(iters_to_FFFF, iters_to_aligned_end);
-			const uint256_t* const stop = in + (n_iters * 4); // *4 because ptr resolution is 32b, not 32*4
+			const size_t n_blocks = std::min(elements_to_FFFF / (4ull * 32), // 4*32 elements per iteration
+											 (aligned_end - in) / 4ull); // 4 reads of 32b each
 
 			// generate a 16+16 element lookup to mark which popcounts of bits 1-16 add up to a valid prime
-			const size_t high_bits = number & high_bits_mask;
-			const uint16_t shifted_prime_lookup = uint16_t(prime_lookup >> pop_count(high_bits));
+			const uint16_t shifted_prime_lookup = uint16_t(prime_lookup >> pop_count(outer_bits));
 			const uint256_t valid_pcs = util::expand_16_bits_to_bytes(shifted_prime_lookup);
 
 			// process blocks of 4*32 bytes
-			for (; in != stop; in += 4, out += 4, pc_lookup_ptr += 4, gcd_lookup_ptr += 4)
+			for (size_t offset = 0; offset < n_blocks * 4; offset += 4)
 			{
-				merge_static_sieve_with_bit_pattern_filters(out, in, pc_lookup_ptr, valid_pcs, gcd_lookup_ptr);
+				merge_static_sieve_with_bit_pattern_filters(out, in, pc_lookup_ptr, gcd_lookup_ptr, valid_pcs, offset);
 			}
 
-			number += n_iters * (32ull * 4 * 2);
+			in += n_blocks * 4;
+			out += n_blocks * 4;
+			pc_lookup_ptr += n_blocks * 4;
+			gcd_lookup_ptr += n_blocks * 4;
+			number += n_blocks * 4 * 32 * 2;
 
 			// if we are not at aligned_end, we are at a rollover
 			// (an 0xFFFF << 1 occurs in the next 4*32 bytes)
 			if (in != aligned_end)
 			{
-				elements_to_FFFF -= n_iters * 32 * 4;
+				elements_to_FFFF -= n_blocks * 32 * 4;
 
 				// elements_to_FFFF should be less than 128.
 				// >= 128 would mean that the 0xFFFF case does not occur in this 4*32 block
 
-				// handle 4 32-bit blocks
+				// handle 4 32-byte blocks
 				for (size_t block = 0; block < 4; ++block, number += 32ull * 2)
 				{
 					uint256_t mask{};
