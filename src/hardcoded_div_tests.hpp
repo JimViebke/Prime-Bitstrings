@@ -297,6 +297,7 @@ namespace mbp
 		return output;
 	}
 
+	template<bool on_fast_path>
 	tests_are_inlined size_t* div_tests_with_six_rems(size_t* input,
 													  const size_t* const candidates_end)
 	{
@@ -310,83 +311,136 @@ namespace mbp
 					  bitmask == bitmask_for<10, 13>::val);
 		static_assert(period_of<bitmask>::val == 6);
 
-		// constexpr uint128_t static_rems0 = { always all ones };
-		constexpr static uint128_t static_rems1 = uint128_t{ .m128i_u32{
-			pow_mod<3, 1, 7>::rem,
-			pow_mod<5, 1, 7>::rem,
-			pow_mod<4, 1, 13>::rem,
-			pow_mod<10, 1, 13>::rem } };
-		constexpr static uint128_t static_rems2 = uint128_t{ .m128i_u32{
-			pow_mod<3, 2, 7>::rem,
-			pow_mod<5, 2, 7>::rem,
-			pow_mod<4, 2, 13>::rem,
-			pow_mod<10, 2, 13>::rem } };
-		constexpr static uint128_t static_rems3 = uint128_t{ .m128i_u32{
-			pow_mod<3, 3, 7>::rem,
-			pow_mod<5, 3, 7>::rem,
-			pow_mod<4, 3, 13>::rem,
-			pow_mod<10, 3, 13>::rem } };
-		constexpr static uint128_t static_rems4 = uint128_t{ .m128i_u32{
-			pow_mod<3, 4, 7>::rem,
-			pow_mod<5, 4, 7>::rem,
-			pow_mod<4, 4, 13>::rem,
-			pow_mod<10, 4, 13>::rem } };
-		constexpr static uint128_t static_rems5 = uint128_t{ .m128i_u32{
-			pow_mod<3, 5, 7>::rem,
-			pow_mod<5, 5, 7>::rem,
-			pow_mod<4, 5, 13>::rem,
-			pow_mod<10, 5, 13>::rem } };
+		constexpr size_t upper_bits_mask = size_t(-1) << 32;
 
-		const auto xmm_rems1 = _mm_loadu_si128(&static_rems1);
-		const auto xmm_rems2 = _mm_loadu_si128(&static_rems2);
-		const auto xmm_rems3 = _mm_loadu_si128(&static_rems3);
-		const auto xmm_rems4 = _mm_loadu_si128(&static_rems4);
-		const auto xmm_rems5 = _mm_loadu_si128(&static_rems5);
-
-		const prime_lookup_t* const prime_factor_lookup_ptr = prime_factor_lookup.data();
+		constexpr static uint256_t static_rems_0 = uint256_t{ .m256i_u8{
+			1, 3, 2, 6, 4, 5,
+			1, 3, 2, 6, 4, 5,
+			1, 3, 2, 6, 4, 5,
+			1, 3, 2, 6, 4, 5,
+			1, 3, 2, 6, 4, 5,
+			1, 3 } };
+		constexpr static uint256_t static_rems_1 = uint256_t{ .m256i_u8{
+			1, 5, 4, 6, 2, 3,
+			1, 5, 4, 6, 2, 3,
+			1, 5, 4, 6, 2, 3,
+			1, 5, 4, 6, 2, 3,
+			1, 5, 4, 6, 2, 3,
+			1, 5 } };
+		constexpr static uint256_t static_rems_2 = uint256_t{ .m256i_u8{
+			1, 4, 3, 12, 9, 10,
+			1, 4, 3, 12, 9, 10,
+			1, 4, 3, 12, 9, 10,
+			1, 4, 3, 12, 9, 10,
+			1, 4, 3, 12, 9, 10,
+			1, 4 } };
+		constexpr static uint256_t static_rems_3 = uint256_t{ .m256i_u8{
+			1, 10, 9, 12, 3, 4,
+			1, 10, 9, 12, 3, 4,
+			1, 10, 9, 12, 3, 4,
+			1, 10, 9, 12, 3, 4,
+			1, 10, 9, 12, 3, 4,
+			1, 10 } };
 
 		size_t* output = input;
+		size_t number = *input; // load one iteration ahead
 
-		size_t next = *input;
+		size_t upper_bits = number & upper_bits_mask;
+
+		const size_t pc_0 = pop_count(upper_bits & (bitmask << 0));
+		size_t upper_sum_0 = pc_0;
+		size_t upper_sum_1 = pc_0;
+		size_t upper_sum_2 = pc_0;
+		size_t upper_sum_3 = pc_0;
+		const size_t pc_1 = pop_count(upper_bits & (bitmask << 1));
+		upper_sum_0 += pc_1 * pow_mod<3, 1, 7>::rem;
+		upper_sum_1 += pc_1 * pow_mod<5, 1, 7>::rem;
+		upper_sum_2 += pc_1 * pow_mod<4, 1, 13>::rem;
+		upper_sum_3 += pc_1 * pow_mod<10, 1, 13>::rem;
+		const size_t pc_2 = pop_count(upper_bits & (bitmask << 2));
+		upper_sum_0 += pc_2 * pow_mod<3, 2, 7>::rem;
+		upper_sum_1 += pc_2 * pow_mod<5, 2, 7>::rem;
+		upper_sum_2 += pc_2 * pow_mod<4, 2, 13>::rem;
+		upper_sum_3 += pc_2 * pow_mod<10, 2, 13>::rem;
+		const size_t pc_3 = pop_count(upper_bits & (bitmask << 3));
+		upper_sum_0 += pc_3 * pow_mod<3, 3, 7>::rem;
+		upper_sum_1 += pc_3 * pow_mod<5, 3, 7>::rem;
+		upper_sum_2 += pc_3 * pow_mod<4, 3, 13>::rem;
+		upper_sum_3 += pc_3 * pow_mod<10, 3, 13>::rem;
+		const size_t pc_4 = pop_count(upper_bits & (bitmask << 4));
+		upper_sum_0 += pc_4 * pow_mod<3, 4, 7>::rem;
+		upper_sum_1 += pc_4 * pow_mod<5, 4, 7>::rem;
+		upper_sum_2 += pc_4 * pow_mod<4, 4, 13>::rem;
+		upper_sum_3 += pc_4 * pow_mod<10, 4, 13>::rem;
+		const size_t pc_5 = pop_count(upper_bits & (bitmask << 5));
+		upper_sum_0 += pc_5 * pow_mod<3, 5, 7>::rem;
+		upper_sum_1 += pc_5 * pow_mod<5, 5, 7>::rem;
+		upper_sum_2 += pc_5 * pow_mod<4, 5, 13>::rem;
+		upper_sum_3 += pc_5 * pow_mod<10, 5, 13>::rem;
+
+		const prime_lookup_t* pf_lookup_ptr_b3m7 = prime_factor_lookup.data() + upper_sum_0;
+		const prime_lookup_t* pf_lookup_ptr_b5m7 = prime_factor_lookup.data() + upper_sum_1;
+		const prime_lookup_t* pf_lookup_ptr_b4m13 = prime_factor_lookup.data() + upper_sum_2;
+		const prime_lookup_t* pf_lookup_ptr_b10m13 = prime_factor_lookup.data() + upper_sum_3;
+
+		const uint256_t rems_0 = _mm256_loadu_si256(&static_rems_0);
+		const uint256_t rems_1 = _mm256_loadu_si256(&static_rems_1);
+		const uint256_t rems_2 = _mm256_loadu_si256(&static_rems_2);
+		const uint256_t rems_3 = _mm256_loadu_si256(&static_rems_3);
 
 		for (; input < candidates_end; )
 		{
-			const size_t number = next;
-			++input;
-			next = *input; // load one iteration ahead
+			if constexpr (!on_fast_path)
+			{
+				if ((number & upper_bits_mask) != upper_bits)
+				{
+					upper_bits = number & upper_bits_mask;
+					
+					// recalculate
+					pf_lookup_ptr_b3m7 = prime_factor_lookup.data() + get_upper_sum_of_rems<7, in_base<3>>(number);
+					pf_lookup_ptr_b5m7 = prime_factor_lookup.data() + get_upper_sum_of_rems<7, in_base<5>>(number);
+					pf_lookup_ptr_b4m13 = prime_factor_lookup.data() + get_upper_sum_of_rems<13, in_base<4>>(number);
+					pf_lookup_ptr_b10m13 = prime_factor_lookup.data() + get_upper_sum_of_rems<13, in_base<10>>(number);
+				}
+			}
 
-			// always write
-			*output = number;
+			uint256_t mask_lower = util::expand_bits_to_bytes(number & uint32_t(-1));
 
-			auto xmm0 = _mm_set1_epi32((int)pop_count(number & (bitmask << 0)));
-			auto xmm1 = _mm_set1_epi32((int)pop_count(number & (bitmask << 1)));
-			auto xmm2 = _mm_set1_epi32((int)pop_count(number & (bitmask << 2)));
-			auto xmm3 = _mm_set1_epi32((int)pop_count(number & (bitmask << 3)));
-			auto xmm4 = _mm_set1_epi32((int)pop_count(number & (bitmask << 4)));
-			auto xmm5 = _mm_set1_epi32((int)pop_count(number & (bitmask << 5)));
+			uint256_t sums_0 = _mm256_and_si256(mask_lower, rems_0);
+			uint256_t sums_1 = _mm256_and_si256(mask_lower, rems_1);
+			uint256_t sums_2 = _mm256_and_si256(mask_lower, rems_2);
+			uint256_t sums_3 = _mm256_and_si256(mask_lower, rems_3);
 
-			// multiply each popcount with Nth remainder of each test
-			// (rems0 is always all ones)
-			xmm1 = _mm_mullo_epi32(xmm1, xmm_rems1);
-			xmm2 = _mm_mullo_epi32(xmm2, xmm_rems2);
-			xmm3 = _mm_mullo_epi32(xmm3, xmm_rems3);
-			xmm4 = _mm_mullo_epi32(xmm4, xmm_rems4);
-			xmm5 = _mm_mullo_epi32(xmm5, xmm_rems5);
+			sums_0 = _mm256_sad_epu8(sums_0, _mm256_setzero_si256());
+			sums_1 = _mm256_sad_epu8(sums_1, _mm256_setzero_si256());
+			sums_2 = _mm256_sad_epu8(sums_2, _mm256_setzero_si256());
+			sums_3 = _mm256_sad_epu8(sums_3, _mm256_setzero_si256());
 
-			// add pairs
-			xmm0 = _mm_add_epi32(xmm0, xmm1);
-			xmm2 = _mm_add_epi32(xmm2, xmm3);
-			xmm4 = _mm_add_epi32(xmm4, xmm5);
-			// final adds
-			xmm0 = _mm_add_epi32(xmm0, xmm2);
-			xmm0 = _mm_add_epi32(xmm0, xmm4);
+			// pack 16 bits per u64 -> 16 bits per u32
+			auto sums_01 = _mm256_packus_epi32(sums_0, sums_1); // 0, 0, 1, 1   0, 0, 1, 1
+			auto sums_23 = _mm256_packus_epi32(sums_2, sums_3); // 2, 2, 3, 3,  2, 2, 3, 3
+			// pack 16 bits per u32 -> 16 bits per u16
+			auto sums_0123 = _mm256_packus_epi32(sums_01, sums_23); // 0,0,1,1,2,2,3,3  0,0,1,1,2,2,3,3
+
+			// add upper lane to lower lane
+			auto xmm_sums = _mm_add_epi16(_mm256_castsi256_si128(sums_0123),
+										  _mm256_extracti128_si256(sums_0123, 1));
+
+			// shift, and add adjacent u16s
+			xmm_sums = _mm_add_epi16(xmm_sums, _mm_srli_si128(xmm_sums, 2));
+
+			// mask bits to let us extract uint32s
+			xmm_sums = _mm_and_si128(xmm_sums, _mm_set1_epi32(0x00'00'FF'FF));
+
+			*output = number; // always write
+			number = *++input; // load one iteration ahead
 
 			// Only advance the pointer if the number is still a candidate
 			size_t merged_masks = 0;
-			merged_masks |= (prime_factor_lookup_ptr[xmm0.m128i_u32[0]] >> get_prime_index<7>::idx);
-			merged_masks |= (prime_factor_lookup_ptr[xmm0.m128i_u32[1]] >> get_prime_index<7>::idx);
-			merged_masks |= (prime_factor_lookup_ptr[xmm0.m128i_u32[2]] >> get_prime_index<13>::idx);
-			merged_masks |= (prime_factor_lookup_ptr[xmm0.m128i_u32[3]] >> get_prime_index<13>::idx);
+			merged_masks |= (pf_lookup_ptr_b3m7[xmm_sums.m128i_u32[0]] >> get_prime_index<7>::idx);
+			merged_masks |= (pf_lookup_ptr_b5m7[xmm_sums.m128i_u32[1]] >> get_prime_index<7>::idx);
+			merged_masks |= (pf_lookup_ptr_b4m13[xmm_sums.m128i_u32[2]] >> get_prime_index<13>::idx);
+			merged_masks |= (pf_lookup_ptr_b10m13[xmm_sums.m128i_u32[3]] >> get_prime_index<13>::idx);
 
 			output += ~merged_masks & 0b1;
 		}
