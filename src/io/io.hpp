@@ -132,88 +132,95 @@ namespace mbp
 
 	// New threadsafe mechanisms. Not necessarily compatible with the above.
 
-	struct multibase_prime
+	namespace io
 	{
-		size_t bitstring;
-		size_t up_to_base;
-	};
+		constexpr size_t num_threads = 1; // should be passed by command line instead
+		constexpr size_t block_size = 1'000'000'000;
 
-	struct block
-	{
-		const size_t start;
-		std::vector<multibase_prime> multibase_primes;
-
-		bool operator<(const auto& other) const { return start < other.start; }
-	};
-
-	namespace detail
-	{
-		struct
+		struct multibase_prime
 		{
-			std::mutex mutex;
+			size_t bitstring;
+			size_t up_to_base;
+		};
 
-			size_t next_block_to_assign;
-			std::set<size_t> assigned_blocks;
-
-			// Don't log results unless all earlier results have been logged
-			size_t next_block_to_log;
-			std::set<block> completed_blocks;
-		} state;
-
-		block get_next_block()
+		struct block
 		{
-			// Construct an object representing the next block of work
-			block next{ .start = state.next_block_to_assign };
+			const size_t start;
+			std::vector<multibase_prime> multibase_primes;
 
-			// Increment the next block to start
-			state.next_block_to_assign += mbp::block_size;
+			bool operator<(const auto& other) const { return start < other.start; }
+		};
 
-			// Note that the block has been assigned
-			state.assigned_blocks.insert(next.start);
-
-			return next;
-		}
-	}
-
-	block get_block()
-	{
-		std::lock_guard<std::mutex> lock(detail::state.mutex);
-		return detail::get_next_block();
-	}
-
-	block log_block_and_get_next_block(const block& completed)
-	{
-		std::lock_guard<std::mutex> lock(detail::state.mutex);
-
-		using namespace detail;
-
+		namespace detail
 		{
-			auto it = state.assigned_blocks.find(completed.start);
-			if (it == state.assigned_blocks.cend())
+			struct
 			{
-				std::cout << "A block was completed, but it was not known to have been assigned. This should never happen." << std::endl;
-				std::cin.ignore(); // Should never happen. Pause execution.
+				std::mutex mutex;
+
+				size_t next_block_to_assign;
+				std::set<size_t> assigned_blocks;
+
+				// Don't log results unless all earlier results have been logged
+				size_t next_block_to_log;
+				std::set<block> completed_blocks;
+			} state;
+
+			block get_next_block()
+			{
+				// Construct an object representing the next block of work
+				block next{ .start = state.next_block_to_assign };
+
+				// Increment the next block to start
+				state.next_block_to_assign += block_size;
+
+				// Note that the block has been assigned
+				state.assigned_blocks.insert(next.start);
+
+				return next;
 			}
-			state.assigned_blocks.erase(it);
 		}
 
-		// For the sake of simpler code, always append the completed block to the queue.
-		state.completed_blocks.insert(completed);
-
-		// Log as many completed blocks as we can
-		for (auto it = state.completed_blocks.begin();
-			 it != state.completed_blocks.end() && it->start == state.next_block_to_log;
-			 it = state.completed_blocks.begin())
+		block get_block()
 		{
-			for (const auto& mbp : it->multibase_primes)
-				log_result(mbp.bitstring, mbp.up_to_base);
-
-			state.next_block_to_log += mbp::block_size;
-
-			state.completed_blocks.erase(it);
+			std::lock_guard<std::mutex> lock(detail::state.mutex);
+			return detail::get_next_block();
 		}
 
-		// Return the next block
-		return detail::get_next_block();
+		block log_block_and_get_next_block(const block& completed)
+		{
+			std::lock_guard<std::mutex> lock(detail::state.mutex);
+
+			using namespace detail;
+
+			{
+				auto it = state.assigned_blocks.find(completed.start);
+				if (it == state.assigned_blocks.cend())
+				{
+					std::cout << "A block was completed, but it was not known to have been assigned. This should never happen." << std::endl;
+					std::cin.ignore(); // Should never happen. Pause execution.
+				}
+				state.assigned_blocks.erase(it);
+			}
+
+			// For the sake of simpler code, always append the completed block to the queue.
+			state.completed_blocks.insert(completed);
+
+			// Log as many completed blocks as we can
+			for (auto it = state.completed_blocks.begin();
+				 it != state.completed_blocks.end() && it->start == state.next_block_to_log;
+				 it = state.completed_blocks.begin())
+			{
+				for (const auto& mbp : it->multibase_primes)
+					log_result(mbp.bitstring, mbp.up_to_base);
+
+				state.next_block_to_log += block_size;
+
+				state.completed_blocks.erase(it);
+			}
+
+			// Return the next block
+			return detail::get_next_block();
+		}
 	}
+
 }
