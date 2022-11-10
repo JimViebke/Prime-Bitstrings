@@ -21,7 +21,7 @@ namespace mbp::util
 		std::ignore = _mkdir(path.c_str());
 	}
 
-	void print_bits(const size_t n)
+	std::string to_bits(const uint64_t n)
 	{
 		std::stringstream ss;
 		ss << std::bitset<8>(uint8_t(n >> (8 * 7))) << ' ';
@@ -31,8 +31,17 @@ namespace mbp::util
 		ss << std::bitset<8>(uint8_t(n >> (8 * 3))) << ' ';
 		ss << std::bitset<8>(uint8_t(n >> (8 * 2))) << ' ';
 		ss << std::bitset<8>(uint8_t(n >> (8 * 1))) << ' ';
-		ss << std::bitset<8>(uint8_t(n >> (8 * 0))) << '\n';
-		std::cout << ss.str();
+		ss << std::bitset<8>(uint8_t(n >> (8 * 0)));
+		return ss.str();
+	}
+	std::string to_bits(const uint32_t n)
+	{
+		std::stringstream ss;
+		ss << std::bitset<8>(uint8_t(n >> (8 * 3))) << ' ';
+		ss << std::bitset<8>(uint8_t(n >> (8 * 2))) << ' ';
+		ss << std::bitset<8>(uint8_t(n >> (8 * 1))) << ' ';
+		ss << std::bitset<8>(uint8_t(n >> (8 * 0)));
+		return ss.str();
 	}
 
 	__forceinline bool upper_32_bits_match(const size_t a, const size_t b)
