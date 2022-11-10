@@ -62,6 +62,9 @@ gather_sieve_results(), prime_popcount_test(), gcd_test(), and has_small_divisor
 update_div_test_order() has no measurable runtime overhead unless it runs at least once per 100M integers
 Worst-case ordering (primes high to low) reaches a sorted state by about +6 trillion ints when shuffling every 10 billion
 
+Replacing popcount shuffle step with more lookup tables was slower
+	NT stores and loads for additional lookup tables were slower still
+Using shrx to reduce instructions while merging masks was slightly slower
 
 
 
