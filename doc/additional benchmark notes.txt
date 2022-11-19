@@ -81,7 +81,6 @@ Best times for different sieve steps:
 	13		13588 ms
 	3*43	13666 ms
 
-1 sieve step per main loop iteration == 97,942 main loop iterations (97,942 == 2 * 13 * 3767)
 
 
 
