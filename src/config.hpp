@@ -46,6 +46,8 @@ namespace mbp
 		constexpr size_t n_of_primes = 32; // default: 32
 		constexpr size_t up_to_base = 13; // default: 13
 
+		constexpr size_t n_of_branchless_tests = 75;
+
 		constexpr size_t reorder_interval = 10'000'000'000; // default: 10 B
 	}
 

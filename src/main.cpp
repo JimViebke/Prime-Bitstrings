@@ -464,10 +464,10 @@ namespace mbp
 
 
 			// Check for small prime factors across all bases
-			candidates_end = branchless_div_tests<on_fast_path>(candidates, candidates_end, div_test::div_tests.data(), 5);
+			candidates_end = branchless_div_tests<on_fast_path>(candidates, candidates_end, div_test::div_tests.data(), div_test::n_of_branchless_tests);
 			count_passes(l += (candidates_end - candidates));
 
-			candidates_end = multibase_div_tests<on_fast_path>(candidates, candidates_end, div_test::div_tests.data() + 5);
+			candidates_end = multibase_div_tests<on_fast_path>(candidates, candidates_end, div_test::div_tests.data() + div_test::n_of_branchless_tests);
 			count_passes(m += (candidates_end - candidates));
 
 

@@ -14,8 +14,6 @@ namespace mbp
 												   div_test::div_test_t* div_tests,
 												   const size_t n_of_tests)
 	{
-		// See multibase_div_tests() for details.
-
 		using namespace div_test;
 		using namespace div_test::detail;
 
@@ -33,11 +31,80 @@ namespace mbp
 			const size_t* input = candidates_begin;
 			size_t* output = candidates_begin;
 
-			size_t number = *input; // load one iteration ahead
-
-			size_t upper_bits = number & upper_bits_mask;
+			size_t upper_bits = *input & upper_bits_mask;
 			const prime_lookup_t* pf_lookup_preinc = prime_factor_lookup.data() +
 				util::vcl_hadd_x(_mm256_and_si256(util::expand_bits_to_bytes(upper_bits >> 32), ymm1));
+
+			if constexpr (on_fast_path)
+			{
+				const uint256_t shuffle_mask_lo = _mm256_set_epi64x(0x0909090909090909, 0x0808080808080808, 0x0101010101010101, 0x0000000000000000);
+				const uint256_t shuffle_mask_hi = _mm256_set_epi64x(0x0B0B0B0B0B0B0B0B, 0x0A0A0A0A0A0A0A0A, 0x0303030303030303, 0x0202020202020202);
+				const uint256_t and_mask = _mm256_set1_epi64x(0x80'40'20'10'08'04'02'01);
+
+				// We're testing candidates against the same div test.
+				// Load the lowest 16 bytes of a div test into high and low lanes of a register
+				// Load the next 16 bytes of a div test into high and low lanes of a register
+				const uint128_t rems_0_15 = _mm_loadu_si128((uint128_t*)&div_test.remainders[0]);
+				const uint256_t rems_lo = _mm256_inserti128_si256(_mm256_castsi128_si256(rems_0_15), rems_0_15, 1);
+				const uint128_t rems_16_31 = _mm_loadu_si128((uint128_t*)&div_test.remainders[16]);
+				const uint256_t rems_hi = _mm256_inserti128_si256(_mm256_castsi128_si256(rems_16_31), rems_16_31, 1);
+
+				// calculate the number of candidates, rounded down to the nearest 2
+				const size_t n_of_candidates = shrinking_end - input;
+				const size_t* const rounded_end = input + (n_of_candidates - (n_of_candidates % 2));
+
+				// load two candidates
+				uint128_t xmm_candidates = _mm_loadu_si128((uint128_t*)input);
+				uint256_t candidates = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_candidates), xmm_candidates, 1);
+
+				for (; input < rounded_end; )
+				{
+					// convert bits to bytes
+					uint256_t candidates_lo = _mm256_shuffle_epi8(candidates, shuffle_mask_lo);
+					uint256_t candidates_hi = _mm256_shuffle_epi8(candidates, shuffle_mask_hi);
+
+					// load ahead
+					xmm_candidates = _mm_loadu_si128((uint128_t*)(input + 2));
+					candidates = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_candidates), xmm_candidates, 1);
+
+					// convert bits to bytes, cont'd
+					candidates_lo = _mm256_andnot_si256(candidates_lo, and_mask);
+					candidates_hi = _mm256_andnot_si256(candidates_hi, and_mask);
+					candidates_lo = _mm256_cmpeq_epi8(candidates_lo, _mm256_setzero_si256());
+					candidates_hi = _mm256_cmpeq_epi8(candidates_hi, _mm256_setzero_si256());
+
+					// mask to select remainders
+					candidates_lo = _mm256_and_si256(candidates_lo, rems_lo);
+					candidates_hi = _mm256_and_si256(candidates_hi, rems_hi);
+
+					// vertically sum low and high remainders (bytes [0, 1, 0, 1] + [2, 3, 2, 3])
+					uint256_t remainders = _mm256_add_epi8(candidates_lo, candidates_hi);
+					// h-sum 4 sets of 8 consecutive bytes
+					remainders = _mm256_sad_epu8(remainders, _mm256_setzero_si256());
+					// final h-sum
+					remainders = _mm256_add_epi16(remainders, _mm256_shuffle_epi32(remainders, 2));
+
+					const auto lookup_a = pf_lookup_preinc[remainders.m256i_u32[0]];
+					const auto lookup_b = pf_lookup_preinc[remainders.m256i_u32[4]];
+
+					// load and increment
+					const size_t candidate_a = *input;
+					const size_t candidate_b = *(input + 1);
+					input += 2;
+
+					*output = candidate_a; // always write
+					// branchless conditional increment
+					if ((lookup_a & (1 << div_test.prime_idx)) == 0) ++output;
+
+					*output = candidate_b;
+					if ((lookup_b & (1 << div_test.prime_idx)) == 0) ++output;
+				}
+
+				// if there is a remaining (odd) candidate, the loop below runs once and handles it
+
+			} // end if (on_fast_path)
+
+			size_t number = *input; // load one iteration ahead
 
 			for (; input < shrinking_end; )
 			{
