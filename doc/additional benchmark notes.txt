@@ -81,6 +81,16 @@ Best times for different sieve steps:
 	13		13588 ms
 	3*43	13666 ms
 
+Best times for different n_of_branchless_tests:
+	20		13420
+	25		13415
+	30		13412
+	35		13386
+	40		13380
+	45		13373
+	...
+	75		13348 * 
+	80		13360
 
 
 
