@@ -10,16 +10,6 @@ namespace mbp
 	using uint128_t = __m128i;
 	using uint256_t = __m256i;
 
-	template<typename T, size_t N>
-	class alignas(64) aligned64
-	{
-	public:
-		T& operator[](size_t i) { return data[i]; }
-		const T& operator[](size_t i) const { return data[i]; }
-	private:
-		std::array<T, N> data{};
-	};
-
 	// Bitset with cache line alignment.
 	// Supress warning C4324: 'structure was padded due to alignment'
 #pragma warning(push)
