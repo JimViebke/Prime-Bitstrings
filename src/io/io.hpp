@@ -89,7 +89,7 @@ namespace mbp
 		time_t timestamp = time(0);
 		tm now;
 		localtime_s(&now, &timestamp);
-		std::cout << std::setfill(' ') << std::setw(2) << ((now.tm_hour % 12 == 0) ? 12 : now.tm_hour % 12) << ':' << std::setfill('0') << std::setw(2) << now.tm_min << '\t';
+		std::cout << std::setw(2) << ((now.tm_hour % 12 == 0) ? 12 : now.tm_hour % 12) << ':' << std::setfill('0') << std::setw(2) << now.tm_min << std::setfill(' ') << '\t';
 	}
 
 	void log_result(const size_t n, const size_t up_to_base)
