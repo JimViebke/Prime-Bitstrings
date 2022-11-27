@@ -92,7 +92,7 @@ namespace mbp
 #define log_pass_counts(...)
 #endif
 
-#if 1 // toggle inlining on sieve, GCD, and div tests
+#if 1 // toggle inlining on div tests
 #define tests_are_inlined __forceinline
 #else
 #define tests_are_inlined __declspec(noinline)
