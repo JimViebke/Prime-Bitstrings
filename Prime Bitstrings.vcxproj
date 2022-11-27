@@ -165,10 +165,17 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\find_multibase_primes.cpp" />
+    <ClCompile Include="src\io\io.cpp" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\primality_tests.cpp" />
+    <ClCompile Include="src\trial_division\multibase_div_tests.cpp" />
+    <ClCompile Include="src\util\simd.cpp" />
+    <ClCompile Include="src\util\utility.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\bit_pattern_tests.hpp" />
+    <ClInclude Include="src\find_multibase_primes.hpp" />
     <ClInclude Include="src\full_div_tests.hpp" />
     <ClInclude Include="src\hardcoded_div_tests.hpp" />
     <ClInclude Include="src\sieve.hpp" />

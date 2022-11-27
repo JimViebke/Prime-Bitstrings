@@ -12,9 +12,10 @@
 
 #include <immintrin.h>
 #include <stdint.h>
+#include <vector>
 
-#include "config.hpp"
-#include "util/types.hpp"
+#include "../config.hpp"
+#include "../util/types.hpp"
 
 namespace mbp
 {
@@ -55,14 +56,9 @@ namespace mbp
 
 	constexpr std::array small_primes_lookup = detail::build_small_primes_lookup();
 
-	bool mpir_is_prime(const mpz_class& p, gmp_randclass& r)
+	inline bool mpir_is_prime(const mpz_class& p, gmp_randclass& r)
 	{
 		return mpz_likely_prime_p(p.get_mpz_t(), r.get_randstate_t(), 0);
-	}
-
-	mpz_class bin_to_base(const mpz_class& binary, const size_t base)
-	{
-		return mpz_class{ binary.get_str(2), int(base) };
 	}
 
 	inline auto pop_count(uint64_t n)

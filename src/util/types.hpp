@@ -1,14 +1,11 @@
 #pragma once
 
-#include "config.hpp"
+#include "../config.hpp"
 #include "utility.hpp"
 
 namespace mbp
 {
 	using sieve_prime_t = util::narrowest_uint_for_val<sieve_primes_cap>;
-
-	using uint128_t = __m128i;
-	using uint256_t = __m256i;
 
 	// Bitset with cache line alignment.
 	// Supress warning C4324: 'structure was padded due to alignment'

@@ -117,3 +117,4 @@ Calculate change: 1 - (  /  )
 11891 ms : Save instrs in 6-rem tests; use pdep in 3-rem tests (<1% faster)
  === change benchmark from p11 + 50 billion to p11 + 150 billion ===
 33528 ms : (no changes)
+34488 ms : Restructure source files (~3% slower)

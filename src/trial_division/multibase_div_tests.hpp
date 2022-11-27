@@ -17,173 +17,24 @@ Therefore, for base b, place value n, and a small prime p, we calculate and stor
 
 namespace mbp::div_test
 {
+
+	template<bool on_fast_path>
+	size_t* branchless_div_tests(size_t* const candidates_begin,
+								 size_t* const candidates_end,
+								 const size_t n_of_tests);
+
+	template<bool on_fast_path>
+	size_t* branching_div_tests(size_t* input,
+								const size_t* const candidates_end,
+								const size_t start_offset);
+
+	void update_div_test_order();
+	void print_div_tests();
+	void run_div_test_analysis(const size_t number);
+
 	namespace detail
 	{
-		consteval std::vector<div_test_t> generate_div_tests_impl()
-		{
-			std::vector<uncompressed_div_test_t> uncompressed_dts;
-
-			for (size_t i = 1; i < n_of_primes; ++i) // for each small prime starting from 3
-			{
-				for (size_t base = 3; base <= up_to_base; ++base) // for each base 3..n
-				{
-					const auto p = small_primes_lookup[i];
-
-					// Skip always-composite cases
-					if (base % p == 0) continue;
-
-					// Always suppress hardcoded div tests
-
-					// Hardcoded div tests with 4 remainders
-					if (base == 3 && p == 5) continue;
-					if (base == 5 && p == 13) continue;
-					if (base == 8 && p == 13) continue;
-					if (base == 4 && p == 17) continue;
-
-					// 4 remainders, standalone
-					if (base == 13 && p == 17) continue;
-
-					// 3 remainders
-					if (base == 4 && p == 7) continue;
-					if (base == 3 && p == 13) continue;
-					if (base == 9 && p == 13) continue;
-
-					// second set with 4 remainders
-					if (base == 12 && p == 29) continue;
-					if (base == 6 && p == 37) continue;
-
-					// 6 remainders
-					if (base == 3 && p == 7) continue;
-					if (base == 5 && p == 7) continue;
-					if (base == 4 && p == 13) continue;
-					if (base == 10 && p == 13) continue;
-
-					// 5 remainders
-					if (base == 3 && p == 11) continue;
-					if (base == 4 && p == 11) continue;
-					if (base == 5 && p == 11) continue;
-					if (base == 9 && p == 11) continue;
-
-					// 16 remainders
-					if (base == 3 && p == 17) continue;
-					if (base == 5 && p == 17) continue;
-					if (base == 6 && p == 17) continue;
-					if (base == 7 && p == 17) continue;
-					if (base == 10 && p == 17) continue;
-					if (base == 11 && p == 17) continue;
-					if (base == 12 && p == 17) continue;
-
-					// 10 remainders
-					if (base == 6 && p == 11) continue;
-					if (base == 7 && p == 11) continue;
-					if (base == 8 && p == 11) continue;
-
-					// 12 remainders
-					if (base == 6 && p == 13) continue;
-					if (base == 7 && p == 13) continue;
-					if (base == 11 && p == 13) continue;
-
-					// 8 remainders
-					if (base == 8 && p == 17) continue;
-					if (base == 9 && p == 17) continue;
-
-				#if !analyze_div_tests or suppress_extra_div_tests
-					if (base == 4 && p == 3) continue; //  base  4^n % 3 unused
-					if (base == 5 && p == 3) continue; //  base  5^n % 3 unused
-					if (base == 7 && p == 3) continue; //  base  7^n % 3 unused
-					if (base == 8 && p == 3) continue; //  base  8^n % 3 unused
-					if (base == 10 && p == 3) continue; // base 10^n % 3 unused
-					if (base == 11 && p == 3) continue; // base 11^n % 3 unused
-					if (base == 13 && p == 3) continue; // base 13^n % 3 unused
-
-					if (base == 4 && p == 5) continue; //  base  4^n % 5 unused
-					if (base == 6 && p == 5) continue; //  base  6^n % 5 unused
-					if (base == 7 && p == 5) continue; //  base  7^n % 5 unused
-					if (base == 9 && p == 5) continue; //  base  9^n % 5 unused
-					if (base == 11 && p == 5) continue; // base 11^n % 5 unused
-					if (base == 12 && p == 5) continue; // base 12^n % 5 unused
-					if (base == 13 && p == 5) continue; // base 13^n % 5 unused
-
-					if (base == 6 && p == 7) continue; //  base  6^n % 7 unused
-					if (base == 8 && p == 7) continue; //  base  8^n % 7 unused
-					if (base == 9 && p == 7) continue; //  base  9^n % 7 unused
-					if (base == 13 && p == 7) continue; //  base 13 % 7 unused
-
-					if (base == 10 && p == 11) continue; // base 10^n % 11 unused
-					if (base == 12 && p == 11) continue; // base 12^n % 11 unused
-					if (base == 13 && p == 11) continue; // base 13^n % 11 unused
-
-					if (base == 12 && p == 13) continue; // base 12^n % 13 unused
-
-					// If two div tests are effectively identical, remove one
-					if (base == 8 && p == 5) continue; //  base  8^n % 5 is congruent to 3^n % 5
-					if (base == 10 && p == 7) continue; // base 10^n % 7 is congruent to 3^n % 7
-					if (base == 11 && p == 7) continue; // base 11^n % 7 is congruent to 4^n % 7
-					if (base == 12 && p == 7) continue; // base 12^n % 7 is congruent to 5^n % 7
-
-				#endif
-
-					uncompressed_div_test_t dt{ .base = base_t(base), .prime_idx = prime_idx_t(i) };
-
-					// calculate base^j mod prime, where j is the place value
-					for (size_t j = 0; j < 64; ++j)
-					{
-						remainder_t rem = remainder_t(pk::powMod(base, j, p));
-						if (rem == 1 && j > 0)
-						{
-							// The pattern is repeating; stop generating further terms
-							break;
-						}
-
-						dt.remainders[j] = rem;
-						dt.n_of_remainders++;
-					}
-
-					uncompressed_dts.push_back(dt);
-				}
-			}
-
-			// Div tests are periodically re-ordered during runtime based on performance.
-			// To reflect real-world performance in benchmarks, pre-order the div tests based
-			// on cached performance data (the hitcount of each test).
-			// Otherwise, start with the default ordering of primes, low to high.
-			if constexpr (benchmark_mode)
-			{
-				for (auto& dt : uncompressed_dts)
-				{
-					dt.hits = cached_hitcount_for(dt.base, small_primes_lookup[dt.prime_idx]);
-				}
-
-				std::sort(uncompressed_dts.begin(), uncompressed_dts.end(),
-						  [](const auto& a, const auto& b) { return a.hits > b.hits; });
-			}
-
-			std::vector<div_test_t> div_tests;
-			div_tests.reserve(uncompressed_dts.size());
-
-			for (const auto& udt : uncompressed_dts)
-			{
-				div_test_t dt{
-					.prime_idx = udt.prime_idx,
-					.n_of_remainders = udt.n_of_remainders,
-					.remainders = udt.remainders };
-
-				// Repeat the remainders so all div tests have 64 terms
-				for (size_t i = dt.n_of_remainders; i < 64; ++i)
-				{
-					dt.remainders[i] = dt.remainders[i - dt.n_of_remainders];
-				}
-
-			#if analyze_div_tests
-				// We do need to copy this if we're in analyze mode
-				dt.base = udt.base;
-			#endif
-
-				div_tests.push_back(dt);
-			}
-
-			return div_tests;
-		}
+		// consteval std::vector<div_test_t> generate_div_tests_impl();
 
 		// calculate a^b mod m
 		template<size_t a, size_t b, size_t m>
@@ -243,85 +94,34 @@ namespace mbp::div_test
 		};
 	}
 
-
-
-	// looping, sorted div tests:
-
-	constexpr size_t div_tests_size = detail::generate_div_tests_impl().size();
-	consteval std::array<div_test_t, div_tests_size> generate_div_tests()
-	{
-		std::array<div_test_t, div_tests_size> div_tests{};
-		const auto x = detail::generate_div_tests_impl();
-		std::copy(x.begin(), x.end(), div_tests.begin());
-		return div_tests;
-	}
-
-	using div_tests_t = std::array<div_test::div_test_t, div_test::div_tests_size>;
-	static div_tests_t div_tests = generate_div_tests(); // intellisense false positive
-
-
-
 	namespace detail
 	{
-		consteval size_t calculate_prime_factor_lookup_size()
-		{
-			constexpr div_tests_t div_tests_constexpr = generate_div_tests();
+		//consteval size_t calculate_prime_factor_lookup_size()
+		//{
+		//	constexpr div_tests_t div_tests_constexpr = generate_div_tests();
 
-			size_t largest_sum = 0;
+		//	size_t largest_sum = 0;
 
-			// Calculate the largest possible sum of remainders of a number with every bit set
-			for (const auto& div_test : div_tests_constexpr)
-			{
-				const size_t sum = std::accumulate(div_test.remainders.begin(), div_test.remainders.end(), size_t(0));
+		//	// Calculate the largest possible sum of remainders of a number with every bit set
+		//	for (const auto& div_test : div_tests_constexpr)
+		//	{
+		//		const size_t sum = std::accumulate(div_test.remainders.begin(), div_test.remainders.end(), size_t(0));
 
-				if (sum > largest_sum)
-					largest_sum = sum;
-			}
+		//		if (sum > largest_sum)
+		//			largest_sum = sum;
+		//	}
 
-			// + 1 so "lookup[sum]" is always in range
-			return largest_sum + 1;
-		}
+		//	// + 1 so "lookup[sum]" is always in range
+		//	return largest_sum + 1;
+		//}
+
+		// come back to this
 
 		using prime_lookup_t = util::narrowest_uint_for_n_bits<div_test::n_of_primes>;
-		constexpr size_t prime_factor_lookup_size = calculate_prime_factor_lookup_size(); // intellisense false positive
+		constexpr size_t prime_factor_lookup_size = 5'000; // calculate_prime_factor_lookup_size(); // intellisense false positive
 
-		// Faster version
-		std::vector<prime_lookup_t> build_prime_factor_lookup_old()
-		{
-			std::vector<prime_lookup_t> lookup;
-			lookup.reserve(prime_factor_lookup_size);
-
-			for (size_t i = 0; i < prime_factor_lookup_size; ++i)
-			{
-				prime_lookup_t entry = 0;
-				for (prime_lookup_t p = 0; p < div_test::n_of_primes; ++p)
-				{
-					entry |= (prime_lookup_t((i % small_primes_lookup[p]) == 0) << p);
-				}
-
-				lookup.push_back(entry);
-			}
-
-			return lookup;
-		}
-
-		// Slower version
-		std::vector<prime_lookup_t> build_prime_factor_lookup_new()
-		{
-			std::vector<prime_lookup_t> lookup(prime_factor_lookup_size, 0);
-
-			for (size_t i = 0; i < div_test::n_of_primes; ++i)
-			{
-				const prime_lookup_t p = small_primes_lookup[i];
-
-				for (prime_lookup_t j = 0; j < prime_factor_lookup_size; j += p)
-				{
-					lookup[j] |= (0b1 << i);
-				}
-			}
-
-			return lookup;
-		}
+		std::vector<prime_lookup_t> build_prime_factor_lookup_old();
+		std::vector<prime_lookup_t> build_prime_factor_lookup_new();
 
 		const std::vector<prime_lookup_t> prime_factor_lookup = build_prime_factor_lookup_old();
 	}

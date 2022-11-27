@@ -15,6 +15,7 @@ namespace mbp
 {
 	namespace detail
 	{
+	#if 0
 		void find_p_n()
 		{
 			const auto start = util::current_time_in_ms();
@@ -36,23 +37,26 @@ namespace mbp
 
 				for (size_t base = 3; ; ++base)
 				{
-					mpz_number = bin_to_base(number, base);
+					mpz_number.set_str(some_string, base);
+
 					if (!mpir_is_prime(mpz_number, r)) break;
 
 					// if this is the next P
 					if (base == next_base)
 					{
 						// print in base 10 to get the zeroes and ones
-						std::cout << "p" << base << " = " << bin_to_base(number, 10) << '\n';
-						++next_base;
-						if (next_base > max_base) goto done;
+						std::cout << "p" << base << " = " << some_string << '\n';
+
+						if (++next_base > max_base)
+						{
+							std::cout << "Found in " << util::current_time_in_ms() - start << " ms.\n";
+							return;
+						}
 					}
 				}
 			}
-
-		done:
-			std::cout << "Found in " << util::current_time_in_ms() - start << " ms.\n";
 		}
+	#endif
 
 		void calculate_static_sieve_sizes()
 		{
