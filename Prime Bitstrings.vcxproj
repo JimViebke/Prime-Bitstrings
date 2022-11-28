@@ -110,7 +110,7 @@
       <AssemblerOutput>AssemblyAndSourceCode</AssemblerOutput>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
-      <AdditionalOptions>/constexpr:steps4194304 /openmp:experimental /favor:INTEL64</AdditionalOptions>
+      <AdditionalOptions>/constexpr:steps8388608 /openmp:experimental /favor:INTEL64</AdditionalOptions>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <StringPooling>true</StringPooling>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -146,7 +146,7 @@
       <AssemblerOutput>AssemblyAndSourceCode</AssemblerOutput>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
-      <AdditionalOptions>/constexpr:steps4194304 /openmp:experimental /favor:INTEL64</AdditionalOptions>
+      <AdditionalOptions>/constexpr:steps8388608 /openmp:experimental /favor:INTEL64</AdditionalOptions>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <StringPooling>true</StringPooling>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
