@@ -27,7 +27,7 @@ namespace mbp
 	const bool benchmark_mode = false;
 
 	const size_t bm_start = p11; // default: p11
-	const size_t bm_size = 50'000'000'000; // default 50'000'000'000
+	const size_t bm_size = 150'000'000'000; // default 150'000'000'000
 	const size_t bm_stop = bm_start + bm_size;
 
 	// The size of the static sieve is the product of these numbers. Exercise caution.
