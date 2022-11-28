@@ -406,3 +406,5 @@ doc/scratch.txt
 *.lnk
 doc/div test table.txt
 doc/Perf table.xlsx
+Compile Score/
+CompileScoreSettings.json
