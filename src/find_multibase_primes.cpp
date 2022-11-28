@@ -340,6 +340,40 @@ namespace mbp
 		full_primality_tests(candidates, candidates_end);
 	}
 
+
+
+	void print_config()
+	{
+		std::stringstream ss{};
+
+		if constexpr (benchmark_mode)
+		{
+			ss << "Benchmark from ";
+			if constexpr (bm_start == p11) ss << "p11";
+			else if constexpr (bm_start == p12) ss << "p12";
+			else ss << bm_start;
+			ss << ", size: " << bm_size / 1'000'000'000 << " B\n";
+		}
+
+		ss << "Static sieve size: " << static_sieve_size
+			<< ", primes: 3-" << static_sieve_primes.back() << '\n';
+		ss << "Sieve limit: " << size_t(last_prime_for_stepping_by_fifteen)
+			<< ", steps: " << sieve_steps
+			<< ", candidate capacity: " << candidates_capacity << '\n';
+
+		//ss << "Generated " << div_test::div_tests.size() << " div tests ("
+		//	<< div_test::n_of_branchless_tests << "branchless + "
+		//	<< div_test::div_tests.size() - div_test::n_of_branchless_tests << " branching), "
+		//	<< div_test::n_of_primes << " prime factors, "
+		//	<< "bases 3-" << div_test::up_to_base
+		//	<< ", partial reorder every " << div_test::reorder_interval / 1'000'000'000 << " B\n";
+
+		ss << "SPRP rounds: " << prime_test::n_random_bases << ", td limit: " << sieve_primes_cap << '\n';
+
+	#define stringify(macro) #macro
+
+		std::cout << ss.str() << std::endl;
+	}
 }
 
 template void mbp::find_multibase_primes::main_loop<true>(const size_t);

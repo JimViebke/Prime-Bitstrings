@@ -5,6 +5,7 @@
 int main()
 {
 	mbp::print_preamble();
+	// mbp::print_config();
 
 	mbp::find_multibase_primes mbp;
 	mbp.run();
