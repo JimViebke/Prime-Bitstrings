@@ -1,13 +1,12 @@
 
 #include <sstream>
 
-#include "find_multibase_primes.hpp"
-
 #include "bit_pattern_tests.hpp"
+#include "find_multibase_primes.hpp"
 #include "hardcoded_div_tests.hpp"
 #include "io/io.hpp"
-#include "trial_division/multibase_div_tests.hpp"
 #include "sieve.hpp"
+#include "trial_division/multibase_div_tests.hpp"
 #include "util/simd.hpp"
 #include "util/types.hpp"
 

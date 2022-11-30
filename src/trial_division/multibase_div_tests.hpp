@@ -124,6 +124,33 @@ namespace mbp::div_test
 		std::vector<prime_lookup_t> build_prime_factor_lookup_new();
 
 		const std::vector<prime_lookup_t> prime_factor_lookup = build_prime_factor_lookup_old();
+
+
+
+		template<size_t max_rem_sum>
+		consteval std::array<uint8_t, max_rem_sum + 1> build_indivisible_lookup(const size_t prime_factor,
+																				const size_t increment_n_bytes)
+		{
+			std::array<uint8_t, max_rem_sum + 1> lookup;
+			lookup.fill(uint8_t(increment_n_bytes));
+
+			for (size_t i = 0; i < lookup.size(); i += prime_factor)
+			{
+				lookup[i] = 0;
+			}
+
+			return lookup;
+		}
+
+		constexpr size_t max_rem_sum_b13m17 = (pow_mod<13, 0, 17>::rem +
+											   pow_mod<13, 1, 17>::rem +
+											   pow_mod<13, 2, 17>::rem +
+											   pow_mod<13, 3, 17>::rem) * (64 / 4); // 64 bits, period 4
+		// 0 == divisible by N
+		// 2x sizeof(uint64_t) == not divisible by N
+		constexpr static std::array indivisible_lookup_b13m17 = build_indivisible_lookup<max_rem_sum_b13m17>(17, 2 * sizeof(uint64_t));
+
+		extern std::array<std::vector<uint8_t>, div_test::n_of_primes> indivisible_by;
 	}
 
 	// Replaces "n % prime[idx] == 0" with "lookup[n] & (1 << idx)", usually as bittest + cmov

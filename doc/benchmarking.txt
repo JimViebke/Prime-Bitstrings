@@ -118,3 +118,4 @@ Calculate change: 1 - (  /  )
  === change benchmark from p11 + 50 billion to p11 + 150 billion ===
 33528 ms : (no changes)
 34488 ms : Restructure source files (~3% slower)
+30979 ms : Use divisibility lookup for increments in hardcoded and branchless div tests (~10% faster)

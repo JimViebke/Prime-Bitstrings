@@ -68,8 +68,6 @@ namespace mbp
 					  bitmask == bitmask_for<4, 17>::val);
 		static_assert(period_of<bitmask>::val == 4);
 
-		const prime_lookup_t* const pf_lookup_ptr = prime_factor_lookup.data();
-
 		size_t* output = input;
 
 		if constexpr (on_fast_path)
@@ -109,10 +107,10 @@ namespace mbp
 			b5m13_urem += upc_3 * pow_mod<5, 3, 13>::rem;
 			b8m13_urem += upc_3 * pow_mod<8, 3, 13>::rem;
 			b4m17_urem += upc_3 * pow_mod<4, 3, 17>::rem;
-			const prime_lookup_t* const pf_lookup_ptr_a = pf_lookup_ptr + b3m5_urem;
-			const prime_lookup_t* const pf_lookup_ptr_b = pf_lookup_ptr + b5m13_urem;
-			const prime_lookup_t* const pf_lookup_ptr_c = pf_lookup_ptr + b8m13_urem;
-			const prime_lookup_t* const pf_lookup_ptr_d = pf_lookup_ptr + b4m17_urem;
+			const uint8_t* const indivisible_by_5_ptr = indivisible_by[get_prime_index<5>::idx].data() + b3m5_urem;
+			const uint8_t* const indivisible_by_13_ptr_b5 = indivisible_by[get_prime_index<13>::idx].data() + b5m13_urem;
+			const uint8_t* const indivisible_by_13_ptr_b8 = indivisible_by[get_prime_index<13>::idx].data() + b8m13_urem;
+			const uint8_t* const indivisible_by_17_ptr = indivisible_by[get_prime_index<17>::idx].data() + b4m17_urem;
 
 			uint64_t sums_04261537_a[8]{};
 			uint64_t sums_04261537_b[8]{};
@@ -191,71 +189,63 @@ namespace mbp
 				const uint256_t sums_1537_d = _mm256_sad_epu8(_mm256_unpackhi_epi32(rems_lo, rems_hi), _mm256_setzero_si256());
 
 				// Only advance the pointer if the number is still a candidate, that is,
-				// the relevant bit from each lookup is 0
+				// it is not known to be divisible for the above tests
 
-				size_t merged_masks_0 = 0;
-				merged_masks_0 |= (pf_lookup_ptr_a[sums_04261537_a[0]] >> get_prime_index<5>::idx);
-				merged_masks_0 |= (pf_lookup_ptr_b[sums_04261537_b[0]] >> get_prime_index<13>::idx);
-				merged_masks_0 |= (pf_lookup_ptr_c[sums_04261537_c[0]] >> get_prime_index<13>::idx);
-				merged_masks_0 |= (pf_lookup_ptr_d[sums_04261537_d[0]] >> get_prime_index<17>::idx);
+				size_t inc_0 = indivisible_by_5_ptr[sums_04261537_a[0]]
+					& indivisible_by_13_ptr_b5[sums_04261537_b[0]]
+					& indivisible_by_13_ptr_b8[sums_04261537_c[0]]
+					& indivisible_by_17_ptr[sums_04261537_d[0]];
 				*output = *input++; // always copy
-				output += ~merged_masks_0 & 0b1; // branchless conditional increment
+				output = (uint64_t*)(((uint8_t*)output) + inc_0); // branchless conditional increment
 
-				size_t merged_masks_1 = 0;
-				merged_masks_1 |= (pf_lookup_ptr_a[sums_04261537_a[4]] >> get_prime_index<5>::idx);
-				merged_masks_1 |= (pf_lookup_ptr_b[sums_04261537_b[4]] >> get_prime_index<13>::idx);
-				merged_masks_1 |= (pf_lookup_ptr_c[sums_04261537_c[4]] >> get_prime_index<13>::idx);
-				merged_masks_1 |= (pf_lookup_ptr_d[sums_04261537_d[4]] >> get_prime_index<17>::idx);
+				size_t inc_1 = indivisible_by_5_ptr[sums_04261537_a[4]]
+					& indivisible_by_13_ptr_b5[sums_04261537_b[4]]
+					& indivisible_by_13_ptr_b8[sums_04261537_c[4]]
+					& indivisible_by_17_ptr[sums_04261537_d[4]];
 				*output = *input++;
-				output += ~merged_masks_1 & 0b1;
+				output = (uint64_t*)(((uint8_t*)output) + inc_1);
 
-				size_t merged_masks_2 = 0;
-				merged_masks_2 |= (pf_lookup_ptr_a[sums_04261537_a[2]] >> get_prime_index<5>::idx);
-				merged_masks_2 |= (pf_lookup_ptr_b[sums_04261537_b[2]] >> get_prime_index<13>::idx);
-				merged_masks_2 |= (pf_lookup_ptr_c[sums_04261537_c[2]] >> get_prime_index<13>::idx);
-				merged_masks_2 |= (pf_lookup_ptr_d[sums_04261537_d[2]] >> get_prime_index<17>::idx);
+				size_t inc_2 = indivisible_by_5_ptr[sums_04261537_a[2]]
+					& indivisible_by_13_ptr_b5[sums_04261537_b[2]]
+					& indivisible_by_13_ptr_b8[sums_04261537_c[2]]
+					& indivisible_by_17_ptr[sums_04261537_d[2]];
 				*output = *input++;
-				output += ~merged_masks_2 & 0b1;
+				output = (uint64_t*)(((uint8_t*)output) + inc_2);
 
-				size_t merged_masks_3 = 0;
-				merged_masks_3 |= (pf_lookup_ptr_a[sums_04261537_a[6]] >> get_prime_index<5>::idx);
-				merged_masks_3 |= (pf_lookup_ptr_b[sums_04261537_b[6]] >> get_prime_index<13>::idx);
-				merged_masks_3 |= (pf_lookup_ptr_c[sums_04261537_c[6]] >> get_prime_index<13>::idx);
-				merged_masks_3 |= (pf_lookup_ptr_d[sums_04261537_d[6]] >> get_prime_index<17>::idx);
+				size_t inc_3 = indivisible_by_5_ptr[sums_04261537_a[6]]
+					& indivisible_by_13_ptr_b5[sums_04261537_b[6]]
+					& indivisible_by_13_ptr_b8[sums_04261537_c[6]]
+					& indivisible_by_17_ptr[sums_04261537_d[6]];
 				*output = *input++;
-				output += ~merged_masks_3 & 0b1;
+				output = (uint64_t*)(((uint8_t*)output) + inc_3);
 
-				size_t merged_masks_4 = 0;
-				merged_masks_4 |= (pf_lookup_ptr_a[sums_04261537_a[1]] >> get_prime_index<5>::idx);
-				merged_masks_4 |= (pf_lookup_ptr_b[sums_04261537_b[1]] >> get_prime_index<13>::idx);
-				merged_masks_4 |= (pf_lookup_ptr_c[sums_04261537_c[1]] >> get_prime_index<13>::idx);
-				merged_masks_4 |= (pf_lookup_ptr_d[sums_04261537_d[1]] >> get_prime_index<17>::idx);
+				size_t inc_4 = indivisible_by_5_ptr[sums_04261537_a[1]]
+					& indivisible_by_13_ptr_b5[sums_04261537_b[1]]
+					& indivisible_by_13_ptr_b8[sums_04261537_c[1]]
+					& indivisible_by_17_ptr[sums_04261537_d[1]];
 				*output = *input++;
-				output += ~merged_masks_4 & 0b1;
+				output = (uint64_t*)(((uint8_t*)output) + inc_4);
 
-				size_t merged_masks_5 = 0;
-				merged_masks_5 |= (pf_lookup_ptr_a[sums_04261537_a[5]] >> get_prime_index<5>::idx);
-				merged_masks_5 |= (pf_lookup_ptr_b[sums_04261537_b[5]] >> get_prime_index<13>::idx);
-				merged_masks_5 |= (pf_lookup_ptr_c[sums_04261537_c[5]] >> get_prime_index<13>::idx);
-				merged_masks_5 |= (pf_lookup_ptr_d[sums_04261537_d[5]] >> get_prime_index<17>::idx);
+				size_t inc_5 = indivisible_by_5_ptr[sums_04261537_a[5]]
+					& indivisible_by_13_ptr_b5[sums_04261537_b[5]]
+					& indivisible_by_13_ptr_b8[sums_04261537_c[5]]
+					& indivisible_by_17_ptr[sums_04261537_d[5]];
 				*output = *input++;
-				output += ~merged_masks_5 & 0b1;
+				output = (uint64_t*)(((uint8_t*)output) + inc_5);
 
-				size_t merged_masks_6 = 0;
-				merged_masks_6 |= (pf_lookup_ptr_a[sums_04261537_a[3]] >> get_prime_index<5>::idx);
-				merged_masks_6 |= (pf_lookup_ptr_b[sums_04261537_b[3]] >> get_prime_index<13>::idx);
-				merged_masks_6 |= (pf_lookup_ptr_c[sums_04261537_c[3]] >> get_prime_index<13>::idx);
-				merged_masks_6 |= (pf_lookup_ptr_d[sums_04261537_d[3]] >> get_prime_index<17>::idx);
+				size_t inc_6 = indivisible_by_5_ptr[sums_04261537_a[3]]
+					& indivisible_by_13_ptr_b5[sums_04261537_b[3]]
+					& indivisible_by_13_ptr_b8[sums_04261537_c[3]]
+					& indivisible_by_17_ptr[sums_04261537_d[3]];
 				*output = *input++;
-				output += ~merged_masks_6 & 0b1;
+				output = (uint64_t*)(((uint8_t*)output) + inc_6);
 
-				size_t merged_masks_7 = 0;
-				merged_masks_7 |= (pf_lookup_ptr_a[sums_04261537_a[7]] >> get_prime_index<5>::idx);
-				merged_masks_7 |= (pf_lookup_ptr_b[sums_04261537_b[7]] >> get_prime_index<13>::idx);
-				merged_masks_7 |= (pf_lookup_ptr_c[sums_04261537_c[7]] >> get_prime_index<13>::idx);
-				merged_masks_7 |= (pf_lookup_ptr_d[sums_04261537_d[7]] >> get_prime_index<17>::idx);
+				size_t inc_7 = indivisible_by_5_ptr[sums_04261537_a[7]]
+					& indivisible_by_13_ptr_b5[sums_04261537_b[7]]
+					& indivisible_by_13_ptr_b8[sums_04261537_c[7]]
+					& indivisible_by_17_ptr[sums_04261537_d[7]];
 				*output = *input++;
-				output += ~merged_masks_7 & 0b1;
+				output = (uint64_t*)(((uint8_t*)output) + inc_7);
 
 				// store on the stack for the next iteration
 				_mm256_store_si256((uint256_t*)sums_04261537_a, sums_0426_a);
@@ -300,12 +290,12 @@ namespace mbp
 			b8m13_rem += pc_3 * pow_mod<8, 3, 13>::rem;
 			b4m17_rem += pc_3 * pow_mod<4, 3, 17>::rem;
 
-			size_t merged_masks = 0;
-			merged_masks |= (pf_lookup_ptr[b3m5_rem] >> get_prime_index<5>::idx);
-			merged_masks |= (pf_lookup_ptr[b5m13_rem] >> get_prime_index<13>::idx);
-			merged_masks |= (pf_lookup_ptr[b8m13_rem] >> get_prime_index<13>::idx);
-			merged_masks |= (pf_lookup_ptr[b4m17_rem] >> get_prime_index<17>::idx);
-			output += ~merged_masks & 0b1;
+			const size_t inc = indivisible_by[get_prime_index<5>::idx][b3m5_rem]
+				& indivisible_by[get_prime_index<13>::idx][b5m13_rem]
+				& indivisible_by[get_prime_index<13>::idx][b8m13_rem]
+				& indivisible_by[get_prime_index<17>::idx][b4m17_rem];
+
+			output = (uint64_t*)(((uint8_t*)output) + inc);
 		}
 
 		return output;
@@ -349,9 +339,9 @@ namespace mbp
 			upper_sum_b4m7 += pc_2 * pow_mod<4, 2, 7>::rem;
 			upper_sum_b3m13 += pc_2 * pow_mod<3, 2, 13>::rem;
 			upper_sum_b9m13 += pc_2 * pow_mod<9, 2, 13>::rem;
-			const prime_lookup_t* pf_lookup_ptr_b4m7 = prime_factor_lookup.data() + upper_sum_b4m7;
-			const prime_lookup_t* pf_lookup_ptr_b3m13 = prime_factor_lookup.data() + upper_sum_b3m13;
-			const prime_lookup_t* pf_lookup_ptr_b9m13 = prime_factor_lookup.data() + upper_sum_b9m13;
+			const uint8_t* const indivisible_b4m7 = indivisible_by[get_prime_index<7>::idx].data() + upper_sum_b4m7;
+			const uint8_t* const indivisible_b3m13 = indivisible_by[get_prime_index<13>::idx].data() + upper_sum_b3m13;
+			const uint8_t* const indivisible_b9m13 = indivisible_by[get_prime_index<13>::idx].data() + upper_sum_b9m13;
 
 			const uint256_t nybble_lookup_b4m7 = _mm256_loadu_si256(&static_nybble_lookup_b4m7);
 			const uint256_t nybble_lookup_b3m13 = _mm256_loadu_si256(&static_nybble_lookup_b3m13);
@@ -458,33 +448,29 @@ namespace mbp
 				rems_b = _mm256_sad_epu8(rems_b, _mm256_setzero_si256());
 				rems_c = _mm256_sad_epu8(rems_c, _mm256_setzero_si256());
 
-				size_t merged_masks_0 = 0;
-				merged_masks_0 |= (pf_lookup_ptr_b4m7[rems[0 + 0]] >> get_prime_index<7>::idx);
-				merged_masks_0 |= (pf_lookup_ptr_b3m13[rems[4 + 0]] >> get_prime_index<13>::idx);
-				merged_masks_0 |= (pf_lookup_ptr_b9m13[rems[8 + 0]] >> get_prime_index<13>::idx);
+				size_t inc_0 = indivisible_b4m7[rems[0 + 0]]
+					& indivisible_b3m13[rems[4 + 0]]
+					& indivisible_b9m13[rems[8 + 0]];
 				*output = *input++;
-				output += ~merged_masks_0 & 0b1;
+				output = (uint64_t*)(((uint8_t*)output) + inc_0);
 
-				size_t merged_masks_1 = 0;
-				merged_masks_1 |= (pf_lookup_ptr_b4m7[rems[0 + 1]] >> get_prime_index<7>::idx);
-				merged_masks_1 |= (pf_lookup_ptr_b3m13[rems[4 + 1]] >> get_prime_index<13>::idx);
-				merged_masks_1 |= (pf_lookup_ptr_b9m13[rems[8 + 1]] >> get_prime_index<13>::idx);
+				size_t inc_1 = indivisible_b4m7[rems[0 + 1]]
+					& indivisible_b3m13[rems[4 + 1]]
+					& indivisible_b9m13[rems[8 + 1]];
 				*output = *input++;
-				output += ~merged_masks_1 & 0b1;
+				output = (uint64_t*)(((uint8_t*)output) + inc_1);
 
-				size_t merged_masks_2 = 0;
-				merged_masks_2 |= (pf_lookup_ptr_b4m7[rems[0 + 2]] >> get_prime_index<7>::idx);
-				merged_masks_2 |= (pf_lookup_ptr_b3m13[rems[4 + 2]] >> get_prime_index<13>::idx);
-				merged_masks_2 |= (pf_lookup_ptr_b9m13[rems[8 + 2]] >> get_prime_index<13>::idx);
+				size_t inc_2 = indivisible_b4m7[rems[0 + 2]]
+					& indivisible_b3m13[rems[4 + 2]]
+					& indivisible_b9m13[rems[8 + 2]];
 				*output = *input++;
-				output += ~merged_masks_2 & 0b1;
+				output = (uint64_t*)(((uint8_t*)output) + inc_2);
 
-				size_t merged_masks_3 = 0;
-				merged_masks_3 |= (pf_lookup_ptr_b4m7[rems[0 + 3]] >> get_prime_index<7>::idx);
-				merged_masks_3 |= (pf_lookup_ptr_b3m13[rems[4 + 3]] >> get_prime_index<13>::idx);
-				merged_masks_3 |= (pf_lookup_ptr_b9m13[rems[8 + 3]] >> get_prime_index<13>::idx);
+				size_t inc_3 = indivisible_b4m7[rems[0 + 3]]
+					& indivisible_b3m13[rems[4 + 3]]
+					& indivisible_b9m13[rems[8 + 3]];
 				*output = *input++;
-				output += ~merged_masks_3 & 0b1;
+				output = (uint64_t*)(((uint8_t*)output) + inc_3);
 
 				// store above results on the stack for the next iteration
 				_mm256_storeu_si256((uint256_t*)(rems + 0), rems_a);
@@ -493,7 +479,8 @@ namespace mbp
 			}
 		}
 
-		const prime_lookup_t* const prime_factor_lookup_ptr = prime_factor_lookup.data();
+		const uint8_t* const indivisible_by_7 = indivisible_by[get_prime_index<7>::idx].data();
+		const uint8_t* const indivisible_by_13 = indivisible_by[get_prime_index<13>::idx].data();
 
 		size_t number = *input;
 
@@ -518,12 +505,10 @@ namespace mbp
 			number = *++input; // load ahead
 
 			// Only advance the pointer if the number is still a candidate
-			size_t merged_masks = 0;
-			merged_masks |= (prime_factor_lookup_ptr[b4_m7_rem] >> get_prime_index<7>::idx);
-			merged_masks |= (prime_factor_lookup_ptr[b3_m13_rem] >> get_prime_index<13>::idx);
-			merged_masks |= (prime_factor_lookup_ptr[b9_m13_rem] >> get_prime_index<13>::idx);
-
-			output += ~merged_masks & 0b1;
+			size_t inc = indivisible_by_7[b4_m7_rem]
+				& indivisible_by_13[b3_m13_rem]
+				& indivisible_by_13[b9_m13_rem];
+			output = (uint64_t*)(((uint8_t*)output) + inc);
 		}
 
 		return output;
@@ -589,17 +574,17 @@ namespace mbp
 		upper_sum_2 += pc_5 * pow_mod<4, 5, 13>::rem;
 		upper_sum_3 += pc_5 * pow_mod<10, 5, 13>::rem;
 
-		const prime_lookup_t* pf_lookup_ptr_b3m7 = prime_factor_lookup.data() + upper_sum_0;
-		const prime_lookup_t* pf_lookup_ptr_b5m7 = prime_factor_lookup.data() + upper_sum_1;
-		const prime_lookup_t* pf_lookup_ptr_b4m13 = prime_factor_lookup.data() + upper_sum_2;
-		const prime_lookup_t* pf_lookup_ptr_b10m13 = prime_factor_lookup.data() + upper_sum_3;
+		const uint8_t* indivisible_b3m7 = indivisible_by[get_prime_index<7>::idx].data() + upper_sum_0;
+		const uint8_t* indivisible_b5m7 = indivisible_by[get_prime_index<7>::idx].data() + upper_sum_1;
+		const uint8_t* indivisible_b4m13 = indivisible_by[get_prime_index<13>::idx].data() + upper_sum_2;
+		const uint8_t* indivisible_b10m13 = indivisible_by[get_prime_index<13>::idx].data() + upper_sum_3;
 
 		const uint256_t and_mask = _mm256_set1_epi64x(0x80'40'20'10'08'04'02'01);
 
 		const uint256_t rems_byte_0 = _mm256_loadu_si256(&static_rems_byte_0);
 		const uint256_t rems_byte_1 = _mm256_loadu_si256(&static_rems_byte_1);
 		const uint256_t rems_byte_2 = _mm256_loadu_si256(&static_rems_byte_2);
-		// byte 3 same as byte 0
+		// remainders repeat every three bytes, so instead of having rems_byte_3, re-use rems_byte_0
 
 		const uint256_t shuffle_mask = _mm256_set_epi64x(0x0303030303030303, 0x0202020202020202, 0x0101010101010101, 0x0000000000000000);
 
@@ -650,10 +635,10 @@ namespace mbp
 					upper_bits = number & upper_bits_mask;
 
 					// recalculate
-					pf_lookup_ptr_b3m7 = prime_factor_lookup.data() + get_upper_sum_of_rems<7, in_base<3>>(number);
-					pf_lookup_ptr_b5m7 = prime_factor_lookup.data() + get_upper_sum_of_rems<7, in_base<5>>(number);
-					pf_lookup_ptr_b4m13 = prime_factor_lookup.data() + get_upper_sum_of_rems<13, in_base<4>>(number);
-					pf_lookup_ptr_b10m13 = prime_factor_lookup.data() + get_upper_sum_of_rems<13, in_base<10>>(number);
+					indivisible_b3m7 = indivisible_by[get_prime_index<7>::idx].data() + get_upper_sum_of_rems<7, in_base<3>>(number);
+					indivisible_b5m7 = indivisible_by[get_prime_index<7>::idx].data() + get_upper_sum_of_rems<7, in_base<5>>(number);
+					indivisible_b4m13 = indivisible_by[get_prime_index<13>::idx].data() + get_upper_sum_of_rems<13, in_base<4>>(number);
+					indivisible_b10m13 = indivisible_by[get_prime_index<13>::idx].data() + get_upper_sum_of_rems<13, in_base<10>>(number);
 				}
 			}
 
@@ -683,13 +668,11 @@ namespace mbp
 			number = *++input; // load one iteration ahead
 
 			// Only advance the pointer if the number is still a candidate
-			size_t merged_masks = 0;
-			merged_masks |= (pf_lookup_ptr_b3m7[sums[0]] >> get_prime_index<7>::idx);
-			merged_masks |= (pf_lookup_ptr_b5m7[sums[1]] >> get_prime_index<7>::idx);
-			merged_masks |= (pf_lookup_ptr_b4m13[sums[2]] >> get_prime_index<13>::idx);
-			merged_masks |= (pf_lookup_ptr_b10m13[sums[3]] >> get_prime_index<13>::idx);
-
-			output += ~merged_masks & 0b1;
+			size_t inc = indivisible_b3m7[sums[0]]
+				& indivisible_b5m7[sums[1]]
+				& indivisible_b4m13[sums[2]]
+				& indivisible_b10m13[sums[3]];
+			output = (uint64_t*)(((uint8_t*)output) + inc);
 
 			// store on the stack for the next iteration
 			_mm256_storeu_si256((uint256_t*)sums, sums_0123);
@@ -738,7 +721,7 @@ namespace mbp
 		const auto xmm_rems3 = _mm_loadu_si128(&static_rems3);
 		const auto xmm_rems4 = _mm_loadu_si128(&static_rems4);
 
-		const prime_lookup_t* const prime_factor_lookup_ptr = prime_factor_lookup.data();
+		const uint8_t* const indivisible_by_11 = indivisible_by[get_prime_index<11>::idx].data();
 
 		size_t* output = input;
 
@@ -773,7 +756,6 @@ namespace mbp
 
 		for (; input < candidates_end; )
 		{
-			// load one iteration ahead
 			const size_t next_n = *(input + 1);
 			auto xmm0 = _mm_set1_epi32((int)pop_count(next_n & (bitmask << 0)));
 			auto xmm1 = _mm_set1_epi32((int)pop_count(next_n & (bitmask << 1)));
@@ -792,15 +774,12 @@ namespace mbp
 			xmm0 = _mm_add_epi32(xmm0, xmm4);
 
 			// Only advance the pointer if the number is still a candidate
-			size_t merged_lookups = prime_factor_lookup_ptr[sums[0]];
-			merged_lookups |= prime_factor_lookup_ptr[sums[1]];
-			merged_lookups |= prime_factor_lookup_ptr[sums[2]];
-			merged_lookups |= prime_factor_lookup_ptr[sums[3]];
-
-			merged_lookups >>= get_prime_index<11>::idx;
-
+			const auto inc = indivisible_by_11[sums[0]]
+				& indivisible_by_11[sums[1]]
+				& indivisible_by_11[sums[2]]
+				& indivisible_by_11[sums[3]];
 			*output = *input++;
-			output += ~merged_lookups & 0b1;
+			output = (uint64_t*)(((uint8_t*)output) + inc);
 
 			// store the above results for the next iteraton
 			_mm_storeu_si128((uint128_t*)sums, xmm0);
@@ -877,9 +856,9 @@ namespace mbp
 			b7_sum += pc_9 * pow_mod<7, 9, 11>::rem;
 			b8_sum += pc_9 * pow_mod<8, 9, 11>::rem;
 
-			const prime_lookup_t* pf_lookup_ptr_b6 = prime_factor_lookup.data() + b6_sum;
-			const prime_lookup_t* pf_lookup_ptr_b7 = prime_factor_lookup.data() + b7_sum;
-			const prime_lookup_t* pf_lookup_ptr_b8 = prime_factor_lookup.data() + b8_sum;
+			const uint8_t* const indivisible_b6 = indivisible_by[get_prime_index<11>::idx].data() + b6_sum;
+			const uint8_t* const indivisible_b7 = indivisible_by[get_prime_index<11>::idx].data() + b7_sum;
+			const uint8_t* const indivisible_b8 = indivisible_by[get_prime_index<11>::idx].data() + b8_sum;
 
 			// calculate the number of candidates, rounded down to the nearest 2
 			const size_t n_of_candidates = candidates_end - input;
@@ -980,21 +959,17 @@ namespace mbp
 
 				// Only advance the pointer if the number is still a candidate
 
-				size_t merged_lookups_0 = 0;
-				merged_lookups_0 |= pf_lookup_ptr_b6[sums[0]];
-				merged_lookups_0 |= pf_lookup_ptr_b7[sums[2]];
-				merged_lookups_0 |= pf_lookup_ptr_b8[sums[4]];
-				merged_lookups_0 >>= get_prime_index<11>::idx;
+				size_t inc_0 = indivisible_b6[sums[0]]
+					& indivisible_b7[sums[2]]
+					& indivisible_b8[sums[4]];
 				*output = *input++;
-				output += ~merged_lookups_0 & 0b1;
+				output = (uint64_t*)(((uint8_t*)output) + inc_0);
 
-				size_t merged_lookups_1 = 0;
-				merged_lookups_1 |= pf_lookup_ptr_b6[sums[0 + 8]];
-				merged_lookups_1 |= pf_lookup_ptr_b7[sums[2 + 8]];
-				merged_lookups_1 |= pf_lookup_ptr_b8[sums[4 + 8]];
-				merged_lookups_1 >>= get_prime_index<11>::idx;
+				size_t inc_1 = indivisible_b6[sums[0 + 8]]
+					& indivisible_b7[sums[2 + 8]]
+					& indivisible_b8[sums[4 + 8]];
 				*output = *input++;
-				output += ~merged_lookups_1 & 0b1;
+				output = (uint64_t*)(((uint8_t*)output) + inc_1);
 
 				// store on the stack for the next iteration
 				_mm256_storeu_si256((uint256_t*)sums, b678x_sums);
@@ -1003,6 +978,8 @@ namespace mbp
 			// if there is a remaining (odd) candidate, the loop below runs once and handles it
 
 		} // end if on fast path
+
+		const uint8_t* const indivisible_by_11 = indivisible_by[get_prime_index<11>::idx].data();
 
 		for (; input < candidates_end; ++input)
 		{
@@ -1050,14 +1027,11 @@ namespace mbp
 			b7_sum += pc_9 * pow_mod<7, 9, 11>::rem;
 			b8_sum += pc_9 * pow_mod<8, 9, 11>::rem;
 
-			size_t merged_lookups = 0;
-			merged_lookups |= prime_factor_lookup[b6_sum];
-			merged_lookups |= prime_factor_lookup[b7_sum];
-			merged_lookups |= prime_factor_lookup[b8_sum];
-			merged_lookups >>= get_prime_index<11>::idx;
-
 			// Only advance the pointer if the number is still a candidate
-			output += ~merged_lookups & 0b1;
+			size_t inc = indivisible_by_11[b6_sum]
+				& indivisible_by_11[b7_sum]
+				& indivisible_by_11[b8_sum];
+			output = (uint64_t*)(((uint8_t*)output) + inc);
 		}
 
 		return output;
@@ -1139,9 +1113,9 @@ namespace mbp
 			b7_sum += pc_11 * pow_mod<7, 11, 13>::rem;
 			b11_sum += pc_11 * pow_mod<11, 11, 13>::rem;
 
-			const prime_lookup_t* pf_lookup_ptr_b6 = prime_factor_lookup.data() + b6_sum;
-			const prime_lookup_t* pf_lookup_ptr_b7 = prime_factor_lookup.data() + b7_sum;
-			const prime_lookup_t* pf_lookup_ptr_b11 = prime_factor_lookup.data() + b11_sum;
+			const uint8_t* const indivisible_b6 = indivisible_by[get_prime_index<13>::idx].data() + b6_sum;
+			const uint8_t* const indivisible_b7 = indivisible_by[get_prime_index<13>::idx].data() + b7_sum;
+			const uint8_t* const indivisible_b11 = indivisible_by[get_prime_index<13>::idx].data() + b11_sum;
 
 			const size_t n_of_candidates = candidates_end - input;
 			const size_t* const rounded_end = input + (n_of_candidates - (n_of_candidates % 2));
@@ -1241,21 +1215,17 @@ namespace mbp
 
 				// Only advance the pointer if the number is still a candidate
 
-				size_t merged_lookups_0 = 0;
-				merged_lookups_0 |= pf_lookup_ptr_b6[sums[0]];
-				merged_lookups_0 |= pf_lookup_ptr_b7[sums[2]];
-				merged_lookups_0 |= pf_lookup_ptr_b11[sums[4]];
-				merged_lookups_0 >>= get_prime_index<13>::idx;
+				const auto inc_0 = indivisible_b6[sums[0]]
+					& indivisible_b7[sums[2]]
+					& indivisible_b11[sums[4]];
 				*output = *input++;
-				output += ~merged_lookups_0 & 0b1;
+				output = (uint64_t*)(((uint8_t*)output) + inc_0);
 
-				size_t merged_lookups_1 = 0;
-				merged_lookups_1 |= pf_lookup_ptr_b6[sums[0 + 8]];
-				merged_lookups_1 |= pf_lookup_ptr_b7[sums[2 + 8]];
-				merged_lookups_1 |= pf_lookup_ptr_b11[sums[4 + 8]];
-				merged_lookups_1 >>= get_prime_index<13>::idx;
+				const auto inc_1 = indivisible_b6[sums[0 + 8]]
+					& indivisible_b7[sums[2 + 8]]
+					& indivisible_b11[sums[4 + 8]];
 				*output = *input++;
-				output += ~merged_lookups_1 & 0b1;
+				output = (uint64_t*)(((uint8_t*)output) + inc_1);
 
 				// store the above results for the next iteration
 				_mm256_storeu_si256((uint256_t*)sums, b6_7_11_x_sums);
@@ -1264,6 +1234,8 @@ namespace mbp
 			// if there is a remaining (odd) candidate, the loop below runs once and handles it
 
 		} // end if on fast path
+
+		const uint8_t* const indivisible_by_13 = indivisible_by[get_prime_index<13>::idx].data();
 
 		for (; input < candidates_end; ++input)
 		{
@@ -1319,14 +1291,11 @@ namespace mbp
 			b7_sum += pc_11 * pow_mod<7, 11, 13>::rem;
 			b11_sum += pc_11 * pow_mod<11, 11, 13>::rem;
 
-			size_t merged_lookups = 0;
-			merged_lookups |= prime_factor_lookup[b6_sum];
-			merged_lookups |= prime_factor_lookup[b7_sum];
-			merged_lookups |= prime_factor_lookup[b11_sum];
-			merged_lookups >>= get_prime_index<13>::idx;
-
 			// Only advance the pointer if the number is still a candidate
-			output += ~merged_lookups & 0b1;
+			const auto inc = indivisible_by_13[b6_sum]
+				& indivisible_by_13[b7_sum]
+				& indivisible_by_13[b11_sum];
+			output = (uint64_t*)(((uint8_t*)output) + inc);
 		}
 
 		return output;
@@ -1349,12 +1318,12 @@ namespace mbp
 			1, 7, 15, 3, 4, 11, 9, 12, 16, 10, 2, 14, 13, 6, 8, 5 } }; // base 7 % 17
 		constexpr static uint256_t static_rems_45{ .m256i_u8{
 			1, 10, 15, 14, 4, 6, 9, 5, 16, 7, 2, 3, 13, 11, 8, 12,     // base 10 % 17
-			1, 11, 2, 5, 4, 10, 8, 3, 16, 6, 15, 12, 13, 7, 9, 14 } }; // base 11 % 17		
+			1, 11, 2, 5, 4, 10, 8, 3, 16, 6, 15, 12, 13, 7, 9, 14 } }; // base 11 % 17
 		constexpr static uint256_t static_rems_6x{ .m256i_u8{
 			1, 12, 8, 11, 13, 3, 2, 7, 16, 5, 9, 6, 4, 14, 15, 10,     // base 12 % 17
 			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } }; // padding
 
-		const prime_lookup_t* const pf_lookup_ptr = prime_factor_lookup.data();
+		const uint8_t* const indivisible_by_17 = indivisible_by[get_prime_index<17>::idx].data();
 
 		size_t* output = input;
 		size_t number = *input;
@@ -1461,17 +1430,14 @@ namespace mbp
 			*output = *input++; // always write
 
 			// Only advance the pointer if the nth bit is 0 in all lookups
-			prime_lookup_t merged_lookups = 0;
-			merged_lookups |= pf_lookup_ptr[sums_0213465x[0]];
-			merged_lookups |= pf_lookup_ptr[sums_0213465x[1]];
-			merged_lookups |= pf_lookup_ptr[sums_0213465x[2]];
-			merged_lookups |= pf_lookup_ptr[sums_0213465x[3]];
-			merged_lookups |= pf_lookup_ptr[sums_0213465x[4]];
-			merged_lookups |= pf_lookup_ptr[sums_0213465x[5]];
-			merged_lookups |= pf_lookup_ptr[sums_0213465x[6]];
-
-			// Invert the bit we care about, move it to the 0th position, and mask to select it
-			output += (~merged_lookups >> get_prime_index<17>::idx) & 0b1;
+			const auto inc = indivisible_by_17[sums_0213465x[0]]
+				& indivisible_by_17[sums_0213465x[1]]
+				& indivisible_by_17[sums_0213465x[2]]
+				& indivisible_by_17[sums_0213465x[3]]
+				& indivisible_by_17[sums_0213465x[4]]
+				& indivisible_by_17[sums_0213465x[5]]
+				& indivisible_by_17[sums_0213465x[6]];
+			output = (uint64_t*)(((uint8_t*)output) + inc);
 
 			// store the above results for the next iteration
 			_mm256_storeu_si256((uint256_t*)(sums_0213465x + 0), sums_0213);
@@ -1500,11 +1466,11 @@ namespace mbp
 			const uint256_t nybble_mask = _mm256_set1_epi8(0b0000'1111);
 			const uint256_t nybble_lookup = _mm256_loadu_si256(&static_nybble_lookup);
 
-			const uint32_t* pf_lookup_ptr = prime_factor_lookup.data();
+			const uint8_t* indivisible_lookup_ptr = indivisible_lookup_b13m17.data();
 			const size_t* const candidates_end_rounded = candidates_end - (size_t(candidates_end - input) % 8);
 
 			// the upper 32 bits don't change, calculate their sum of remainders
-			pf_lookup_ptr += get_upper_sum_of_rems<17, in_base<13>>(*input);
+			indivisible_lookup_ptr += get_upper_sum_of_rems<17, in_base<13>>(*input);
 
 			uint64_t sums_04261537[8] = {};
 
@@ -1565,35 +1531,35 @@ namespace mbp
 				const size_t sum_a = sums_04261537[0];
 				*output_a = *input++; // always copy
 				// branchless conditional increment
-				if ((pf_lookup_ptr[sum_a] & (1 << get_prime_index<17>::idx)) == 0) output_a += 2;
+				output_a = (uint64_t*)(((uint8_t*)output_a) + indivisible_lookup_ptr[sum_a]);
 
 				const size_t sum_b = sums_04261537[4];
 				*output_b = *input++;
-				if ((pf_lookup_ptr[sum_b] & (1 << get_prime_index<17>::idx)) == 0) output_b += 2;
+				output_b = (uint64_t*)(((uint8_t*)output_b) + indivisible_lookup_ptr[sum_b]);
 
 				const size_t sum_c = sums_04261537[2];
 				*output_a = *input++;
-				if ((pf_lookup_ptr[sum_c] & (1 << get_prime_index<17>::idx)) == 0) output_a += 2;
+				output_a = (uint64_t*)(((uint8_t*)output_a) + indivisible_lookup_ptr[sum_c]);
 
 				const size_t sum_d = sums_04261537[6];
 				*output_b = *input++;
-				if ((pf_lookup_ptr[sum_d] & (1 << get_prime_index<17>::idx)) == 0) output_b += 2;
+				output_b = (uint64_t*)(((uint8_t*)output_b) + indivisible_lookup_ptr[sum_d]);
 
 				const size_t sum_e = sums_04261537[1];
 				*output_a = *input++;
-				if ((pf_lookup_ptr[sum_e] & (1 << get_prime_index<17>::idx)) == 0) output_a += 2;
+				output_a = (uint64_t*)(((uint8_t*)output_a) + indivisible_lookup_ptr[sum_e]);
 
 				const size_t sum_f = sums_04261537[5];
 				*output_b = *input++;
-				if ((pf_lookup_ptr[sum_f] & (1 << get_prime_index<17>::idx)) == 0) output_b += 2;
+				output_b = (uint64_t*)(((uint8_t*)output_b) + indivisible_lookup_ptr[sum_f]);
 
 				const size_t sum_g = sums_04261537[3];
 				*output_a = *input++;
-				if ((pf_lookup_ptr[sum_g] & (1 << get_prime_index<17>::idx)) == 0) output_a += 2;
+				output_a = (uint64_t*)(((uint8_t*)output_a) + indivisible_lookup_ptr[sum_g]);
 
 				const size_t sum_h = sums_04261537[7];
 				*output_b = *input++;
-				if ((pf_lookup_ptr[sum_h] & (1 << get_prime_index<17>::idx)) == 0) output_b += 2;
+				output_b = (uint64_t*)(((uint8_t*)output_b) + indivisible_lookup_ptr[sum_h]);
 
 				// store on the stack for the next iteration
 				_mm256_storeu_si256((uint256_t*)sums_04261537, sums_0426);
@@ -1622,6 +1588,8 @@ namespace mbp
 
 		} // end if on_fast_path
 
+		const uint8_t* const indivisible_lookup_ptr = indivisible_by[get_prime_index<17>::idx].data();
+
 		// handle any elements not handled by the fast loop
 		for (; input < candidates_end; ++input)
 		{
@@ -1636,8 +1604,7 @@ namespace mbp
 			sum += pop_count(candidate & (bitmask << 3)) * pow_mod<13, 3, 17>::rem;
 
 			// conditionally increment
-			size_t lookup = prime_factor_lookup[sum] >> get_prime_index<17>::idx;
-			output += ~lookup & 0b1;
+			output = (uint64_t*)(((uint8_t*)output) + indivisible_lookup_ptr[sum]);
 		}
 
 		return output;
@@ -1681,8 +1648,8 @@ namespace mbp
 			const size_t upc_3 = pop_count(number_upper & (bitmask << 3));
 			b12m29_urem += upc_3 * pow_mod<12, 3, 29>::rem;
 			b6m37_urem += upc_3 * pow_mod<6, 3, 37>::rem;
-			const prime_lookup_t* const pf_lookup_ptr_12m29 = prime_factor_lookup.data() + b12m29_urem;
-			const prime_lookup_t* const pf_lookup_ptr_6m37 = prime_factor_lookup.data() + b6m37_urem;
+			const uint8_t* const indivisible_12m29 = indivisible_by[get_prime_index<29>::idx].data() + b12m29_urem;
+			const uint8_t* const indivisible_6m37 = indivisible_by[get_prime_index<37>::idx].data() + b6m37_urem;
 
 			uint64_t sums[16]{}; // 0426 1537 0426 1537
 
@@ -1753,52 +1720,52 @@ namespace mbp
 				const uint256_t sums_1537_6m37 = _mm256_sad_epu8(candidates_1537_6m37, _mm256_setzero_si256());
 
 				*output = *input++; // always copy
-				uint32_t mask_a = 0;
-				mask_a |= pf_lookup_ptr_12m29[sums[0]] >> get_prime_index<29>::idx;
-				mask_a |= pf_lookup_ptr_6m37[sums[0 + 8]] >> get_prime_index<37>::idx;
-				output += ~mask_a & 1; // branchless conditional increment
+				const auto inc_a =
+					indivisible_12m29[sums[0]] &
+					indivisible_6m37[sums[0 + 8]];
+				output = (uint64_t*)(((uint8_t*)output) + inc_a); // branchless conditional increment
 
 				*output = *input++;
-				uint32_t mask_b = 0;
-				mask_b |= pf_lookup_ptr_12m29[sums[4]] >> get_prime_index<29>::idx;
-				mask_b |= pf_lookup_ptr_6m37[sums[4 + 8]] >> get_prime_index<37>::idx;
-				output += ~mask_b & 1;
+				const auto inc_b =
+					indivisible_12m29[sums[4]] &
+					indivisible_6m37[sums[4 + 8]];
+				output = (uint64_t*)(((uint8_t*)output) + inc_b);
 
 				*output = *input++;
-				uint32_t mask_c = 0;
-				mask_c |= pf_lookup_ptr_12m29[sums[2]] >> get_prime_index<29>::idx;
-				mask_c |= pf_lookup_ptr_6m37[sums[2 + 8]] >> get_prime_index<37>::idx;
-				output += ~mask_c & 1;
+				const auto inc_c =
+					indivisible_12m29[sums[2]] &
+					indivisible_6m37[sums[2 + 8]];
+				output = (uint64_t*)(((uint8_t*)output) + inc_c);
 
 				*output = *input++;
-				uint32_t mask_d = 0;
-				mask_d |= pf_lookup_ptr_12m29[sums[6]] >> get_prime_index<29>::idx;
-				mask_d |= pf_lookup_ptr_6m37[sums[6 + 8]] >> get_prime_index<37>::idx;
-				output += ~mask_d & 1;
+				const auto inc_d =
+					indivisible_12m29[sums[6]] &
+					indivisible_6m37[sums[6 + 8]];
+				output = (uint64_t*)(((uint8_t*)output) + inc_d);
 
 				*output = *input++;
-				uint32_t mask_e = 0;
-				mask_e |= pf_lookup_ptr_12m29[sums[1]] >> get_prime_index<29>::idx;
-				mask_e |= pf_lookup_ptr_6m37[sums[1 + 8]] >> get_prime_index<37>::idx;
-				output += ~mask_e & 1;
+				const auto inc_e =
+					indivisible_12m29[sums[1]] &
+					indivisible_6m37[sums[1 + 8]];
+				output = (uint64_t*)(((uint8_t*)output) + inc_e);
 
 				*output = *input++;
-				uint32_t mask_f = 0;
-				mask_f |= pf_lookup_ptr_12m29[sums[5]] >> get_prime_index<29>::idx;
-				mask_f |= pf_lookup_ptr_6m37[sums[5 + 8]] >> get_prime_index<37>::idx;
-				output += ~mask_f & 1;
+				const auto inc_f =
+					indivisible_12m29[sums[5]] &
+					indivisible_6m37[sums[5 + 8]];
+				output = (uint64_t*)(((uint8_t*)output) + inc_f);
 
 				*output = *input++;
-				uint32_t mask_g = 0;
-				mask_g |= pf_lookup_ptr_12m29[sums[3]] >> get_prime_index<29>::idx;
-				mask_g |= pf_lookup_ptr_6m37[sums[3 + 8]] >> get_prime_index<37>::idx;
-				output += ~mask_g & 1;
+				const auto inc_g =
+					indivisible_12m29[sums[3]] &
+					indivisible_6m37[sums[3 + 8]];
+				output = (uint64_t*)(((uint8_t*)output) + inc_g);
 
 				*output = *input++;
-				uint32_t mask_h = 0;
-				mask_h |= pf_lookup_ptr_12m29[sums[7]] >> get_prime_index<29>::idx;
-				mask_h |= pf_lookup_ptr_6m37[sums[7 + 8]] >> get_prime_index<37>::idx;
-				output += ~mask_h & 1;
+				const auto inc_h =
+					indivisible_12m29[sums[7]] &
+					indivisible_6m37[sums[7 + 8]];
+				output = (uint64_t*)(((uint8_t*)output) + inc_h);
 
 				// store the above results for the next iteration
 				_mm256_storeu_si256((uint256_t*)(sums + 0), sums_0426_12m29);
@@ -1807,6 +1774,9 @@ namespace mbp
 				_mm256_storeu_si256((uint256_t*)(sums + 12), sums_1537_6m37);
 			} // end for
 		} // end if on_fast_path
+
+		const uint8_t* const indivisible_12m29 = indivisible_by[get_prime_index<29>::idx].data();
+		const uint8_t* const indivisible_6m37 = indivisible_by[get_prime_index<37>::idx].data();
 
 		// handle any elements not handled by the fast loop
 		for (; input < candidates_end; ++input)
@@ -1831,10 +1801,10 @@ namespace mbp
 			sum_6m37 += pc_3 * pow_mod<6, 3, 37>::rem;
 
 			// conditionally increment
-			size_t lookup = 0;
-			lookup |= (prime_factor_lookup[sum_12m29] >> get_prime_index<29>::idx);
-			lookup |= (prime_factor_lookup[sum_6m37] >> get_prime_index<37>::idx);
-			output += ~lookup & 0b1;
+			const auto inc =
+				indivisible_12m29[sum_12m29] &
+				indivisible_6m37[sum_6m37];
+			output = (uint64_t*)(((uint8_t*)output) + inc);
 		}
 
 		return output;
@@ -1894,8 +1864,8 @@ namespace mbp
 			const size_t pc_7 = pop_count(number_upper & (bitmask << 7));
 			b8m17_rem += pc_7 * pow_mod<8, 7, 17>::rem;
 			b9m17_rem += pc_7 * pow_mod<9, 7, 17>::rem;
-			const prime_lookup_t* const pf_lookup_ptr_b8m17 = prime_factor_lookup.data() + b8m17_rem;
-			const prime_lookup_t* const pf_lookup_ptr_b9m17 = prime_factor_lookup.data() + b9m17_rem;
+			const uint8_t* const indivisible_b8 = indivisible_by[get_prime_index<17>::idx].data() + b8m17_rem;
+			const uint8_t* const indivisible_b9 = indivisible_by[get_prime_index<17>::idx].data() + b9m17_rem;
 
 			uint64_t sums[16]{};
 
@@ -1961,60 +1931,36 @@ namespace mbp
 				uint256_t sums_1537_b9m17 = _mm256_sad_epu8(candidates_1537_b9m17, _mm256_setzero_si256());
 
 				*output = *input++; // always copy
-				uint32_t mask_a =
-					pf_lookup_ptr_b8m17[sums[0]] |
-					pf_lookup_ptr_b9m17[sums[0 + 8]];
-				mask_a >>= get_prime_index<17>::idx;
-				output += ~mask_a & 1; // branchless conditional increment
+				const auto inc_a = indivisible_b8[sums[0]] & indivisible_b9[sums[0 + 8]];
+				output = (uint64_t*)(((uint8_t*)output) + inc_a); // branchless conditional increment
 
 				*output = *input++;
-				uint32_t mask_b =
-					pf_lookup_ptr_b8m17[sums[4]] |
-					pf_lookup_ptr_b9m17[sums[4 + 8]];
-				mask_b >>= get_prime_index<17>::idx;
-				output += ~mask_b & 1;
+				const auto inc_b = indivisible_b8[sums[4]] & indivisible_b9[sums[4 + 8]];
+				output = (uint64_t*)(((uint8_t*)output) + inc_b);
 
 				*output = *input++;
-				uint32_t mask_c =
-					pf_lookup_ptr_b8m17[sums[2]] |
-					pf_lookup_ptr_b9m17[sums[2 + 8]];
-				mask_c >>= get_prime_index<17>::idx;
-				output += ~mask_c & 1;
+				const auto inc_c = indivisible_b8[sums[2]] & indivisible_b9[sums[2 + 8]];
+				output = (uint64_t*)(((uint8_t*)output) + inc_c);
 
 				*output = *input++;
-				uint32_t mask_d =
-					pf_lookup_ptr_b8m17[sums[6]] |
-					pf_lookup_ptr_b9m17[sums[6 + 8]];
-				mask_d >>= get_prime_index<17>::idx;
-				output += ~mask_d & 1;
+				const auto inc_d = indivisible_b8[sums[6]] & indivisible_b9[sums[6 + 8]];
+				output = (uint64_t*)(((uint8_t*)output) + inc_d);
 
 				*output = *input++;
-				uint32_t mask_e =
-					pf_lookup_ptr_b8m17[sums[1]] |
-					pf_lookup_ptr_b9m17[sums[1 + 8]];
-				mask_e >>= get_prime_index<17>::idx;
-				output += ~mask_e & 1;
+				const auto inc_e = indivisible_b8[sums[1]] & indivisible_b9[sums[1 + 8]];
+				output = (uint64_t*)(((uint8_t*)output) + inc_e);
 
 				*output = *input++;
-				uint32_t mask_f =
-					pf_lookup_ptr_b8m17[sums[5]] |
-					pf_lookup_ptr_b9m17[sums[5 + 8]];
-				mask_f >>= get_prime_index<17>::idx;
-				output += ~mask_f & 1;
+				const auto inc_f = indivisible_b8[sums[5]] & indivisible_b9[sums[5 + 8]];
+				output = (uint64_t*)(((uint8_t*)output) + inc_f);
 
 				*output = *input++;
-				uint32_t mask_g =
-					pf_lookup_ptr_b8m17[sums[3]] |
-					pf_lookup_ptr_b9m17[sums[3 + 8]];
-				mask_g >>= get_prime_index<17>::idx;
-				output += ~mask_g & 1;
+				const auto inc_g = indivisible_b8[sums[3]] & indivisible_b9[sums[3 + 8]];
+				output = (uint64_t*)(((uint8_t*)output) + inc_g);
 
 				*output = *input++;
-				uint32_t mask_h =
-					pf_lookup_ptr_b8m17[sums[7]] |
-					pf_lookup_ptr_b9m17[sums[7 + 8]];
-				mask_h >>= get_prime_index<17>::idx;
-				output += ~mask_h & 1;
+				const auto inc_h = indivisible_b8[sums[7]] & indivisible_b9[sums[7 + 8]];
+				output = (uint64_t*)(((uint8_t*)output) + inc_h);
 
 				// store the above results for the next iteration
 				_mm256_storeu_si256((uint256_t*)(sums + 0), sums_0426_b8m17);
@@ -2023,6 +1969,8 @@ namespace mbp
 				_mm256_storeu_si256((uint256_t*)(sums + 12), sums_1537_b9m17);
 			} // end for
 		} // end if on_fast_path
+
+		const uint8_t* const indivisible_by_17 = indivisible_by[get_prime_index<17>::idx].data();
 
 		// handle any elements not handled by the fast loop
 		for (; input < candidates_end; ++input)
@@ -2057,17 +2005,14 @@ namespace mbp
 			b9m17_rem += pc_7 * pow_mod<9, 7, 17>::rem;
 
 			// conditionally increment
-			size_t lookup =
-				prime_factor_lookup[b8m17_rem] |
-				prime_factor_lookup[b9m17_rem];
-			lookup >>= get_prime_index<17>::idx;
-			output += ~lookup & 0b1;
+			const auto inc = indivisible_by_17[b8m17_rem] & indivisible_by_17[b9m17_rem];
+			output = (uint64_t*)(((uint8_t*)output) + inc);
 		}
 
 		return output;
-
 	}
 
+	// currently unused
 	template<bool on_fast_path, size_t base, size_t prime>
 	tests_are_inlined size_t* custom_4_rem_div_test(size_t* input,
 													const size_t* const candidates_end)

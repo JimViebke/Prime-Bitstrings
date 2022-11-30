@@ -221,7 +221,76 @@ namespace mbp::div_test
 	}
 
 	using div_tests_t = std::array<div_test::div_test_t, div_test::div_tests_size>;
-	static div_tests_t div_tests = generate_div_tests(); // intellisense false positive
+	div_tests_t div_tests = generate_div_tests(); // intellisense false positive
+
+	namespace detail
+	{
+		std::array<std::vector<uint8_t>, n_of_primes> build_indivisible_lookup()
+		{
+			std::array<std::vector<uint8_t>, n_of_primes> lookup;
+
+			// start from 5, at idx 2
+			for (size_t prime_idx = 2; prime_idx < n_of_primes; ++prime_idx)
+			{
+				// calculate the largest possible sum of remainders, for any
+				// div test using this prime
+
+				size_t largest_sum = 0;
+
+				for (const auto& div_test : div_tests)
+				{
+					if (div_test.prime_idx != prime_idx) continue;
+
+					const size_t sum = std::accumulate(div_test.remainders.begin(), div_test.remainders.end(), size_t(0));
+
+					if (sum > largest_sum)
+						largest_sum = sum;
+				}
+
+				if (largest_sum == 0)
+				{
+					// no div test uses this prime, generate remainders, then the sum of remainders, for each base
+
+					const auto prime = small_primes_lookup[prime_idx];
+
+					for (size_t base = 3; base < up_to_base; ++base)
+					{
+						std::array<remainder_t, 64> rems{};
+						size_t i = 0;
+						for (; i < 64; ++i)
+						{
+							remainder_t rem = remainder_t(pk::powMod(base, i, prime));
+							// break when/if the pattern repeats
+							if (rem == 1 && i > 0) break;
+							rems[i] = rem; // save
+						}
+
+						// extend rems to 64
+						for (size_t j = i; j < 64; ++j)
+						{
+							rems[j] = rems[j - i];
+						}
+
+						const size_t sum = std::accumulate(rems.begin(), rems.end(), size_t{ 0 });
+						largest_sum = std::max(sum, largest_sum);
+					}
+				}
+
+				std::vector<uint8_t>& v = lookup[prime_idx];
+				v.assign(largest_sum + 1, sizeof(uint64_t));
+
+				for (size_t i = 0; i < v.size(); i += small_primes_lookup[prime_idx])
+				{
+					v[i] = 0;
+				}
+			}
+
+			return lookup;
+		}
+
+		// increment_in_bytes = indivisible_by[prime_index][sum_of_remainders]
+		std::array<std::vector<uint8_t>, n_of_primes> indivisible_by = build_indivisible_lookup();
+	}
 
 
 
@@ -248,7 +317,7 @@ namespace mbp::div_test
 			size_t* output = candidates_begin;
 
 			size_t upper_bits = *input & upper_bits_mask;
-			const prime_lookup_t* pf_lookup_preinc = prime_factor_lookup.data() +
+			const uint8_t* indivisible_ptr = indivisible_by[div_test.prime_idx].data() +
 				util::vcl_hadd_x(_mm256_and_si256(util::expand_bits_to_bytes(upper_bits >> 32), ymm1));
 
 			if constexpr (on_fast_path)
@@ -300,8 +369,8 @@ namespace mbp::div_test
 					// final h-sum
 					remainders = _mm256_add_epi16(remainders, _mm256_shuffle_epi32(remainders, 2));
 
-					const auto lookup_a = pf_lookup_preinc[remainders.m256i_u32[0]];
-					const auto lookup_b = pf_lookup_preinc[remainders.m256i_u32[4]];
+					const auto inc_a = indivisible_ptr[remainders.m256i_u32[0]];
+					const auto inc_b = indivisible_ptr[remainders.m256i_u32[4]];
 
 					// load and increment
 					const size_t candidate_a = *input;
@@ -310,10 +379,10 @@ namespace mbp::div_test
 
 					*output = candidate_a; // always write
 					// branchless conditional increment
-					if ((lookup_a & (1 << div_test.prime_idx)) == 0) ++output;
+					output = (uint64_t*)(((uint8_t*)output) + inc_a);
 
 					*output = candidate_b;
-					if ((lookup_b & (1 << div_test.prime_idx)) == 0) ++output;
+					output = (uint64_t*)(((uint8_t*)output) + inc_b);
 				}
 
 				// if there is a remaining (odd) candidate, the loop below runs once and handles it
@@ -330,7 +399,7 @@ namespace mbp::div_test
 					if ((number & upper_bits_mask) != upper_bits)
 					{
 						upper_bits = number & upper_bits_mask;
-						pf_lookup_preinc = prime_factor_lookup.data() +
+						indivisible_ptr = indivisible_by[div_test.prime_idx].data() +
 							util::vcl_hadd_x(_mm256_and_si256(util::expand_bits_to_bytes(upper_bits >> 32), ymm1));
 					}
 				}
@@ -344,8 +413,8 @@ namespace mbp::div_test
 				const auto rem = util::vcl_hadd_x(rems_lower);
 
 				// increment only if we haven't found a prime factor yet
-				size_t lookup = pf_lookup_preinc[rem] >> div_test.prime_idx;
-				output += ~lookup & 0b1;
+				const auto inc = indivisible_ptr[rem];
+				output = (uint64_t*)(((uint8_t*)output) + inc);
 			}
 
 			div_test.hits += uint32_t(input - output);
@@ -509,7 +578,7 @@ namespace mbp::div_test
 		std::cout << ss.str();
 
 	#endif
-}
+	}
 
 	void run_div_test_analysis(const size_t number)
 	{
