@@ -24,7 +24,7 @@ namespace mbp
 	const size_t p11 = 0b1000000010000011110100010001000101001010110111001;
 	const size_t p12 = 0b10100001011000101000110101011011011101111110100101011;
 
-	const bool benchmark_mode = false;
+	constexpr bool benchmark_mode = true;
 
 	const size_t bm_start = p11; // default: p11
 	const size_t bm_size = 150'000'000'000; // default 150'000'000'000
@@ -64,22 +64,6 @@ namespace mbp
 #define suppress_extra_div_tests 1
 
 
-
-#ifdef __INTELLISENSE__
-#define use_constexpr
-#define use_consteval
-#else
-#define use_constexpr constexpr
-#define use_consteval consteval
-#endif
-
-#if analyze_div_tests
-#define div_test_const
-#define div_test_constexpr
-#else
-#define div_test_const const
-#define div_test_constexpr use_constexpr
-#endif
 
 #if 0 // accumulate and print pass counts
 #define count_passes(...) __VA_ARGS__
