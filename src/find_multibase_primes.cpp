@@ -238,6 +238,8 @@ namespace mbp
 
 		std::cout << "Finished. " << util::current_time_in_ms() - start << " ms elapsed\n";
 
+		count_passes(std::cout << passes << " main loop iters\n");
+
 		log_pass_counts("Passed static sieve and\n"\
 						"  bit pattern filters: ", a, (bm_size / 2));
 		log_pass_counts("Passed sieve:          ", ps15, a);
@@ -361,7 +363,7 @@ namespace mbp
 			<< ", steps: " << sieve_steps
 			<< ", candidate capacity: " << candidates_capacity << '\n';
 
-		//ss << "Generated " << div_test::div_tests.size() << " div tests ("
+		//ss << div_test::div_tests.size() << " div tests ("
 		//	<< div_test::n_of_branchless_tests << "branchless + "
 		//	<< div_test::div_tests.size() - div_test::n_of_branchless_tests << " branching), "
 		//	<< div_test::n_of_primes << " prime factors, "
