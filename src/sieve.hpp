@@ -74,7 +74,7 @@ namespace mbp
 		const sieve_prime_t* prime_ptr = small_primes_lookup.data() + static_sieve_primes.size() + 1;
 		sieve_offset_t* offset_cache_ptr = sieve_offsets_cache.data() + static_sieve_primes.size() + 1;
 
-		const size_t sieve_end = sieve.size();
+		constexpr size_t sieve_end = sieve.size();
 
 		// Sieve primes by strides of 15*p:
 		// 
