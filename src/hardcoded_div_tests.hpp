@@ -1384,6 +1384,10 @@ namespace mbp
 			_mm256_storeu_si256((uint256_t*)(sums_0213465x + 4), sums_465x);
 		}
 
+		// load ahead
+		uint128_t xmm_candidate = _mm_loadu_si128((uint128_t*)(input + 1));
+		uint256_t candidate = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_candidate), xmm_candidate, 1);
+
 		for (; input < candidates_end; )
 		{
 			if constexpr (!on_fast_path)
@@ -1399,13 +1403,13 @@ namespace mbp
 				}
 			}
 
-			// run vector instructions one iteration ahead
-
-			const uint128_t xmm_candidate = _mm_loadu_si128((uint128_t*)(input + 1));
-			const uint256_t candidate = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_candidate), xmm_candidate, 1);
-
 			uint256_t candidate_lo = _mm256_shuffle_epi8(candidate, shuffle_mask_lo);
 			uint256_t candidate_hi = _mm256_shuffle_epi8(candidate, shuffle_mask_hi);
+
+			// load two iterations ahead
+			xmm_candidate = _mm_loadu_si128((uint128_t*)(input + 2));
+			candidate = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_candidate), xmm_candidate, 1);
+
 			candidate_lo = _mm256_andnot_si256(candidate_lo, and_mask);
 			candidate_hi = _mm256_andnot_si256(candidate_hi, and_mask);
 			candidate_lo = _mm256_cmpeq_epi8(candidate_lo, _mm256_setzero_si256());
