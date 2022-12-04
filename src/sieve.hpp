@@ -134,20 +134,19 @@ namespace mbp
 		{
 			const size_t low_bits = bit_idx & 0b111;
 
-			chunk >>= low_bits; // offset range 0-7
+			// Zero out the bottom n bits, where n is our offset into the byte
+			const uint64_t masked_chunk = chunk & (uint64_t(-1) << low_bits);
+			const size_t trailing_zeroes = _tzcnt_u64(masked_chunk);
 
-			const size_t trailing_zeroes = _tzcnt_u64(chunk);
-			const size_t chunk_is_non_zero = !!chunk; // map 0 -> 0; non-zero -> 1
-
-			// When we shift (above) we add extra zeroes. If we don't have at least one bit set,
-			// we just counted N too many zeroes, where N = (bit_offset & 0b111).
-			// If chunk is zero, subtract N.
-			bit_idx -= (chunk == 0) ? low_bits : 0;
-			bit_idx += chunk_is_non_zero;
+			bit_idx -= low_bits;
 			bit_idx += trailing_zeroes;
 
-			*candidates = number + (2 * bit_idx) - 2; // always store to avoid a branch
-			candidates += chunk_is_non_zero; // keep the candidate (increment the pointer) unless mask is 0
+			*candidates = number + (2 * bit_idx); // always store to avoid a branch
+
+			const size_t chunk_is_non_zero = (trailing_zeroes >> 6) ^ 1; // max tzc == 64 == 0b0100'0000. Shift by 6 then invert.
+
+			candidates += chunk_is_non_zero; // if we found a bit, keep the candidate 
+			bit_idx += chunk_is_non_zero; // if we found a bit, our next index is one past it
 
 			chunk = sieve.load_u64_chunk(bit_idx); // load ahead
 		}
