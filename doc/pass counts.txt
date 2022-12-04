@@ -314,7 +314,6 @@ hash of pass counts: 72d10180262f95fa
 
 Add 17 to static sieve factors
 
-Finished. 15242 ms elapsed
 Passed static sieve and
   bit pattern filters: 1,415,389,280 (removed ~ 95%) (~1,862,354 candidates pass per main loop iteration)
 Passed sieve, part 1:    783,520,695 (removed ~ 45%) (~1,030,948 candidates pass per main loop iteration)
