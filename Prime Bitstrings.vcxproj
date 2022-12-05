@@ -252,6 +252,7 @@
     <ClInclude Include="src\math\pk_prime.hpp" />
     <ClInclude Include="src\math\math.hpp" />
     <ClInclude Include="src\trial_division\types.hpp" />
+    <ClInclude Include="src\util\bit_array.hpp" />
     <ClInclude Include="src\util\sandbox.hpp" />
     <ClInclude Include="src\util\simd.hpp" />
     <ClInclude Include="src\util\types.hpp" />
