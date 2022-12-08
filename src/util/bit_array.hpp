@@ -1,6 +1,6 @@
 #pragma once
 
-// Bitset with cache line alignment
+// Bitset with 32-byte / 256-bit alignment
 
 namespace mbp
 {
@@ -8,7 +8,7 @@ namespace mbp
 #pragma warning(push)
 #pragma warning(disable: 4324)
 	template<size_t n_elements>
-	class alignas(64) bit_array
+	class alignas(32) bit_array
 	{
 	public:
 		constexpr bit_array()
