@@ -703,6 +703,7 @@ namespace mbp
 		return output;
 	}
 
+	template<bool on_fast_path>
 	tests_are_inlined size_t* div_tests_with_five_rems(size_t* input,
 													   const size_t* const candidates_end)
 	{
@@ -716,95 +717,162 @@ namespace mbp
 		static_assert(bitmask == bitmask_for<9, 11>::val);  // base 9 % 11   (5 remainders)
 		static_assert(period_of<bitmask>::val == 5);
 
-		// constexpr uint128_t static_rems0 = { always all ones };
-		constexpr static uint128_t static_rems1 = uint128_t{ .m128i_u32{
-			pow_mod<3, 1, 11>::rem,
-			pow_mod<4, 1, 11>::rem,
-			pow_mod<5, 1, 11>::rem,
-			pow_mod<9, 1, 11>::rem } };
-		constexpr static uint128_t static_rems2 = uint128_t{ .m128i_u32{
-			pow_mod<3, 2, 11>::rem,
-			pow_mod<4, 2, 11>::rem,
-			pow_mod<5, 2, 11>::rem,
-			pow_mod<9, 2, 11>::rem } };
-		constexpr static uint128_t static_rems3 = uint128_t{ .m128i_u32{
-			pow_mod<3, 3, 11>::rem,
-			pow_mod<4, 3, 11>::rem,
-			pow_mod<5, 3, 11>::rem,
-			pow_mod<9, 3, 11>::rem } };
-		constexpr static uint128_t static_rems4 = uint128_t{ .m128i_u32{
-			pow_mod<3, 4, 11>::rem,
-			pow_mod<4, 4, 11>::rem,
-			pow_mod<5, 4, 11>::rem,
-			pow_mod<9, 4, 11>::rem } };
+		constexpr size_t upper_bits_mask = size_t(-1) << 32;
 
-		const auto xmm_rems1 = _mm_loadu_si128(&static_rems1);
-		const auto xmm_rems2 = _mm_loadu_si128(&static_rems2);
-		const auto xmm_rems3 = _mm_loadu_si128(&static_rems3);
-		const auto xmm_rems4 = _mm_loadu_si128(&static_rems4);
-
-		const uint8_t* const indivisible_by_11 = indivisible_by[get_prime_index<11>::idx].data();
+		static constexpr uint256_t static_rems_byte_0 = { .m256i_u8{
+			1, 3, 9, 5, 4, 1, 3, 9,
+			1, 4, 5, 9, 3, 1, 4, 5,
+			1, 5, 3, 4, 9, 1, 5, 3,
+			1, 9, 4, 3, 5, 1, 9, 4 } };
+		static constexpr uint256_t static_rems_byte_1 = { .m256i_u8{
+			5, 4, 1, 3, 9, 5, 4, 1,
+			9, 3, 1, 4, 5, 9, 3, 1,
+			4, 9, 1, 5, 3, 4, 9, 1,
+			3, 5, 1, 9, 4, 3, 5, 1 } };
+		static constexpr uint256_t static_rems_byte_2 = { .m256i_u8{
+			3, 9, 5, 4, 1, 3, 9, 5,
+			4, 5, 9, 3, 1, 4, 5, 9,
+			5, 3, 4, 9, 1, 5, 3, 4,
+			9, 4, 3, 5, 1, 9, 4, 3 } };
+		static constexpr uint256_t static_rems_byte_3 = { .m256i_u8{ 
+			4, 1, 3, 9, 5, 4, 1, 3,
+			3, 1, 4, 5, 9, 3, 1, 4,
+			9, 1, 5, 3, 4, 9, 1, 5,
+			5, 1, 9, 4, 3, 5, 1, 9 } };
 
 		size_t* output = input;
+		size_t number = *input; // load one iteration ahead
 
-		uint32_t sums[4]{};
+		size_t upper_bits = number & upper_bits_mask;
+
+		const size_t pc_0 = pop_count(upper_bits & (bitmask << 0));
+		size_t upper_sum_0 = pc_0;
+		size_t upper_sum_1 = pc_0;
+		size_t upper_sum_2 = pc_0;
+		size_t upper_sum_3 = pc_0;
+		const size_t pc_1 = pop_count(upper_bits & (bitmask << 1));
+		upper_sum_0 += pc_1 * pow_mod<3, 1, 11>::rem;
+		upper_sum_1 += pc_1 * pow_mod<4, 1, 11>::rem;
+		upper_sum_2 += pc_1 * pow_mod<5, 1, 11>::rem;
+		upper_sum_3 += pc_1 * pow_mod<9, 1, 11>::rem;
+		const size_t pc_2 = pop_count(upper_bits & (bitmask << 2));
+		upper_sum_0 += pc_2 * pow_mod<3, 2, 11>::rem;
+		upper_sum_1 += pc_2 * pow_mod<4, 2, 11>::rem;
+		upper_sum_2 += pc_2 * pow_mod<5, 2, 11>::rem;
+		upper_sum_3 += pc_2 * pow_mod<9, 2, 11>::rem;
+		const size_t pc_3 = pop_count(upper_bits & (bitmask << 3));
+		upper_sum_0 += pc_3 * pow_mod<3, 3, 11>::rem;
+		upper_sum_1 += pc_3 * pow_mod<4, 3, 11>::rem;
+		upper_sum_2 += pc_3 * pow_mod<5, 3, 11>::rem;
+		upper_sum_3 += pc_3 * pow_mod<9, 3, 11>::rem;
+		const size_t pc_4 = pop_count(upper_bits & (bitmask << 4));
+		upper_sum_0 += pc_4 * pow_mod<3, 4, 11>::rem;
+		upper_sum_1 += pc_4 * pow_mod<4, 4, 11>::rem;
+		upper_sum_2 += pc_4 * pow_mod<5, 4, 11>::rem;
+		upper_sum_3 += pc_4 * pow_mod<9, 4, 11>::rem;
+
+		const uint8_t* indivisible_b3 = indivisible_by[get_prime_index<11>::idx].data() + upper_sum_0;
+		const uint8_t* indivisible_b4 = indivisible_by[get_prime_index<11>::idx].data() + upper_sum_1;
+		const uint8_t* indivisible_b5 = indivisible_by[get_prime_index<11>::idx].data() + upper_sum_2;
+		const uint8_t* indivisible_b9 = indivisible_by[get_prime_index<11>::idx].data() + upper_sum_3;
+
+		const uint256_t and_mask = _mm256_set1_epi64x(0x80'40'20'10'08'04'02'01);
+
+		const uint256_t rems_byte_0 = _mm256_loadu_si256(&static_rems_byte_0);
+		const uint256_t rems_byte_1 = _mm256_loadu_si256(&static_rems_byte_1);
+		const uint256_t rems_byte_2 = _mm256_loadu_si256(&static_rems_byte_2);
+		const uint256_t rems_byte_3 = _mm256_loadu_si256(&static_rems_byte_3);
+
+		const uint256_t shuffle_mask = _mm256_set_epi64x(0x0303030303030303, 0x0202020202020202, 0x0101010101010101, 0x0000000000000000);
+
+		alignas(32) uint64_t sums[4]{};
 
 		// run vector instructions one iteration ahead
 		{
-			const size_t number = *input;
-			auto xmm0 = _mm_set1_epi32((int)pop_count(number & (bitmask << 0)));
-			auto xmm1 = _mm_set1_epi32((int)pop_count(number & (bitmask << 1)));
-			auto xmm2 = _mm_set1_epi32((int)pop_count(number & (bitmask << 2)));
-			auto xmm3 = _mm_set1_epi32((int)pop_count(number & (bitmask << 3)));
-			auto xmm4 = _mm_set1_epi32((int)pop_count(number & (bitmask << 4)));
+			// this loads more than we need, but VBROADCASTI128 is the cheapest way to load to both lanes
+			const uint128_t xmm_candidate = _mm_loadu_si128((uint128_t*)input);
+			uint256_t candidate = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_candidate), xmm_candidate, 1);
 
-			// multiply each popcount with Nth remainder of each test
-			// (rems0 is always all ones)
-			xmm1 = _mm_mullo_epi32(xmm1, xmm_rems1);
-			xmm2 = _mm_mullo_epi32(xmm2, xmm_rems2);
-			xmm3 = _mm_mullo_epi32(xmm3, xmm_rems3);
-			xmm4 = _mm_mullo_epi32(xmm4, xmm_rems4);
+			// convert bits to bytes
+			candidate = _mm256_shuffle_epi8(candidate, shuffle_mask);
+			candidate = _mm256_andnot_si256(candidate, and_mask);
+			candidate = _mm256_cmpeq_epi8(candidate, _mm256_setzero_si256());
+			const uint256_t candidate_byte_0 = _mm256_permute4x64_epi64(candidate, 0);
+			const uint256_t candidate_byte_1 = _mm256_permute4x64_epi64(candidate, 0b01'01'01'01);
+			const uint256_t candidate_byte_2 = _mm256_permute4x64_epi64(candidate, 0b10'10'10'10);
+			const uint256_t candidate_byte_3 = _mm256_permute4x64_epi64(candidate, 0b11'11'11'11);
 
-			// add pairs
-			xmm0 = _mm_add_epi32(xmm0, xmm1);
-			xmm2 = _mm_add_epi32(xmm2, xmm3);
-			// final adds
-			xmm0 = _mm_add_epi32(xmm0, xmm2);
-			xmm0 = _mm_add_epi32(xmm0, xmm4);
+			// select remainders
+			const uint256_t sums_0 = _mm256_and_si256(candidate_byte_0, rems_byte_0);
+			const uint256_t sums_1 = _mm256_and_si256(candidate_byte_1, rems_byte_1);
+			const uint256_t sums_2 = _mm256_and_si256(candidate_byte_2, rems_byte_2);
+			const uint256_t sums_3 = _mm256_and_si256(candidate_byte_3, rems_byte_3);
 
-			// store the above results for the next iteraton
-			_mm_storeu_si128((uint128_t*)sums, xmm0);
+			// vertically sum
+			const uint256_t sums_01 = _mm256_add_epi8(sums_0, sums_1);
+			const uint256_t sums_23 = _mm256_add_epi8(sums_2, sums_3);
+			uint256_t sums_0123 = _mm256_add_epi8(sums_01, sums_23);
+			// horizontally sum
+			sums_0123 = _mm256_sad_epu8(sums_0123, _mm256_setzero_si256());
+
+			// store on the stack
+			_mm256_storeu_si256((uint256_t*)sums, sums_0123);
 		}
+
+		// this loads more than we need, but VBROADCASTI128 is the cheapest way to load to both lanes
+		uint128_t xmm_candidate = _mm_loadu_si128((uint128_t*)(input + 1));
+		uint256_t candidate = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_candidate), xmm_candidate, 1);
 
 		for (; input < candidates_end; )
 		{
-			const size_t next_n = *(input + 1);
-			auto xmm0 = _mm_set1_epi32((int)pop_count(next_n & (bitmask << 0)));
-			auto xmm1 = _mm_set1_epi32((int)pop_count(next_n & (bitmask << 1)));
-			auto xmm2 = _mm_set1_epi32((int)pop_count(next_n & (bitmask << 2)));
-			auto xmm3 = _mm_set1_epi32((int)pop_count(next_n & (bitmask << 3)));
-			auto xmm4 = _mm_set1_epi32((int)pop_count(next_n & (bitmask << 4)));
+			if constexpr (!on_fast_path)
+			{
+				if ((number & upper_bits_mask) != upper_bits)
+				{
+					upper_bits = number & upper_bits_mask;
 
-			xmm1 = _mm_mullo_epi32(xmm1, xmm_rems1);
-			xmm2 = _mm_mullo_epi32(xmm2, xmm_rems2);
-			xmm3 = _mm_mullo_epi32(xmm3, xmm_rems3);
-			xmm4 = _mm_mullo_epi32(xmm4, xmm_rems4);
+					// recalculate
+					indivisible_b3 = indivisible_by[get_prime_index<11>::idx].data() + get_upper_sum_of_rems<11, in_base<3>>(number);
+					indivisible_b4 = indivisible_by[get_prime_index<11>::idx].data() + get_upper_sum_of_rems<11, in_base<4>>(number);
+					indivisible_b5 = indivisible_by[get_prime_index<11>::idx].data() + get_upper_sum_of_rems<11, in_base<5>>(number);
+					indivisible_b9 = indivisible_by[get_prime_index<11>::idx].data() + get_upper_sum_of_rems<11, in_base<9>>(number);
+				}
+			}
 
-			xmm0 = _mm_add_epi32(xmm0, xmm1);
-			xmm2 = _mm_add_epi32(xmm2, xmm3);
-			xmm0 = _mm_add_epi32(xmm0, xmm2);
-			xmm0 = _mm_add_epi32(xmm0, xmm4);
+			candidate = _mm256_shuffle_epi8(candidate, shuffle_mask);
+			candidate = _mm256_andnot_si256(candidate, and_mask);
+			candidate = _mm256_cmpeq_epi8(candidate, _mm256_setzero_si256());
+			const uint256_t candidate_byte_0 = _mm256_permute4x64_epi64(candidate, 0);
+			const uint256_t candidate_byte_1 = _mm256_permute4x64_epi64(candidate, 0b01'01'01'01);
+			const uint256_t candidate_byte_2 = _mm256_permute4x64_epi64(candidate, 0b10'10'10'10);
+			const uint256_t candidate_byte_3 = _mm256_permute4x64_epi64(candidate, 0b11'11'11'11);
+
+			// load two iterations ahead
+			xmm_candidate = _mm_loadu_si128((uint128_t*)(input + 2));
+			candidate = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_candidate), xmm_candidate, 1);
+
+			const uint256_t sums_0 = _mm256_and_si256(candidate_byte_0, rems_byte_0);
+			const uint256_t sums_1 = _mm256_and_si256(candidate_byte_1, rems_byte_1);
+			const uint256_t sums_2 = _mm256_and_si256(candidate_byte_2, rems_byte_2);
+			const uint256_t sums_3 = _mm256_and_si256(candidate_byte_3, rems_byte_3);
+
+			const uint256_t sums_01 = _mm256_add_epi8(sums_0, sums_1);
+			const uint256_t sums_23 = _mm256_add_epi8(sums_2, sums_3);
+			uint256_t sums_0123 = _mm256_add_epi8(sums_01, sums_23);
+			sums_0123 = _mm256_sad_epu8(sums_0123, _mm256_setzero_si256());
+
+			*output = number; // always write
+			number = *++input; // load one iteration ahead
 
 			// Only advance the pointer if the number is still a candidate
-			const size_t inc = indivisible_by_11[sums[0]]
-				& indivisible_by_11[sums[1]]
-				& indivisible_by_11[sums[2]]
-				& indivisible_by_11[sums[3]];
-			*output = *input++;
+			size_t inc = indivisible_b3[sums[0]]
+				& indivisible_b4[sums[1]]
+				& indivisible_b5[sums[2]]
+				& indivisible_b9[sums[3]];
 			output = (uint64_t*)(((uint8_t*)output) + inc);
 
-			// store the above results for the next iteraton
-			_mm_storeu_si128((uint128_t*)sums, xmm0);
+			// store on the stack for the next iteration
+			_mm256_storeu_si256((uint256_t*)sums, sums_0123);
 		}
 
 		return output;

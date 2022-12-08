@@ -315,7 +315,7 @@ namespace mbp
 		count_passes(h += (candidates_end - candidates));
 
 		// bases 3, 4, 5, and 9 mod 11 (5 remainders)
-		candidates_end = div_tests_with_five_rems(candidates, candidates_end);
+		candidates_end = div_tests_with_five_rems<on_fast_path>(candidates, candidates_end);
 		count_passes(i += (candidates_end - candidates));
 
 		// bases 3, 5, 6, 7, 10, 11 and 12 mod 17 (16 remainders)
