@@ -59,6 +59,10 @@ namespace mbp
 			// However, if n is even, it is pointing to the next odd multiple of p.
 			// -- do nothing
 
+			// handle edge cases where start % prime == 0
+			if (n == 2 * p)
+				n = 0;
+
 			// We now have the distance to the next odd multiple of p.
 			// Divide by 2 to store the *index* of the next odd multiple of p.
 			sieve_offsets_cache[i] = n / 2;
