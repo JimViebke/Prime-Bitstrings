@@ -47,6 +47,7 @@ namespace mbp
 
 		return pc_lookup;
 	}
+	// [offset 0-7][outer pc 0-46][bitstring inner bits]
 	const std::vector<std::vector<bit_array<pow_2_16>>> pc_lookup = build_popcounts_lookup();
 
 	std::vector<std::vector<bit_array<pow_2_16>>> build_gcd_lookup()
@@ -111,7 +112,7 @@ namespace mbp
 
 		return gcd_lookup;
 	}
-	// [offset 0-7][outer abs 0-47][bitstring lower bits]
+	// [offset 0-7][outer abs 0-47][bitstring inner bits]
 	const std::vector<std::vector<bit_array<pow_2_16>>> gcd_lookup = build_gcd_lookup();
 
 }

@@ -15,6 +15,24 @@ namespace mbp
 	static const sieve_container static_sieve = generate_static_sieve();
 	static sieve_container sieve;
 
+	__forceinline auto pc_lookup_idx(const size_t number)
+	{
+		constexpr size_t outer_48_bits_mask = ~(0xFFFFull << 1);
+
+		return pop_count(number & outer_48_bits_mask) - 2; // -2 to normalize popcount 2-48 to idx 0-46
+	}
+
+	__forceinline auto gcd_lookup_idx(const size_t number)
+	{
+		constexpr size_t outer_48_bits_mask = ~(0xFFFFull << 1);
+		constexpr size_t even_mask = outer_48_bits_mask & 0x5555555555555555;
+		constexpr size_t odd_mask = outer_48_bits_mask & 0xAAAAAAAAAAAAAAAA;
+
+		const auto outer_even_pc = pop_count(number & even_mask);
+		const auto outer_odd_pc = pop_count(number & odd_mask);
+		return outer_even_pc - outer_odd_pc + 23; // +23 to normalize -23,24 to 0,47
+	}
+
 	void copy_static_sieve_with_bit_pattern_filters(size_t number)
 	{
 		using block_t = uint64_t;
@@ -22,7 +40,6 @@ namespace mbp
 
 		// 64 bits == 47 high bits + (16 "inner" bits) + 1 low bit (always set)
 		constexpr size_t bits_1_16_mask = 0xFFFFull << 1;
-		constexpr size_t outer_48_bits_mask = ~bits_1_16_mask;
 
 		constexpr size_t leftover_elements = sieve.size() % (elements_per_block * 4);
 
@@ -41,18 +58,15 @@ namespace mbp
 		const block_t* gcd_lookup_ptr{};
 
 		const auto set_lookup_ptrs = [&](const size_t next_number) {
-			const size_t outer_bits = next_number & outer_48_bits_mask;
 			const size_t bits_1_16 = (next_number & bits_1_16_mask) >> 1;
 
 			const size_t bit_offset = bits_1_16 & 0b111;
 			const size_t byte_offset = bits_1_16 / 8;
 
-			const auto pc_idx = pop_count(outer_bits) - 2; // -2 to normalize popcount 2-48 to idx 0-46
+			const auto pc_idx = pc_lookup_idx(next_number);
 			pc_lookup_ptr = (const block_t*)(pc_lookup[bit_offset][pc_idx].data() + byte_offset);
 
-			const auto outer_even_pc = pop_count(outer_bits & 0x5555555555555555);
-			const auto outer_odd_pc = pop_count(outer_bits & 0xAAAAAAAAAAAAAAAA);
-			const auto gcd_idx = (outer_even_pc - outer_odd_pc) + 23; // +23 to normalize -23,24 to 0,47
+			const auto gcd_idx = gcd_lookup_idx(next_number);
 			gcd_lookup_ptr = (const block_t*)(gcd_lookup[bit_offset][gcd_idx].data() + byte_offset);
 		};
 
