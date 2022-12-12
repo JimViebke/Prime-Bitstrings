@@ -103,10 +103,11 @@ void mbp::log_result(const size_t n, const size_t up_to_base)
 
 	static auto last_perf_time = util::current_time_in_ms();
 	static size_t last_n = 0;
+	static uint64_t results_hash = 0xdeadbeef;
 
 	const auto perf_time = util::current_time_in_ms();
 
-	// Don't log or print perf info for the first result
+	// Don't log to file or print perf info for the first result
 	if (last_n != 0)
 	{
 		// Don't log in benchmark mode
@@ -118,10 +119,12 @@ void mbp::log_result(const size_t n, const size_t up_to_base)
 
 		// Continue populating the stringstream
 
+		results_hash = util::hash(results_hash ^ n);
+		ss << "    " << std::hex << std::setfill('0') << std::setw(16) << results_hash << std::dec;
+
 		const double elapsed_seconds = double(perf_time - last_perf_time) / 1'000.0;
 		const double ints_per_second = double(n - last_n) / elapsed_seconds;
-
-		ss << '\t' << std::setfill(' ') << std::setw(4) << size_t((ints_per_second / 1'000'000.0) + 0.5) << " M integers/second";
+		ss << "    " << std::setfill(' ') << std::setw(4) << size_t((ints_per_second / 1'000'000.0) + 0.5) << " M integers/second";
 	}
 
 	std::cout << ss.str() << '\n';
