@@ -69,6 +69,28 @@ namespace mbp
 		}
 	}
 
+	void verify_sieve_offset_cache(const uint64_t start)
+	{
+		// - start + (2 * offset) should be evenly divisible by 15*p
+		// - the offset should be less than 15*p
+
+		for (size_t i = static_sieve_primes.size() + 1; small_primes_lookup[i] <= last_prime_for_stepping_by_fifteen; ++i)
+		{
+			const uint64_t p15 = 15ull * small_primes_lookup[i];
+			const uint64_t j = sieve_offsets_cache[i];
+
+			const uint64_t remainder = (start + (2 * j)) % p15;
+
+			if (j >= p15 || remainder != 0)
+			{
+				std::cout << "small_primes_lookup[" << i << "] = " << small_primes_lookup[i] << '\n';
+				std::cout << "sieve_offsets_cache[" << i << "] = " << j << '\n';
+				std::cout << "max allowed offset (p*15) = " << p15 << '\n';
+				std::cin.ignore();
+			}
+		}
+	}
+
 	template<size_t p>
 	consteval std::array<bit_array<256>, 8> generate_sieve_masks()
 	{
