@@ -69,6 +69,37 @@ namespace mbp
 		}
 	}
 
+	void update_sieve_offsets_cache(const uint64_t start,
+									const sieve_prime_t* prime_ptr,
+									sieve_offset_t* offset_ptr)
+	{
+		for (size_t prime = *prime_ptr;
+			 prime <= last_prime_for_stepping_by_fifteen;
+			 prime = *++prime_ptr, ++offset_ptr)
+		{
+			// We sieve by strides of 15*p, so align p to an (odd) multiple of 15*p
+			prime *= 15;
+
+			// Find out how far it is to the next multiple of p.
+			const size_t rem = (start % prime);
+			size_t n = prime - rem;
+
+			// Start is always odd. Therefore:
+			// - If n is odd, it is pointing to the next even multiple of p. Increase by p.
+			// - If n is even, it is pointing to the next odd multiple of p. Do nothing.
+			if (n % 2 == 1)
+				n += prime;
+
+			// Handle an edge case where start % prime == 0
+			if (rem == 0)
+				n = 0;
+
+			// Divide by 2 to convert the distance to the next odd multiple of p
+			// to the *index* of the next odd multiple of p.
+			*offset_ptr = sieve_offset_t(n / 2);
+		}
+	}
+
 	void verify_sieve_offset_cache(const uint64_t start)
 	{
 		// - start + (2 * offset) should be evenly divisible by 15*p
@@ -419,7 +450,8 @@ namespace mbp
 		++offset_cache_ptr;
 	}
 
-	void partial_sieve(sieve_container& sieve
+	void partial_sieve(const uint64_t number,
+					   sieve_container& sieve
 					   count_passes(, size_t& ps15))
 	{
 		// Sieve primes by strides of 15*p:
@@ -460,10 +492,23 @@ namespace mbp
 			even_wider_vectorized_sieve_pass<79>(sieve, sieve_masks_p79, prime_ptr, offset_cache_ptr);
 		}
 
+		double density = double(sieve.count_bits()) / sieve_container::size();
+
 		for (;;)
 		{
+			// If we stop sieving early, we still need to update our offsets cache
+			if (density < density_threshold)
+			{
+				update_sieve_offsets_cache(number + 2 * sieve_container::size(),
+										   prime_ptr, offset_cache_ptr);
+				break;
+			}
+
 			// Get the next prime
-			const size_t p = *prime_ptr;
+			const size_t p = *prime_ptr++;
+
+			// Update the density estimate
+			density -= (1.0 / p) * density;
 
 			// Get the position of the next odd multiple of p*15
 			size_t j = *offset_cache_ptr;
@@ -488,10 +533,7 @@ namespace mbp
 			} while (j < padded_end);
 
 			// Calculate and cache the offset for the next sieving
-			*offset_cache_ptr = sieve_offset_t((j + (15 * p)) - sieve_end);
-
-			++prime_ptr;
-			++offset_cache_ptr;
+			*offset_cache_ptr++ = sieve_offset_t((j + (15 * p)) - sieve_end);
 
 			if (p == last_prime_for_stepping_by_fifteen) break;
 		}

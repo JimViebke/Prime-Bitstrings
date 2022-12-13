@@ -281,15 +281,15 @@ namespace mbp
 	void mbp::find_multibase_primes::main_loop(const size_t number)
 	{
 		size_t* const candidates = candidates_storage.data();
-
 		size_t* candidates_end = candidates;
+
 		for (size_t sieve_step = 0; sieve_step < sieve_steps; ++sieve_step)
 		{
 			// Merge the static sieve, popcount, and gcd data
 			copy_static_sieve_with_bit_pattern_filters(number + (sieve_step * sieve.size() * 2));
 			count_passes(a += sieve.count_bits());
 
-			partial_sieve(sieve
+			partial_sieve(number + (sieve_step * sieve.size() * 2), sieve
 						  count_passes(, ps15));
 
 			candidates_end = gather_sieve_results(
@@ -363,7 +363,7 @@ namespace mbp
 
 		if constexpr (benchmark_mode)
 		{
-			ss << "Benchmark from ";
+			ss << "Benchmarking from ";
 			if constexpr (bm_start == p11) ss << "p11";
 			else if constexpr (bm_start == p12) ss << "p12";
 			else ss << bm_start;
@@ -373,6 +373,7 @@ namespace mbp
 		ss << "Static sieve size: " << static_sieve_size
 			<< ", primes: 3-" << static_sieve_primes.back() << '\n';
 		ss << "Sieve limit: " << size_t(last_prime_for_stepping_by_fifteen)
+			<< ", threshold: " << density_threshold
 			<< ", steps: " << sieve_steps
 			<< ", candidate capacity: " << candidates_capacity << '\n';
 

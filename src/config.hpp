@@ -38,6 +38,8 @@ namespace mbp
 
 	constexpr size_t sieve_steps = 2ull; // default 2
 
+	constexpr double density_threshold = 0.038; // default 0.038 (3.8%)
+
 	const size_t sieve_primes_cap = 937; // default: 937
 
 	// trial division tests in bases 3..n
