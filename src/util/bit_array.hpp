@@ -2,6 +2,10 @@
 
 // Bitset with 32-byte / 256-bit alignment
 
+#include <algorithm>
+
+#include "simd.hpp"
+
 namespace mbp
 {
 	// Suppress warning C4324: 'structure was padded due to alignment'
@@ -73,15 +77,51 @@ namespace mbp
 
 		constexpr static size_t size() { return n_elements; }
 
-		size_t count_bits() const
+		__forceinline size_t count_bits() const
 		{
-			const uint64_t* in = (uint64_t*)_data.data();
-			const uint64_t* const end = (uint64_t*)(_data.data() + _data.size());
+			constexpr static uint256_t static_nybble_lookup{ .m256i_u8{
+				0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
+				0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4 } };
 
-			size_t pc = 0;
+			const uint256_t nybble_mask = _mm256_set1_epi8(0b0000'1111);
+			const uint256_t nybble_pc_lookup = _mm256_loadu_si256(&static_nybble_lookup);
 
-			for (; in != end - 1; ++in)
-				pc += _mm_popcnt_u64(*in);
+			const uint256_t* const rounded_end = ((uint256_t*)_data.data()) + (n_elements / 256);
+
+			uint256_t ymm_pc{};
+			for (const uint256_t* in = (uint256_t*)_data.data(); in != rounded_end; )
+			{
+				const uint256_t* const stride_end = in + std::min(rounded_end - in,
+																  15ll); // uint8::max / 8
+
+				uint256_t inner_pc{};
+				for (; in < stride_end; ++in)
+				{
+					const uint256_t ymm0 = _mm256_loadu_si256(in);
+
+					const uint256_t nybbles_lo = _mm256_and_si256(ymm0, nybble_mask);
+					const uint256_t nybbles_hi = _mm256_and_si256(_mm256_srli_epi64(ymm0, 4), nybble_mask);
+
+					inner_pc = _mm256_add_epi8(inner_pc, _mm256_shuffle_epi8(nybble_pc_lookup, nybbles_lo));
+					inner_pc = _mm256_add_epi8(inner_pc, _mm256_shuffle_epi8(nybble_pc_lookup, nybbles_hi));
+				}
+
+				ymm_pc = _mm256_add_epi64(ymm_pc, _mm256_sad_epu8(inner_pc, _mm256_setzero_si256()));
+			}
+
+			// add high and low lanes
+			ymm_pc = _mm256_add_epi64(ymm_pc, _mm256_permute2x128_si256(ymm_pc, ymm_pc, 1));
+			// add high and low elements
+			ymm_pc = _mm256_add_epi64(ymm_pc, _mm256_srli_si256(ymm_pc, 8));
+			// extract
+			size_t pc = ymm_pc.m256i_u64[0];
+
+			const uint64_t* in = (const uint64_t*)rounded_end;
+
+			constexpr size_t extra_bytes = (n_elements % 256) / 8;
+			if constexpr (extra_bytes >= 8 * 1) pc += _mm_popcnt_u64(*in++);
+			if constexpr (extra_bytes >= 8 * 2) pc += _mm_popcnt_u64(*in++);
+			if constexpr (extra_bytes >= 8 * 3) pc += _mm_popcnt_u64(*in++);
 
 			constexpr size_t extra_bits = n_elements % 64;
 			if constexpr (extra_bits > 0)
