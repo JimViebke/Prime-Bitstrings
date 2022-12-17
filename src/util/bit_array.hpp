@@ -47,6 +47,13 @@ namespace mbp
 				for (; in != end; ++in)
 					*in = uint64_t(-1);
 			}
+
+			constexpr size_t extra_bits = n_elements % 64;
+			if constexpr (extra_bits > 0)
+			{
+				constexpr size_t offset = size_in_bytes() - 8;
+				*(uint64_t*)(&_data[offset]) &= (1ull << extra_bits) - 1;
+			}
 		}
 
 		constexpr void clear_all()
@@ -118,17 +125,11 @@ namespace mbp
 
 			const uint64_t* in = (const uint64_t*)rounded_end;
 
-			constexpr size_t extra_bytes = (n_elements % 256) / 8;
-			if constexpr (extra_bytes >= 8 * 1) pc += _mm_popcnt_u64(*in++);
-			if constexpr (extra_bytes >= 8 * 2) pc += _mm_popcnt_u64(*in++);
-			if constexpr (extra_bytes >= 8 * 3) pc += _mm_popcnt_u64(*in++);
-
-			constexpr size_t extra_bits = n_elements % 64;
-			if constexpr (extra_bits > 0)
-			{
-				// shift extra bits away so we get the right count
-				pc += _mm_popcnt_u64(*in << (64 - extra_bits));
-			}
+			constexpr size_t extra_bits = n_elements % 256;
+			if constexpr (extra_bits >= 64 * 0) pc += _mm_popcnt_u64(*in++);
+			if constexpr (extra_bits >= 64 * 1) pc += _mm_popcnt_u64(*in++);
+			if constexpr (extra_bits >= 64 * 2) pc += _mm_popcnt_u64(*in++);
+			if constexpr (extra_bits >= 64 * 3) pc += _mm_popcnt_u64(*in++);
 
 			return pc;
 		}
