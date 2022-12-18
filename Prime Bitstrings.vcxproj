@@ -169,6 +169,7 @@
     <ClCompile Include="src\io\io.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\primality_tests.cpp" />
+    <ClCompile Include="src\sieve.cpp" />
     <ClCompile Include="src\trial_division\multibase_div_tests.cpp" />
     <ClCompile Include="src\util\simd.cpp" />
     <ClCompile Include="src\util\utility.cpp" />
