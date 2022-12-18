@@ -21,12 +21,15 @@ namespace mbp
 {
 	namespace detail
 	{
-		consteval std::vector<sieve_prime_t> build_small_primes_lookup_impl()
+		constexpr std::vector<sieve_prime_t> build_small_primes_lookup_impl()
 		{
 			std::vector<sieve_prime_t> primes;
 			primes.push_back(2);
 
-			std::vector<uint8_t> sieve(sieve_primes_cap + 1, true);
+			// capture requirements for the small primes lookup here
+			constexpr size_t largest_prime = std::max({ prime_sieve::largest_sieve_prime,
+													  prime_test::mpir_trial_div_cap });
+			std::vector<uint8_t> sieve(largest_prime + 1, true);
 
 			for (size_t i = 3; i < sieve.size(); i += 2)
 			{

@@ -30,17 +30,17 @@ namespace mbp
 	const size_t bm_size = 150'000'000'000; // default 150'000'000'000
 	const size_t bm_stop = bm_start + bm_size;
 
-	// The size of the static sieve is the product of these numbers. Exercise caution.
-	constexpr std::array static_sieve_primes{ 3ull, 5ull, 7ull, 11ull, 13ull, 17ull };
+	namespace prime_sieve
+	{
+		// The size of the static sieve is the product of these numbers. Exercise caution.
+		constexpr std::array static_sieve_primes{ 3ull, 5ull, 7ull, 11ull, 13ull, 17ull };
+		constexpr size_t static_sieve_size = std::accumulate(static_sieve_primes.begin(),
+															 static_sieve_primes.end(), 1ull, std::multiplies());
 
-	constexpr size_t static_sieve_size = std::accumulate(static_sieve_primes.begin(),
-														 static_sieve_primes.end(), 1ull, std::multiplies());
-
-	constexpr size_t sieve_steps = 2ull; // default 2
-
-	constexpr double density_threshold = 0.038; // default 0.038 (3.8%)
-
-	const size_t sieve_primes_cap = 937; // default: 937
+		constexpr size_t steps = 2ull; // default 2
+		constexpr size_t largest_sieve_prime = 263; // default 263
+		constexpr double density_threshold = 0.038; // default 0.038 (3.8%)
+	}
 
 	// trial division tests in bases 3..n
 	namespace div_test
@@ -56,7 +56,8 @@ namespace mbp
 	// full primality testing in bases 3..n
 	namespace prime_test
 	{
-		const size_t n_random_bases = 1;
+		constexpr size_t mpir_trial_div_cap = 937;
+		constexpr size_t n_random_bases = 1;
 	}
 
 	const char results_filename[] = "results.txt";

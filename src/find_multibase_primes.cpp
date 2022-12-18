@@ -12,7 +12,7 @@
 
 namespace mbp
 {
-	static const sieve_container static_sieve = generate_static_sieve();
+	static const sieve_container static_sieve = prime_sieve::generate_static_sieve();
 	static sieve_container sieve;
 
 	__forceinline auto pc_lookup_idx(const size_t number)
@@ -177,7 +177,7 @@ namespace mbp
 		double cleared = 0.0;
 		for (size_t i = 1; i < small_primes_lookup.size(); ++i)
 			cleared += (1.0 - cleared) * (1.0 / small_primes_lookup[i]);
-		return 2 * size_t((1.0 - cleared) * sieve.size() * sieve_steps);
+		return 2 * size_t((1.0 - cleared) * sieve.size() * prime_sieve::steps);
 	}();
 	static alignas(64) std::array<size_t, candidates_capacity> candidates_storage;
 
@@ -192,7 +192,7 @@ namespace mbp
 
 	void mbp::find_multibase_primes::run()
 	{
-		constexpr size_t loop_size = 2ull * sieve.size() * sieve_steps;
+		constexpr size_t loop_size = 2ull * sieve.size() * prime_sieve::steps;
 
 		size_t number = benchmark_mode ? bm_start : load_from_results();
 
@@ -201,7 +201,7 @@ namespace mbp
 		number -= number % (2 * sieve.size()); // n -= n % 2k
 		number += sieve.size(); // n += k
 
-		set_up_sieve_offsets_cache(number);
+		prime_sieve::set_up_sieve_offsets_cache(number);
 
 		size_t next_div_test_reorder = number + div_test::reorder_interval;
 
@@ -283,16 +283,16 @@ namespace mbp
 		size_t* const candidates = candidates_storage.data();
 		size_t* candidates_end = candidates;
 
-		for (size_t sieve_step = 0; sieve_step < sieve_steps; ++sieve_step)
+		for (size_t sieve_step = 0; sieve_step < prime_sieve::steps; ++sieve_step)
 		{
 			// Merge the static sieve, popcount, and gcd data
 			copy_static_sieve_with_bit_pattern_filters(number + (sieve_step * sieve.size() * 2));
 			count_passes(a += sieve.count_bits());
 
-			partial_sieve(number + (sieve_step * sieve.size() * 2), sieve
-						  count_passes(, ps15));
+			prime_sieve::partial_sieve(number + (sieve_step * sieve.size() * 2), sieve
+									   count_passes(, ps15));
 
-			candidates_end = gather_sieve_results(
+			candidates_end = prime_sieve::gather_sieve_results(
 				candidates_end, sieve, number + (sieve_step * sieve.size() * 2));
 		}
 
@@ -370,11 +370,12 @@ namespace mbp
 			ss << ", size: " << bm_size / 1'000'000'000 << " B\n";
 		}
 
+		using namespace prime_sieve;
 		ss << "Static sieve size: " << static_sieve_size
 			<< ", primes: 3-" << static_sieve_primes.back() << '\n';
-		ss << "Sieve limit: " << size_t(last_prime_for_stepping_by_fifteen)
+		ss << "Sieve limit: " << largest_sieve_prime
 			<< ", threshold: " << density_threshold
-			<< ", steps: " << sieve_steps
+			<< ", steps: " << steps
 			<< ", candidate capacity: " << candidates_capacity << '\n';
 
 		//ss << div_test::div_tests.size() << " div tests ("
@@ -384,7 +385,7 @@ namespace mbp
 		//	<< "bases 3-" << div_test::up_to_base
 		//	<< ", partial reorder every " << div_test::reorder_interval / 1'000'000'000 << " B\n";
 
-		ss << "SPRP rounds: " << prime_test::n_random_bases << ", td limit: " << sieve_primes_cap << '\n';
+		ss << "SPRP rounds: " << prime_test::n_random_bases << ", td limit: " << largest_sieve_prime << '\n';
 
 	#define stringify(macro) #macro
 

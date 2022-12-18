@@ -6,7 +6,7 @@
 
 namespace mbp
 {
-	using sieve_prime_t = util::narrowest_uint_for_val<sieve_primes_cap>;
+	using sieve_prime_t = util::narrowest_uint_for_val<prime_sieve::largest_sieve_prime>;
 
-	using sieve_container = mbp::bit_array<static_sieve_size>;
+	using sieve_container = mbp::bit_array<prime_sieve::static_sieve_size>;
 }

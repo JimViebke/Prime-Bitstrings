@@ -878,8 +878,7 @@ namespace mbp::franken
 			return mpir_is_likely_prime_BPSW(PTR(n)[0]);
 		}
 
-		static_assert(small_primes_lookup.back() >= 937ull);
-		const size_t tdlim = std::max(937ull /*1000ull*/, mpz_sizeinbase(n, 2));
+		const size_t tdlim = std::max(prime_test::mpir_trial_div_cap, mpz_sizeinbase(n, 2));
 
 		const size_t d = mpir_trial_division(n, start_idx, tdlim);
 
