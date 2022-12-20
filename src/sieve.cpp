@@ -536,13 +536,13 @@ namespace mbp::prime_sieve
 		constexpr size_t max_pc = 27; // 27 is the highest popcount of 64-bit chunks in the static sieve
 
 		using chunk_count_t = util::narrowest_uint_for_val<n_sieve_chunks>;
-		static std::array<chunk_count_t, max_pc + 1> n_chunks_with_pc{};
+		static std::array<chunk_count_t, max_pc + 1> n_chunks_with_pc;
 		// [popcount][chunk]
-		static std::array<std::array<uint64_t, n_sieve_chunks>, max_pc + 1> sorted_chunks{};
+		static std::array<std::array<uint64_t, n_sieve_chunks>, max_pc + 1> sorted_chunks;
 
 		using chunk_idx_t = util::narrowest_uint_for_val<n_sieve_chunks>;
 		// [popcount][idx]
-		static std::array<std::array<chunk_idx_t, n_sieve_chunks>, max_pc + 1> chunk_indexes{};
+		static std::array<std::array<chunk_idx_t, n_sieve_chunks>, max_pc + 1> chunk_indexes;
 
 		template<size_t n_bits>
 		__forceinline void extract_candidates(uint64_t& chunk,
