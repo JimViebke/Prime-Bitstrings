@@ -532,13 +532,17 @@ namespace mbp::prime_sieve
 
 	namespace detail
 	{
-		constexpr uint64_t n_sieve_chunks = (sieve_container::size() / 64) + 1;
-		constexpr size_t max_pc = 27; // 27 is the highest pc of 64-bit chunks in the static sieve
+		constexpr uint64_t n_sieve_chunks = (sieve_container::size() / 64) + (sieve_container::size() % 64 != 0);
+		constexpr size_t max_pc = 27; // 27 is the highest popcount of 64-bit chunks in the static sieve
 
 		using chunk_count_t = util::narrowest_uint_for_val<n_sieve_chunks>;
 		static std::array<chunk_count_t, max_pc + 1> n_chunks_with_pc{};
-		// [popcount][chunk, index]
-		static std::array<std::array<uint64_t, n_sieve_chunks * 2>, max_pc + 1> sorted_chunks{};
+		// [popcount][chunk]
+		static std::array<std::array<uint64_t, n_sieve_chunks>, max_pc + 1> sorted_chunks{};
+
+		using chunk_idx_t = util::narrowest_uint_for_val<n_sieve_chunks>;
+		// [popcount][idx]
+		static std::array<std::array<chunk_idx_t, n_sieve_chunks>, max_pc + 1> chunk_indexes{};
 
 		template<size_t n_bits>
 		__forceinline void extract_candidates(uint64_t& chunk,
@@ -564,8 +568,8 @@ namespace mbp::prime_sieve
 		{
 			for (size_t j = 0, n_chunks = n_chunks_with_pc[popcount]; j < n_chunks; ++j)
 			{
-				uint64_t chunk = sorted_chunks[popcount][j * 2];
-				uint64_t index = sorted_chunks[popcount][j * 2 + 1] * 64;
+				uint64_t chunk = sorted_chunks[popcount][j];
+				uint64_t index = chunk_indexes[popcount][j] * 64ull;
 
 				// generate instructions to extract n candidates
 				extract_candidates<popcount>(chunk, index, candidates);
@@ -583,18 +587,46 @@ namespace mbp::prime_sieve
 		const uint64_t* sieve_data = (uint64_t*)sieve.data();
 
 		// autovectorizes to three large writes
-		for (auto& pc : n_chunks_with_pc)
+		for (chunk_count_t& pc : n_chunks_with_pc)
 			pc = 0;
 
-		for (size_t i = 0; i < n_sieve_chunks; ++i)
+		constexpr size_t n_chunks_rounded = n_sieve_chunks - (n_sieve_chunks % 3);
+
+		// load one iteration ahead
+		uint64_t chunk_0 = sieve_data[0];
+		uint64_t chunk_1 = sieve_data[1];
+		uint64_t chunk_2 = sieve_data[2];
+		for (size_t i = 0; i < n_chunks_rounded; i += 3)
+		{
+			const size_t pc_0 = pop_count(chunk_0);
+			const size_t pc_1 = pop_count(chunk_1);
+			const size_t pc_2 = pop_count(chunk_2);
+
+			const size_t idx_0 = n_chunks_with_pc[pc_0]++;
+			const size_t idx_1 = n_chunks_with_pc[pc_1]++;
+			const size_t idx_2 = n_chunks_with_pc[pc_2]++;
+
+			sorted_chunks[pc_0][idx_0] = chunk_0;
+			chunk_indexes[pc_0][idx_0] = chunk_idx_t(i + 0);
+			sorted_chunks[pc_1][idx_1] = chunk_1;
+			chunk_indexes[pc_1][idx_1] = chunk_idx_t(i + 1);
+			sorted_chunks[pc_2][idx_2] = chunk_2;
+			chunk_indexes[pc_2][idx_2] = chunk_idx_t(i + 2);
+
+			chunk_0 = sieve_data[i + 3 + 0];
+			chunk_1 = sieve_data[i + 3 + 1];
+			chunk_2 = sieve_data[i + 3 + 2];
+		}
+
+		for (size_t i = n_chunks_rounded; i < n_sieve_chunks; ++i)
 		{
 			const uint64_t chunk = sieve_data[i];
 
 			const size_t pc = pop_count(chunk);
 			const size_t idx = n_chunks_with_pc[pc]++;
 
-			sorted_chunks[pc][idx * 2] = chunk;
-			sorted_chunks[pc][idx * 2 + 1] = i;
+			sorted_chunks[pc][idx] = chunk;
+			chunk_indexes[pc][idx] = chunk_idx_t(i);
 		}
 
 		uint64_t* const candidates_start = candidates;
