@@ -277,6 +277,10 @@ namespace mbp
 			}
 		}
 
+		const uint8_t* const indivisible_by_5 = indivisible_by[get_prime_index<5>::idx].data();
+		const uint8_t* const indivisible_by_13 = indivisible_by[get_prime_index<13>::idx].data();
+		const uint8_t* const indivisible_by_17 = indivisible_by[get_prime_index<17>::idx].data();
+
 		// handle any remaining elements
 		for (; input < candidates_end; ++input)
 		{
@@ -308,10 +312,10 @@ namespace mbp
 			b8m13_rem += pc_3 * pow_mod<8, 3, 13>::rem;
 			b4m17_rem += pc_3 * pow_mod<4, 3, 17>::rem;
 
-			const size_t inc = indivisible_by[get_prime_index<5>::idx][b3m5_rem]
-				& indivisible_by[get_prime_index<13>::idx][b5m13_rem]
-				& indivisible_by[get_prime_index<13>::idx][b8m13_rem]
-				& indivisible_by[get_prime_index<17>::idx][b4m17_rem];
+			const size_t inc = indivisible_by_5[b3m5_rem]
+				& indivisible_by_13[b5m13_rem]
+				& indivisible_by_13[b8m13_rem]
+				& indivisible_by_17[b4m17_rem];
 
 			output = (uint64_t*)(((uint8_t*)output) + inc);
 		}
@@ -734,7 +738,7 @@ namespace mbp
 			4, 5, 9, 3, 1, 4, 5, 9,
 			5, 3, 4, 9, 1, 5, 3, 4,
 			9, 4, 3, 5, 1, 9, 4, 3 } };
-		static constexpr uint256_t static_rems_byte_3 = { .m256i_u8{ 
+		static constexpr uint256_t static_rems_byte_3 = { .m256i_u8{
 			4, 1, 3, 9, 5, 4, 1, 3,
 			3, 1, 4, 5, 9, 3, 1, 4,
 			9, 1, 5, 3, 4, 9, 1, 5,
