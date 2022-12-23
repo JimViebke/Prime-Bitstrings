@@ -260,12 +260,12 @@ namespace mbp
 		log_pass_counts("Passed b13m17 test:    ", c, b);
 		log_pass_counts("Passed 4-rem tests, p2:", d, c);
 		log_pass_counts("Passed 3-rem tests:    ", e, d);
-		log_pass_counts("Passed 6-rem tests:    ", f, e);
-		log_pass_counts("Passed 10-rem tests:   ", g, f);
+		log_pass_counts("Passed 5-rem tests:    ", f, e);
+		log_pass_counts("Passed 6-rem tests:    ", g, f);
 		log_pass_counts("Passed 8-rem tests:    ", h, g);
-		log_pass_counts("Passed 5-rem tests:    ", i, h);
-		log_pass_counts("Passed 16-rem tests:   ", j, i);
-		log_pass_counts("Passed 12-rem tests:   ", k, j);
+		log_pass_counts("Passed 10-rem tests:   ", i, h);
+		log_pass_counts("Passed 12-rem tests:   ", j, i);
+		log_pass_counts("Passed 16-rem tests:   ", k, j);
 		log_pass_counts("P. branchless divtests:", l, k);
 		log_pass_counts("P. branching divtests: ", m, l);
 		log_pass_counts("Passed b2 BPSW test:   ", b2, m);
@@ -316,28 +316,28 @@ namespace mbp
 		candidates_end = div_tests_with_three_rems<on_fast_path>(candidates, candidates_end);
 		count_passes(e += (candidates_end - candidates));
 
-		// bases 3 and 5 mod 7, and 4 and 10 mod 13 (6 remainders)
-		candidates_end = div_tests_with_six_rems<on_fast_path>(candidates, candidates_end);
+		// bases 3, 4, 5, and 9 mod 11 (5 remainders)
+		candidates_end = div_tests_with_five_rems<on_fast_path>(candidates, candidates_end);
 		count_passes(f += (candidates_end - candidates));
 
-		// bases 6, 7, and 8 mod 11 (10 remainders)
-		candidates_end = div_tests_with_10_rems<on_fast_path>(candidates, candidates_end);
+		// bases 3 and 5 mod 7, and 4 and 10 mod 13 (6 remainders)
+		candidates_end = div_tests_with_six_rems<on_fast_path>(candidates, candidates_end);
 		count_passes(g += (candidates_end - candidates));
 
 		// bases 8 and 9 mod 17 (8 remainders)
 		candidates_end = div_tests_with_8_rems<on_fast_path>(candidates, candidates_end);
 		count_passes(h += (candidates_end - candidates));
 
-		// bases 3, 4, 5, and 9 mod 11 (5 remainders)
-		candidates_end = div_tests_with_five_rems<on_fast_path>(candidates, candidates_end);
+		// bases 6, 7, and 8 mod 11 (10 remainders)
+		candidates_end = div_tests_with_10_rems<on_fast_path>(candidates, candidates_end);
 		count_passes(i += (candidates_end - candidates));
-
-		// bases 3, 5, 6, 7, 10, 11 and 12 mod 17 (16 remainders)
-		candidates_end = div_tests_with_16_rems<on_fast_path>(candidates, candidates_end);
-		count_passes(j += (candidates_end - candidates));
 
 		// bases 6, 7, and 11 mod 13 (12 remainders)
 		candidates_end = div_tests_with_12_rems<on_fast_path>(candidates, candidates_end);
+		count_passes(j += (candidates_end - candidates));
+
+		// bases 3, 5, 6, 7, 10, 11 and 12 mod 17 (16 remainders)
+		candidates_end = div_tests_with_16_rems<on_fast_path>(candidates, candidates_end);
 		count_passes(k += (candidates_end - candidates));
 
 
