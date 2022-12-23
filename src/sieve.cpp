@@ -505,18 +505,51 @@ namespace mbp::prime_sieve
 
 			// Each iteration, j points to an (already marked) multiple of p*15.
 			// Mark off multiples of p.
+			uint8_t* const sieve_data = sieve.data();
 			do
 			{
-				sieve.clear_bit(j + p);
-				sieve.clear_bit(j + 2 * p);
-				sieve.clear_bit(j + 4 * p);
-				sieve.clear_bit(j + 7 * p);
-				sieve.clear_bit(j + 8 * p);
-				sieve.clear_bit(j + 11 * p);
-				sieve.clear_bit(j + 13 * p);
-				sieve.clear_bit(j + 14 * p);
+				j += p; // j + p
 
-				j += (15 * p);
+				size_t j2 = j + p; // j + 2p;
+				size_t bit = _pdep_u64(j, 7);
+				j >>= 3;
+				sieve_data[j] &= ~(1 << bit);
+
+				j = j2 + 2 * p; // j + 4 * p;
+				bit = _pdep_u64(j2, 7);
+				j2 >>= 3;
+				sieve_data[j2] &= ~(1 << bit);
+
+				j2 = j + 3 * p; // j + 7 * p;
+				bit = _pdep_u64(j, 7);
+				j >>= 3;
+				sieve_data[j] &= ~(1 << bit);
+
+				j = j2 + p; // j + 8p;
+				bit = _pdep_u64(j2, 7);
+				j2 >>= 3;
+				sieve_data[j2] &= ~(1 << bit);
+
+				j2 = j + 3 * p; // j + 11p;
+				bit = _pdep_u64(j, 7);
+				j >>= 3;
+				sieve_data[j] &= ~(1 << bit);
+
+				j = j2 + 2 * p; // j + 13p;
+				bit = _pdep_u64(j2, 7);
+				j2 >>= 3;
+				sieve_data[j2] &= ~(1 << bit);
+
+				j2 = j + p; // j + 14p;
+				bit = _pdep_u64(j, 7);
+				j >>= 3;
+				sieve_data[j] &= ~(1 << bit);
+
+				j = j2 + p; // j + 15p;
+				bit = _pdep_u64(j2, 7);
+				j2 >>= 3;
+				sieve_data[j2] &= ~(1 << bit);
+
 			} while (j < padded_end);
 
 			// Calculate and cache the offset for the next sieving
