@@ -16,4 +16,8 @@ namespace mbp::prime_sieve
 								   const sieve_container& sieve,
 								   const uint64_t number);
 
+	namespace detail
+	{
+		void verify_sieve_offset_cache(const uint64_t start);
+	}
 }

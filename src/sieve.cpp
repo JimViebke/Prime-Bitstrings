@@ -85,7 +85,7 @@ namespace mbp::prime_sieve
 		}
 	}
 
-	void verify_sieve_offset_cache(const uint64_t start)
+	void detail::verify_sieve_offset_cache(const uint64_t start)
 	{
 		// - start + (2 * offset) should be evenly divisible by 15*p
 		// - the offset should be less than 15*p
@@ -114,220 +114,257 @@ namespace mbp::prime_sieve
 	{
 		std::array<bit_array<256>, 8> masks{};
 
-		for (int i = 0; i < 8; ++i)
+		for (size_t bit_offset = 0; bit_offset < 8; ++bit_offset)
 		{
-			masks[i].set_all();
+			masks[bit_offset].set_all();
 
-			masks[i].clear_bit(i + (p - p));
-			masks[i].clear_bit(i + (2 * p) - p);
-			masks[i].clear_bit(i + (4 * p) - p);
-			masks[i].clear_bit(i + (7 * p) - p);
-			masks[i].clear_bit(i + (8 * p) - p);
-
-			if constexpr (p <= 23)
+			for (size_t i = bit_offset; i < 256; i += p)
 			{
-				masks[i].clear_bit(i + (11 * p) - p);
-			}
-
-			if constexpr (p <= 19)
-			{
-				masks[i].clear_bit(i + (13 * p) - p);
-				masks[i].clear_bit(i + (14 * p) - p);
+				masks[bit_offset].clear_bit(i);
 			}
 		}
 
 		return masks;
 	}
-	static constexpr std::array<bit_array<256>, 8> sieve_masks_p19 = generate_sieve_masks<19>();
-	static constexpr std::array<bit_array<256>, 8> sieve_masks_p23 = generate_sieve_masks<23>();
-	static constexpr std::array<bit_array<256>, 8> sieve_masks_p29 = generate_sieve_masks<29>();
-	static constexpr std::array<bit_array<256>, 8> sieve_masks_p31 = generate_sieve_masks<31>();
 
 	template<size_t p>
-	consteval std::array<bit_array<256>, 16> generate_wide_sieve_masks()
+	__forceinline void clear_two_adjacent(sieve_container& sieve, size_t offset)
 	{
-		decltype(generate_wide_sieve_masks<p>()) masks{};
+		// Mark two (adjacent) multiples of p, using one scalar write if possible
 
-		const size_t mask_1_offset = 1 * p;
-		const size_t mask_2_offset = 8 * p;
-
-		for (size_t j = 0; j < 2ull * 8; j += 2)
+		if constexpr (p + 7 < 64)
 		{
-			// Create a 256-bit mask to mask against 1p, 2p, 4p, and possibly 7p.
+			constexpr uint64_t mask = ((1ull << p) | 1ull);
 
-			masks[j].set_all();
-			masks[j].clear_bit((j / 2) + (1 * p) - mask_1_offset);
-			masks[j].clear_bit((j / 2) + (2 * p) - mask_1_offset);
-			masks[j].clear_bit((j / 2) + (4 * p) - mask_1_offset);
-			if constexpr (p == 37 || p == 41)
-				masks[j].clear_bit((j / 2) + (7 * p) - mask_1_offset);
+			uint8_t* out = sieve.data() + offset / 8;
 
-			// Create a second mask to mask against 8p, 11p, 13p, and possibly 14p.
-
-			// The bit offset for 1p is j/2. Calculate the bit offset for 8p
-			const size_t bit_off = ((j / 2) + mask_2_offset - mask_1_offset) % 8;
-
-			masks[j + 1].set_all();
-			masks[j + 1].clear_bit(bit_off + (8 * p) - mask_2_offset);
-			masks[j + 1].clear_bit(bit_off + (11 * p) - mask_2_offset);
-			masks[j + 1].clear_bit(bit_off + (13 * p) - mask_2_offset);
-			if constexpr (p == 37 || p == 41)
-				masks[j + 1].clear_bit(bit_off + (14 * p) - mask_2_offset);
+			if constexpr (p + 7 < 32)
+			{
+				*(uint32_t*)out &= ~(mask << (offset % 8));
+			}
+			else
+			{
+				*(uint64_t*)out &= ~(mask << (offset % 8));
+			}
 		}
-
-		return masks;
+		else
+		{
+			// two writes are required; use 8-bit writes
+			sieve.clear_bit(offset);
+			sieve.clear_bit(offset + p);
+		}
 	}
-	static constexpr std::array<bit_array<256>, 16> sieve_masks_p37 = generate_wide_sieve_masks<37>();
-	static constexpr std::array<bit_array<256>, 16> sieve_masks_p41 = generate_wide_sieve_masks<41>();
-	static constexpr std::array<bit_array<256>, 16> sieve_masks_p43 = generate_wide_sieve_masks<43>();
-	static constexpr std::array<bit_array<256>, 16> sieve_masks_p47 = generate_wide_sieve_masks<47>();
+
+	// given a ptr to the sieve byte containing n*15p + 1p, where (n*15p + 1p) % 8 == 0:
+	//    mark off (n+m)*15p + m1*p for m in range 0..7
+	template<size_t p, size_t m1>
+		requires (m1 < 15)
+	__forceinline void clear_next_eight(uint8_t* ptr_to_1p)
+	{
+		// how many bytes from sieve_ptr is j + m1*p?
+		constexpr size_t byte_offset_0 = ((m1 - 1) * p + (0 * 15 * p)) / 8;
+		constexpr size_t byte_offset_1 = ((m1 - 1) * p + (1 * 15 * p)) / 8;
+		constexpr size_t byte_offset_2 = ((m1 - 1) * p + (2 * 15 * p)) / 8;
+		constexpr size_t byte_offset_3 = ((m1 - 1) * p + (3 * 15 * p)) / 8;
+		constexpr size_t byte_offset_4 = ((m1 - 1) * p + (4 * 15 * p)) / 8;
+		constexpr size_t byte_offset_5 = ((m1 - 1) * p + (5 * 15 * p)) / 8;
+		constexpr size_t byte_offset_6 = ((m1 - 1) * p + (6 * 15 * p)) / 8;
+		constexpr size_t byte_offset_7 = ((m1 - 1) * p + (7 * 15 * p)) / 8;
+
+		// how many bits into the above byte is j + m1*p?
+		constexpr size_t bit_offset_0 = ((m1 - 1) * p + (0 * 15 * p)) % 8;
+		constexpr size_t bit_offset_1 = ((m1 - 1) * p + (1 * 15 * p)) % 8;
+		constexpr size_t bit_offset_2 = ((m1 - 1) * p + (2 * 15 * p)) % 8;
+		constexpr size_t bit_offset_3 = ((m1 - 1) * p + (3 * 15 * p)) % 8;
+		constexpr size_t bit_offset_4 = ((m1 - 1) * p + (4 * 15 * p)) % 8;
+		constexpr size_t bit_offset_5 = ((m1 - 1) * p + (5 * 15 * p)) % 8;
+		constexpr size_t bit_offset_6 = ((m1 - 1) * p + (6 * 15 * p)) % 8;
+		constexpr size_t bit_offset_7 = ((m1 - 1) * p + (7 * 15 * p)) % 8;
+
+		ptr_to_1p[byte_offset_0] &= ~(1ull << bit_offset_0);
+		ptr_to_1p[byte_offset_1] &= ~(1ull << bit_offset_1);
+		ptr_to_1p[byte_offset_2] &= ~(1ull << bit_offset_2);
+		ptr_to_1p[byte_offset_3] &= ~(1ull << bit_offset_3);
+		ptr_to_1p[byte_offset_4] &= ~(1ull << bit_offset_4);
+		ptr_to_1p[byte_offset_5] &= ~(1ull << bit_offset_5);
+		ptr_to_1p[byte_offset_6] &= ~(1ull << bit_offset_6);
+		ptr_to_1p[byte_offset_7] &= ~(1ull << bit_offset_7);
+	}
+
+	// given a ptr to the sieve byte containing n*15p + 1p, where (n*15p + 1p) % 8 == 0:
+	//    mark off (n+m)*15p + m1*p and (n+m)*15p + m2*p for m in range 0..7
+	template<size_t p, size_t m1, size_t m2>
+		requires (m1 + 1 == m2) && (m2 < 15)
+	__forceinline void clear_next_eight(uint8_t* ptr_to_1p)
+	{
+		// Mark eight pairs of adjacent multiples of p, using one scalar write if possible
+
+		if constexpr (p + 7 < 64)
+		{
+			using write_t = util::narrowest_uint_for_n_bits<p + 7>;
+
+			constexpr uint64_t mask = ((1ull << p) | 1ull);
+
+			// how many bytes from sieve_ptr is j + m1*p?
+			constexpr size_t byte_offset_0 = ((m1 - 1) * p + (0 * 15 * p)) / 8;
+			constexpr size_t byte_offset_1 = ((m1 - 1) * p + (1 * 15 * p)) / 8;
+			constexpr size_t byte_offset_2 = ((m1 - 1) * p + (2 * 15 * p)) / 8;
+			constexpr size_t byte_offset_3 = ((m1 - 1) * p + (3 * 15 * p)) / 8;
+			constexpr size_t byte_offset_4 = ((m1 - 1) * p + (4 * 15 * p)) / 8;
+			constexpr size_t byte_offset_5 = ((m1 - 1) * p + (5 * 15 * p)) / 8;
+			constexpr size_t byte_offset_6 = ((m1 - 1) * p + (6 * 15 * p)) / 8;
+			constexpr size_t byte_offset_7 = ((m1 - 1) * p + (7 * 15 * p)) / 8;
+
+			// how many bits into the above byte is j + m1*p?
+			constexpr size_t bit_offset_0 = ((m1 - 1) * p + (0 * 15 * p)) % 8;
+			constexpr size_t bit_offset_1 = ((m1 - 1) * p + (1 * 15 * p)) % 8;
+			constexpr size_t bit_offset_2 = ((m1 - 1) * p + (2 * 15 * p)) % 8;
+			constexpr size_t bit_offset_3 = ((m1 - 1) * p + (3 * 15 * p)) % 8;
+			constexpr size_t bit_offset_4 = ((m1 - 1) * p + (4 * 15 * p)) % 8;
+			constexpr size_t bit_offset_5 = ((m1 - 1) * p + (5 * 15 * p)) % 8;
+			constexpr size_t bit_offset_6 = ((m1 - 1) * p + (6 * 15 * p)) % 8;
+			constexpr size_t bit_offset_7 = ((m1 - 1) * p + (7 * 15 * p)) % 8;
+
+			*(write_t*)(ptr_to_1p + byte_offset_0) &= ~(mask << bit_offset_0);
+			*(write_t*)(ptr_to_1p + byte_offset_1) &= ~(mask << bit_offset_1);
+			*(write_t*)(ptr_to_1p + byte_offset_2) &= ~(mask << bit_offset_2);
+			*(write_t*)(ptr_to_1p + byte_offset_3) &= ~(mask << bit_offset_3);
+			*(write_t*)(ptr_to_1p + byte_offset_4) &= ~(mask << bit_offset_4);
+			*(write_t*)(ptr_to_1p + byte_offset_5) &= ~(mask << bit_offset_5);
+			*(write_t*)(ptr_to_1p + byte_offset_6) &= ~(mask << bit_offset_6);
+			*(write_t*)(ptr_to_1p + byte_offset_7) &= ~(mask << bit_offset_7);
+		}
+		else // two scalar writes required
+		{
+			clear_next_eight<p, m1>(ptr_to_1p);
+			clear_next_eight<p, m2>(ptr_to_1p);
+		}
+	}
+
+	// for a write to j + 4*p: eight_vector_writes<p, 4-1>(ptr_to_1p)
+	template<size_t p, size_t m_offset>
+	__forceinline void eight_vector_writes(uint8_t* ptr_to_1p,
+										   const uint256_t& mask_0,
+										   const uint256_t& mask_1,
+										   const uint256_t& mask_2,
+										   const uint256_t& mask_3,
+										   const uint256_t& mask_4,
+										   const uint256_t& mask_5,
+										   const uint256_t& mask_6,
+										   const uint256_t& mask_7)
+	{
+		constexpr size_t byte_index_0 = ((m_offset * p) + (0 * 15 * p)) / 8; // always 0 when m_offset is 0
+		constexpr size_t byte_index_1 = ((m_offset * p) + (1 * 15 * p)) / 8;
+		constexpr size_t byte_index_2 = ((m_offset * p) + (2 * 15 * p)) / 8;
+		constexpr size_t byte_index_3 = ((m_offset * p) + (3 * 15 * p)) / 8;
+		constexpr size_t byte_index_4 = ((m_offset * p) + (4 * 15 * p)) / 8;
+		constexpr size_t byte_index_5 = ((m_offset * p) + (5 * 15 * p)) / 8;
+		constexpr size_t byte_index_6 = ((m_offset * p) + (6 * 15 * p)) / 8;
+		constexpr size_t byte_index_7 = ((m_offset * p) + (7 * 15 * p)) / 8;
+
+		uint256_t sieve_data_0 = _mm256_loadu_si256((uint256_t*)(ptr_to_1p + byte_index_0));
+		uint256_t sieve_data_1 = _mm256_loadu_si256((uint256_t*)(ptr_to_1p + byte_index_1));
+		uint256_t sieve_data_2 = _mm256_loadu_si256((uint256_t*)(ptr_to_1p + byte_index_2));
+		uint256_t sieve_data_3 = _mm256_loadu_si256((uint256_t*)(ptr_to_1p + byte_index_3));
+		uint256_t sieve_data_4 = _mm256_loadu_si256((uint256_t*)(ptr_to_1p + byte_index_4));
+		uint256_t sieve_data_5 = _mm256_loadu_si256((uint256_t*)(ptr_to_1p + byte_index_5));
+		uint256_t sieve_data_6 = _mm256_loadu_si256((uint256_t*)(ptr_to_1p + byte_index_6));
+		uint256_t sieve_data_7 = _mm256_loadu_si256((uint256_t*)(ptr_to_1p + byte_index_7));
+
+		sieve_data_0 = _mm256_and_si256(mask_0, sieve_data_0);
+		_mm256_storeu_si256((uint256_t*)(ptr_to_1p + byte_index_0), sieve_data_0);
+
+		sieve_data_1 = _mm256_and_si256(mask_1, sieve_data_1);
+		_mm256_storeu_si256((uint256_t*)(ptr_to_1p + byte_index_1), sieve_data_1);
+
+		sieve_data_2 = _mm256_and_si256(mask_2, sieve_data_2);
+		_mm256_storeu_si256((uint256_t*)(ptr_to_1p + byte_index_2), sieve_data_2);
+
+		sieve_data_3 = _mm256_and_si256(mask_3, sieve_data_3);
+		_mm256_storeu_si256((uint256_t*)(ptr_to_1p + byte_index_3), sieve_data_3);
+
+		sieve_data_4 = _mm256_and_si256(mask_4, sieve_data_4);
+		_mm256_storeu_si256((uint256_t*)(ptr_to_1p + byte_index_4), sieve_data_4);
+
+		sieve_data_5 = _mm256_and_si256(mask_5, sieve_data_5);
+		_mm256_storeu_si256((uint256_t*)(ptr_to_1p + byte_index_5), sieve_data_5);
+
+		sieve_data_6 = _mm256_and_si256(mask_6, sieve_data_6);
+		_mm256_storeu_si256((uint256_t*)(ptr_to_1p + byte_index_6), sieve_data_6);
+
+		sieve_data_7 = _mm256_and_si256(mask_7, sieve_data_7);
+		_mm256_storeu_si256((uint256_t*)(ptr_to_1p + byte_index_7), sieve_data_7);
+	}
 
 	template<size_t p>
-	consteval std::array<bit_array<256>, 16> generate_wider_sieve_masks()
+	consteval size_t hi_mask_offset()
 	{
-		decltype(generate_wider_sieve_masks<p>()) masks{};
+		// begin at the byte containing 8p
+		if constexpr (p == 37 || p == 41 || p == 43 || p == 47)
+			return 8;
 
-		const size_t mask_1_offset = 1 * p;
-		const size_t mask_2_offset = 7 * p;
+		// begin at the byte containing 7p
+		if constexpr (p == 53 || p == 59 || p == 61)
+			return 7;
 
-		for (size_t j = 0; j < 2ull * 8; j += 2)
-		{
-			// Create a 256-bit mask to mask against 1p, 2p, and 4p.
+		// begin at the byte containing 11p
+		if constexpr (p == 67 || p == 71 || p == 73 || p == 79)
+			return 11;
 
-			masks[j].set_all();
-			masks[j].clear_bit((j / 2) + (1 * p) - mask_1_offset);
-			masks[j].clear_bit((j / 2) + (2 * p) - mask_1_offset);
-			masks[j].clear_bit((j / 2) + (4 * p) - mask_1_offset);
-
-			// Create a second mask to mask against 7p, 8p, and 11p.
-
-			// The bit offset for 1p is j/2. Calculate the bit offset for 7p
-			const size_t bit_off = ((j / 2) + mask_2_offset - mask_1_offset) % 8;
-
-			masks[j + 1].set_all();
-			masks[j + 1].clear_bit(bit_off + (7 * p) - mask_2_offset);
-			masks[j + 1].clear_bit(bit_off + (8 * p) - mask_2_offset);
-			masks[j + 1].clear_bit(bit_off + (11 * p) - mask_2_offset);
-		}
-
-		return masks;
+		// compile-time error if we don't find an answer
 	}
-	static constexpr std::array<bit_array<256>, 16> sieve_masks_p53 = generate_wider_sieve_masks<53>();
-	static constexpr std::array<bit_array<256>, 16> sieve_masks_p59 = generate_wider_sieve_masks<59>();
-	static constexpr std::array<bit_array<256>, 16> sieve_masks_p61 = generate_wider_sieve_masks<61>();
-
-	template<size_t p>
-	consteval std::array<bit_array<256>, 16> generate_even_wider_sieve_masks()
-	{
-		decltype(generate_wider_sieve_masks<p>()) masks{};
-
-		const size_t mask_1_offset = 1 * p;
-		const size_t mask_2_offset = 11 * p;
-
-		for (size_t j = 0; j < 2ull * 8; j += 2)
-		{
-			// Create a 256-bit mask to mask against 1p, 2p, and 4p.
-
-			masks[j].set_all();
-			masks[j].clear_bit((j / 2) + (1 * p) - mask_1_offset);
-			masks[j].clear_bit((j / 2) + (2 * p) - mask_1_offset);
-			masks[j].clear_bit((j / 2) + (4 * p) - mask_1_offset);
-
-			// Create a second mask to mask against 11p, 13p, and 14p.
-
-			// The bit offset for 1p is j/2. Calculate the bit offset for 7p
-			const size_t bit_off = ((j / 2) + mask_2_offset - mask_1_offset) % 8;
-
-			masks[j + 1].set_all();
-			masks[j + 1].clear_bit(bit_off + (11 * p) - mask_2_offset);
-			masks[j + 1].clear_bit(bit_off + (13 * p) - mask_2_offset);
-			masks[j + 1].clear_bit(bit_off + (14 * p) - mask_2_offset);
-		}
-
-		return masks;
-	}
-	static constexpr std::array<bit_array<256>, 16> sieve_masks_p67 = generate_even_wider_sieve_masks<67>();
-	static constexpr std::array<bit_array<256>, 16> sieve_masks_p71 = generate_even_wider_sieve_masks<71>();
-	static constexpr std::array<bit_array<256>, 16> sieve_masks_p73 = generate_even_wider_sieve_masks<73>();
-	static constexpr std::array<bit_array<256>, 16> sieve_masks_p79 = generate_even_wider_sieve_masks<79>();
 
 	template<size_t p>
 	__forceinline void vectorized_sieve_pass(sieve_container& sieve,
-											 const std::array<bit_array<256>, 8>& sieve_masks,
 											 const sieve_prime_t*& prime_ptr,
 											 sieve_offset_t*& offset_cache_ptr)
 	{
 		constexpr size_t sieve_end = sieve_container::size();
 		constexpr size_t padded_end = sieve_end - (15 * p);
 
+		constexpr static std::array<bit_array<256>, 8> sieve_masks = generate_sieve_masks<p>();
+
 		// Get the position of the next odd multiple of p*15
 		size_t j = *offset_cache_ptr;
 
-		do
+		// 0-7 leading steps to get the hot loop to start with bit_idx == 0
+		for (size_t bit_index = 0; (bit_index = (j + p) % 8) != 0; )
 		{
-			const size_t byte_index = (j + p) / 8;
-			const size_t bit_index = (j + p) % 8; // 0..7
+			uint256_t* const sieve_ptr = (uint256_t*)(sieve.data() + (j + p) / 8);
 
-			uint256_t* const sieve_ptr = (uint256_t*)(sieve.data() + byte_index);
-
-			const uint256_t mask = _mm256_loadu_si256((const uint256_t*)sieve_masks[bit_index].data());
-
+			const uint256_t mask = _mm256_loadu_si256((uint256_t*)sieve_masks[bit_index].data());
 			uint256_t sieve_data = _mm256_loadu_si256(sieve_ptr);
-			sieve_data = _mm256_and_si256(mask, sieve_data);
-			_mm256_storeu_si256(sieve_ptr, sieve_data);
 
-			if constexpr (p >= 29)
+			if constexpr (p >= 37)
+			{
+				const size_t byte_index_hi = (j + (hi_mask_offset<p>() * p)) / 8;
+				const size_t bit_index_hi = (j + (hi_mask_offset<p>() * p)) % 8;
+
+				uint256_t* const sieve_ptr_hi = (uint256_t*)(sieve.data() + byte_index_hi);
+
+				const uint256_t mask_hi = _mm256_loadu_si256((uint256_t*)sieve_masks[bit_index_hi].data());
+				uint256_t sieve_data_hi = _mm256_loadu_si256(sieve_ptr_hi);
+
+				sieve_data = _mm256_and_si256(mask, sieve_data);
+				sieve_data_hi = _mm256_and_si256(mask_hi, sieve_data_hi);
+				_mm256_storeu_si256(sieve_ptr, sieve_data);
+				_mm256_storeu_si256(sieve_ptr_hi, sieve_data_hi);
+			}
+			else // everyone else
+			{
+				sieve_data = _mm256_and_si256(mask, sieve_data);
+				_mm256_storeu_si256(sieve_ptr, sieve_data);
+			}
+
+			if constexpr (p == 29 || p == 31)
 			{
 				sieve.clear_bit(j + 11 * p);
 			}
 
-			if constexpr (p >= 23)
+			if constexpr (p == 23 || p == 29 || p == 31 || p == 53 || p == 59 || p == 61)
 			{
-				sieve.clear_bit(j + 13 * p);
-				sieve.clear_bit(j + 14 * p);
+				clear_two_adjacent<p>(sieve, j + 13 * p);
 			}
-
-			j += (15 * p);
-			// Stop marking 15*p early (don't handle padding)
-		} while (j < padded_end);
-
-		// Calculate and cache the offset for the next sieving
-		*offset_cache_ptr = sieve_offset_t((j + (15 * p)) - sieve_end);
-
-		++prime_ptr;
-		++offset_cache_ptr;
-	}
-
-	template<size_t p>
-	__forceinline void wide_vectorized_sieve_pass(sieve_container& sieve,
-												  const std::array<bit_array<256>, 16>& sieve_masks,
-												  const sieve_prime_t*& prime_ptr,
-												  sieve_offset_t*& offset_cache_ptr)
-	{
-		constexpr size_t sieve_end = sieve_container::size();
-		constexpr size_t padded_end = sieve_end - (15 * p);
-
-		// Get the position of the next odd multiple of p*15
-		size_t j = *offset_cache_ptr;
-
-		do
-		{
-			const size_t bit_index = (j + p) % 8; // 0..7
-			const uint256_t mask_lo = _mm256_loadu_si256((uint256_t*)sieve_masks[bit_index * 2].data());
-			const uint256_t mask_hi = _mm256_loadu_si256((uint256_t*)sieve_masks[bit_index * 2 + 1].data());
-
-			const size_t byte_index_lo = (j + p) / 8;
-			const size_t byte_index_hi = (j + (8 * p)) / 8;
-			uint256_t* const sieve_ptr_lo = (uint256_t*)(sieve.data() + byte_index_lo);
-			uint256_t* const sieve_ptr_hi = (uint256_t*)(sieve.data() + byte_index_hi);
-
-			uint256_t sieve_data_lo = _mm256_loadu_si256(sieve_ptr_lo);
-			sieve_data_lo = _mm256_and_si256(mask_lo, sieve_data_lo);
-			_mm256_storeu_si256(sieve_ptr_lo, sieve_data_lo);
-
-			uint256_t sieve_data_hi = _mm256_loadu_si256(sieve_ptr_hi);
-			sieve_data_hi = _mm256_and_si256(mask_hi, sieve_data_hi);
-			_mm256_storeu_si256(sieve_ptr_hi, sieve_data_hi);
 
 			if constexpr (p == 43 || p == 47)
 			{
@@ -335,99 +372,141 @@ namespace mbp::prime_sieve
 				sieve.clear_bit(j + (14 * p));
 			}
 
+			if constexpr (p == 67 || p == 71 || p == 73 || p == 79)
+			{
+				clear_two_adjacent<p>(sieve, j + 7 * p);
+			}
+
 			j += (15 * p);
-		} while (j < padded_end);
+		}
 
-		// Calculate and cache the offset for the next sieving
-		*offset_cache_ptr = sieve_offset_t((j + (15 * p)) - sieve_end);
+		constexpr size_t extra_padded_end = padded_end - (8 * 15 * p);
 
-		++prime_ptr;
-		++offset_cache_ptr;
-	}
+		// We've made sure j+p is evenly divisible by 8, so we can remove j+p from
+		// our offset calculations
+		const uint256_t mask_0 = _mm256_loadu_si256((const uint256_t*)sieve_masks[(0 * 15 * p) % 8].data());
+		const uint256_t mask_1 = _mm256_loadu_si256((const uint256_t*)sieve_masks[(1 * 15 * p) % 8].data());
+		const uint256_t mask_2 = _mm256_loadu_si256((const uint256_t*)sieve_masks[(2 * 15 * p) % 8].data());
+		const uint256_t mask_3 = _mm256_loadu_si256((const uint256_t*)sieve_masks[(3 * 15 * p) % 8].data());
+		const uint256_t mask_4 = _mm256_loadu_si256((const uint256_t*)sieve_masks[(4 * 15 * p) % 8].data());
+		const uint256_t mask_5 = _mm256_loadu_si256((const uint256_t*)sieve_masks[(5 * 15 * p) % 8].data());
+		const uint256_t mask_6 = _mm256_loadu_si256((const uint256_t*)sieve_masks[(6 * 15 * p) % 8].data());
+		const uint256_t mask_7 = _mm256_loadu_si256((const uint256_t*)sieve_masks[(7 * 15 * p) % 8].data());
 
-	template<size_t p>
-	__forceinline void wider_vectorized_sieve_pass(sieve_container& sieve,
-												   const std::array<bit_array<256>, 16>& sieve_masks,
-												   const sieve_prime_t*& prime_ptr,
-												   sieve_offset_t*& offset_cache_ptr)
-	{
-		constexpr size_t sieve_end = sieve_container::size();
-		constexpr size_t padded_end = sieve_end - (15 * p);
+		{
+			uint8_t* sieve_ptr = sieve.data() + ((j + p) / 8);
 
-		// Get the position of the next odd multiple of p*15
-		size_t j = *offset_cache_ptr;
+			do
+			{
+				eight_vector_writes<p, 0>(sieve_ptr, mask_0, mask_1, mask_2, mask_3, mask_4, mask_5, mask_6, mask_7);
 
+				if constexpr (p >= 37)
+				{
+					// We have eight possible orders that the high masks can be read in.
+					// At compile time, check which of eight masks has the required bit_offset,
+					//  then perform the eight high writes starting with that mask.
+					constexpr size_t p_offset = hi_mask_offset<p>() - 1;
+					constexpr size_t high_bit_offset = (p_offset * p) % 8;
+
+					if constexpr (high_bit_offset == (0 * 15 * p) % 8)
+						eight_vector_writes<p, p_offset>(sieve_ptr, mask_0, mask_1, mask_2, mask_3, mask_4, mask_5, mask_6, mask_7);
+					if constexpr (high_bit_offset == (1 * 15 * p) % 8)
+						eight_vector_writes<p, p_offset>(sieve_ptr, mask_1, mask_2, mask_3, mask_4, mask_5, mask_6, mask_7, mask_0);
+					if constexpr (high_bit_offset == (2 * 15 * p) % 8)
+						eight_vector_writes<p, p_offset>(sieve_ptr, mask_2, mask_3, mask_4, mask_5, mask_6, mask_7, mask_0, mask_1);
+					if constexpr (high_bit_offset == (3 * 15 * p) % 8)
+						eight_vector_writes<p, p_offset>(sieve_ptr, mask_3, mask_4, mask_5, mask_6, mask_7, mask_0, mask_1, mask_2);
+					if constexpr (high_bit_offset == (4 * 15 * p) % 8)
+						eight_vector_writes<p, p_offset>(sieve_ptr, mask_4, mask_5, mask_6, mask_7, mask_0, mask_1, mask_2, mask_3);
+					if constexpr (high_bit_offset == (5 * 15 * p) % 8)
+						eight_vector_writes<p, p_offset>(sieve_ptr, mask_5, mask_6, mask_7, mask_0, mask_1, mask_2, mask_3, mask_4);
+					if constexpr (high_bit_offset == (6 * 15 * p) % 8)
+						eight_vector_writes<p, p_offset>(sieve_ptr, mask_6, mask_7, mask_0, mask_1, mask_2, mask_3, mask_4, mask_5);
+					if constexpr (high_bit_offset == (7 * 15 * p) % 8)
+						eight_vector_writes<p, p_offset>(sieve_ptr, mask_7, mask_0, mask_1, mask_2, mask_3, mask_4, mask_5, mask_6);
+				}
+
+				if constexpr (p == 29 || p == 31)
+				{
+					clear_next_eight<p, 11>(sieve_ptr);
+				}
+
+				if constexpr (p == 23 || p == 29 || p == 31 || p == 53 || p == 59 || p == 61)
+				{
+					clear_next_eight<p, 13, 14>(sieve_ptr);
+				}
+
+				if constexpr (p == 43 || p == 47)
+				{
+					clear_next_eight<p, 7>(sieve_ptr);
+					clear_next_eight<p, 14>(sieve_ptr);
+				}
+
+				if constexpr (p == 67 || p == 71 || p == 73 || p == 79)
+				{
+					clear_next_eight<p, 7, 8>(sieve_ptr);
+				}
+
+				j += 8 * 15 * p;
+				sieve_ptr += (8 * 15 * p) / 8;
+
+			} while (j < extra_padded_end);
+		}
+
+		// cleanup loop
 		do
 		{
-			const size_t bit_index = (j + p) % 8; // 0..7
-			const uint256_t mask_lo = _mm256_loadu_si256((uint256_t*)sieve_masks[bit_index * 2].data());
-			const uint256_t mask_hi = _mm256_loadu_si256((uint256_t*)sieve_masks[bit_index * 2 + 1].data());
+			const size_t bit_index = (j + p) % 8;
 
-			const size_t byte_index_lo = (j + p) / 8;
-			const size_t byte_index_hi = (j + (7 * p)) / 8;
-			uint256_t* const sieve_ptr_lo = (uint256_t*)(sieve.data() + byte_index_lo);
-			uint256_t* const sieve_ptr_hi = (uint256_t*)(sieve.data() + byte_index_hi);
+			uint256_t* const sieve_ptr = (uint256_t*)(sieve.data() + (j + p) / 8);
 
-			// mask against 1*p, 2*p, and 4*p
-			uint256_t sieve_data_lo = _mm256_loadu_si256(sieve_ptr_lo);
-			sieve_data_lo = _mm256_and_si256(mask_lo, sieve_data_lo);
-			_mm256_storeu_si256(sieve_ptr_lo, sieve_data_lo);
+			const uint256_t mask = _mm256_loadu_si256((uint256_t*)sieve_masks[bit_index].data());
+			uint256_t sieve_data = _mm256_loadu_si256(sieve_ptr);
 
-			// mask against 7*p, 8*p, 11*p
-			uint256_t sieve_data_hi = _mm256_loadu_si256(sieve_ptr_hi);
-			sieve_data_hi = _mm256_and_si256(mask_hi, sieve_data_hi);
-			_mm256_storeu_si256(sieve_ptr_hi, sieve_data_hi);
+			if constexpr (p >= 37)
+			{
+				const size_t byte_index_hi = (j + (hi_mask_offset<p>() * p)) / 8;
+				const size_t bit_index_hi = (j + (hi_mask_offset<p>() * p)) % 8;
 
-			sieve.clear_bit(j + (13 * p));
-			sieve.clear_bit(j + (14 * p));
+				uint256_t* const sieve_ptr_hi = (uint256_t*)(sieve.data() + byte_index_hi);
 
-			j += (15 * p);
-		} while (j < padded_end);
+				const uint256_t mask_hi = _mm256_loadu_si256((uint256_t*)sieve_masks[bit_index_hi].data());
+				uint256_t sieve_data_hi = _mm256_loadu_si256(sieve_ptr_hi);
 
-		// Calculate and cache the offset for the next sieving
-		*offset_cache_ptr = sieve_offset_t((j + (15 * p)) - sieve_end);
+				sieve_data = _mm256_and_si256(mask, sieve_data);
+				sieve_data_hi = _mm256_and_si256(mask_hi, sieve_data_hi);
+				_mm256_storeu_si256(sieve_ptr, sieve_data);
+				_mm256_storeu_si256(sieve_ptr_hi, sieve_data_hi);
+			}
+			else // everyone else
+			{
+				sieve_data = _mm256_and_si256(mask, sieve_data);
+				_mm256_storeu_si256(sieve_ptr, sieve_data);
+			}
 
-		++prime_ptr;
-		++offset_cache_ptr;
-	}
+			if constexpr (p == 29 || p == 31)
+			{
+				sieve.clear_bit(j + 11 * p);
+			}
 
-	template<size_t p>
-	__forceinline void even_wider_vectorized_sieve_pass(sieve_container& sieve,
-														const std::array<bit_array<256>, 16>& sieve_masks,
-														const sieve_prime_t*& prime_ptr,
-														sieve_offset_t*& offset_cache_ptr)
-	{
-		constexpr size_t sieve_end = sieve_container::size();
-		constexpr size_t padded_end = sieve_end - (15 * p);
+			if constexpr (p == 23 || p == 29 || p == 31 || p == 53 || p == 59 || p == 61)
+			{
+				clear_two_adjacent<p>(sieve, j + 13 * p);
+			}
 
-		// Get the position of the next odd multiple of p*15
-		size_t j = *offset_cache_ptr;
+			if constexpr (p == 43 || p == 47)
+			{
+				sieve.clear_bit(j + (7 * p));
+				sieve.clear_bit(j + (14 * p));
+			}
 
-		do
-		{
-			const size_t bit_index = (j + p) % 8; // 0..7
-			const uint256_t mask_lo = _mm256_loadu_si256((uint256_t*)sieve_masks[bit_index * 2].data());
-			const uint256_t mask_hi = _mm256_loadu_si256((uint256_t*)sieve_masks[bit_index * 2 + 1].data());
-
-			const size_t byte_index_lo = (j + p) / 8;
-			const size_t byte_index_hi = (j + (11 * p)) / 8;
-			uint256_t* const sieve_ptr_lo = (uint256_t*)(sieve.data() + byte_index_lo);
-			uint256_t* const sieve_ptr_hi = (uint256_t*)(sieve.data() + byte_index_hi);
-
-			// mask against 1*p, 2*p, and 4*p
-			uint256_t sieve_data_lo = _mm256_loadu_si256(sieve_ptr_lo);
-			sieve_data_lo = _mm256_and_si256(mask_lo, sieve_data_lo);
-			_mm256_storeu_si256(sieve_ptr_lo, sieve_data_lo);
-
-			// mask against 11*p, 13*p, 14*p
-			uint256_t sieve_data_hi = _mm256_loadu_si256(sieve_ptr_hi);
-			sieve_data_hi = _mm256_and_si256(mask_hi, sieve_data_hi);
-			_mm256_storeu_si256(sieve_ptr_hi, sieve_data_hi);
-
-			sieve.clear_bit(j + (7 * p));
-			sieve.clear_bit(j + (8 * p));
+			if constexpr (p == 67 || p == 71 || p == 73 || p == 79)
+			{
+				clear_two_adjacent<p>(sieve, j + 7 * p);
+			}
 
 			j += (15 * p);
+			// Stop marking 15*p early (don't handle padding)
 		} while (j < padded_end);
 
 		// Calculate and cache the offset for the next sieving
@@ -455,28 +534,28 @@ namespace mbp::prime_sieve
 
 		if constexpr (small_primes_lookup[static_sieve_primes.size() + 1] == 19)
 		{
-			// one simd write, plus 0-3 scalar writes for 11,13,14
-			vectorized_sieve_pass<19>(sieve, sieve_masks_p19, prime_ptr, offset_cache_ptr);
-			vectorized_sieve_pass<23>(sieve, sieve_masks_p23, prime_ptr, offset_cache_ptr);
-			vectorized_sieve_pass<29>(sieve, sieve_masks_p29, prime_ptr, offset_cache_ptr);
-			vectorized_sieve_pass<31>(sieve, sieve_masks_p31, prime_ptr, offset_cache_ptr);
+			// one simd write from 1p, plus 0-1 scalar writes for 11, and 0-1 scalar writes for 13,14
+			vectorized_sieve_pass<19>(sieve, prime_ptr, offset_cache_ptr);
+			vectorized_sieve_pass<23>(sieve, prime_ptr, offset_cache_ptr);
+			vectorized_sieve_pass<29>(sieve, prime_ptr, offset_cache_ptr);
+			vectorized_sieve_pass<31>(sieve, prime_ptr, offset_cache_ptr);
 
-			// two simd writes, plus 0-2 scalar writes for 7,14
-			wide_vectorized_sieve_pass<37>(sieve, sieve_masks_p37, prime_ptr, offset_cache_ptr);
-			wide_vectorized_sieve_pass<41>(sieve, sieve_masks_p41, prime_ptr, offset_cache_ptr);
-			wide_vectorized_sieve_pass<43>(sieve, sieve_masks_p43, prime_ptr, offset_cache_ptr);
-			wide_vectorized_sieve_pass<47>(sieve, sieve_masks_p47, prime_ptr, offset_cache_ptr);
+			// two simd writes from 1p and 8p, plus 0-2 scalar writes for 7,14
+			vectorized_sieve_pass<37>(sieve, prime_ptr, offset_cache_ptr);
+			vectorized_sieve_pass<41>(sieve, prime_ptr, offset_cache_ptr);
+			vectorized_sieve_pass<43>(sieve, prime_ptr, offset_cache_ptr);
+			vectorized_sieve_pass<47>(sieve, prime_ptr, offset_cache_ptr);
 
-			// two simd writes, plus 2 scalar writes for 13,14
-			wider_vectorized_sieve_pass<53>(sieve, sieve_masks_p53, prime_ptr, offset_cache_ptr);
-			wider_vectorized_sieve_pass<59>(sieve, sieve_masks_p59, prime_ptr, offset_cache_ptr);
-			wider_vectorized_sieve_pass<61>(sieve, sieve_masks_p61, prime_ptr, offset_cache_ptr);
+			// two simd writes from 1p and 7p, plus 0-2 scalar writes for 13,14
+			vectorized_sieve_pass<53>(sieve, prime_ptr, offset_cache_ptr);
+			vectorized_sieve_pass<59>(sieve, prime_ptr, offset_cache_ptr);
+			vectorized_sieve_pass<61>(sieve, prime_ptr, offset_cache_ptr);
 
-			// two simd writes, plus 2 scalar writes for 7,8
-			even_wider_vectorized_sieve_pass<67>(sieve, sieve_masks_p67, prime_ptr, offset_cache_ptr);
-			even_wider_vectorized_sieve_pass<71>(sieve, sieve_masks_p71, prime_ptr, offset_cache_ptr);
-			even_wider_vectorized_sieve_pass<73>(sieve, sieve_masks_p73, prime_ptr, offset_cache_ptr);
-			even_wider_vectorized_sieve_pass<79>(sieve, sieve_masks_p79, prime_ptr, offset_cache_ptr);
+			// two simd writes from 1p and 11p, plus 2 scalar writes for 7,8
+			vectorized_sieve_pass<67>(sieve, prime_ptr, offset_cache_ptr);
+			vectorized_sieve_pass<71>(sieve, prime_ptr, offset_cache_ptr);
+			vectorized_sieve_pass<73>(sieve, prime_ptr, offset_cache_ptr);
+			vectorized_sieve_pass<79>(sieve, prime_ptr, offset_cache_ptr);
 		}
 
 		double density = double(sieve.count_bits()) / sieve_container::size();
