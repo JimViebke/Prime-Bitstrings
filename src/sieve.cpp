@@ -380,7 +380,7 @@ namespace mbp::prime_sieve
 			j += (15 * p);
 		}
 
-		constexpr size_t extra_padded_end = padded_end - (8 * 15 * p);
+		constexpr size_t extra_padded_end = sieve_end - (8 * 15 * p);
 
 		// We've made sure j+p is evenly divisible by 8, so we can remove j+p from
 		// our offset calculations
@@ -454,7 +454,7 @@ namespace mbp::prime_sieve
 		}
 
 		// cleanup loop
-		do
+		while (j < padded_end) // stop marking 15*p early (don't handle padding)
 		{
 			const size_t bit_index = (j + p) % 8;
 
@@ -506,8 +506,7 @@ namespace mbp::prime_sieve
 			}
 
 			j += (15 * p);
-			// Stop marking 15*p early (don't handle padding)
-		} while (j < padded_end);
+		}
 
 		// Calculate and cache the offset for the next sieving
 		*offset_cache_ptr = sieve_offset_t((j + (15 * p)) - sieve_end);
