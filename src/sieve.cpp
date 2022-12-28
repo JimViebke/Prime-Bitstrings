@@ -515,6 +515,68 @@ namespace mbp::prime_sieve
 		++offset_cache_ptr;
 	}
 
+	__forceinline size_t clear_bit(uint8_t* const sieve_data,
+								   size_t offset, size_t delta_to_next_offset)
+	{
+		size_t next_offset = offset + delta_to_next_offset;
+
+		size_t bit = _pdep_u64(offset, 7);
+		offset >>= 3;
+		sieve_data[offset] &= ~(1 << bit);
+
+		return next_offset;
+	}
+
+	__forceinline size_t clear_8_of_15(const size_t p, size_t j, uint8_t* const sieve_data)
+	{
+		j += p;
+		j = clear_bit(sieve_data, j, 1 * p); // mark j + p, advance by 1p
+		j = clear_bit(sieve_data, j, 2 * p); // mark j + 2p, advance by 2p
+		j = clear_bit(sieve_data, j, 3 * p); // mark j + 4p, advance by 3p
+		j = clear_bit(sieve_data, j, 1 * p); // mark j + 7p, advance by 1p
+		j = clear_bit(sieve_data, j, 3 * p); // mark j + 8p, advance by 3p
+		j = clear_bit(sieve_data, j, 2 * p); // mark j + 11p, advance by 2p
+		j = clear_bit(sieve_data, j, 1 * p); // mark j + 13p, advance by 1p
+		j = clear_bit(sieve_data, j, 1 * p); // mark j + 14p, advance by 1p
+
+		return j;
+	}
+
+	__forceinline size_t clear_bit(uint8_t* const sieve_data,
+								   size_t offset, size_t delta_to_next_offset,
+								   const size_t mask)
+	{
+		size_t next_offset = offset + delta_to_next_offset;
+
+		offset >>= 3;
+		sieve_data[offset] &= mask;
+
+		return next_offset;
+	}
+
+	__forceinline size_t clear_8_of_15(const size_t p, size_t j, uint8_t* const sieve_data,
+									   const size_t mask_a,
+									   const size_t mask_b,
+									   const size_t mask_c,
+									   const size_t mask_d,
+									   const size_t mask_e,
+									   const size_t mask_f,
+									   const size_t mask_g,
+									   const size_t mask_h)
+	{
+		j += p;
+		j = clear_bit(sieve_data, j, 1 * p, mask_a); // mark j + p, advance by 1p
+		j = clear_bit(sieve_data, j, 2 * p, mask_b); // mark j + 2p, advance by 2p
+		j = clear_bit(sieve_data, j, 3 * p, mask_c); // mark j + 4p, advance by 3p
+		j = clear_bit(sieve_data, j, 1 * p, mask_d); // mark j + 7p, advance by 1p
+		j = clear_bit(sieve_data, j, 3 * p, mask_e); // mark j + 8p, advance by 3p
+		j = clear_bit(sieve_data, j, 2 * p, mask_f); // mark j + 11p, advance by 2p
+		j = clear_bit(sieve_data, j, 1 * p, mask_g); // mark j + 13p, advance by 1p
+		j = clear_bit(sieve_data, j, 1 * p, mask_h); // mark j + 14p, advance by 1p
+
+		return j;
+	}
+
 	void partial_sieve(const uint64_t number,
 					   sieve_container& sieve
 					   count_passes(, size_t& ps15))
@@ -581,54 +643,46 @@ namespace mbp::prime_sieve
 			// Stop marking 15*p early (don't handle padding)
 			const size_t padded_end = sieve_end - (15 * p);
 
-			// Each iteration, j points to an (already marked) multiple of p*15.
-			// Mark off multiples of p.
+			const size_t extra_padded_end = sieve_end - (15ull * 8 * p);
+
 			uint8_t* const sieve_data = sieve.data();
+
+			// run 0-7 steps to align the hot loop's first write to a bit offset of 0
+			while ((j + p) % 8 != 0)
+			{
+				j = clear_8_of_15(p, j, sieve_data);
+			}
+
+			// generate eight byte masks in usage order, starting from (j + p) % 8 == 0
+			const size_t mask_a = ~(1ull << ((j + (1ull * p)) % 8));
+			const size_t mask_b = ~(1ull << ((j + (2ull * p)) % 8));
+			const size_t mask_c = ~(1ull << ((j + (4ull * p)) % 8));
+			const size_t mask_d = ~(1ull << ((j + (7ull * p)) % 8));
+			const size_t mask_e = ~(1ull << ((j + (8ull * p)) % 8));
+			const size_t mask_f = ~(1ull << ((j + (11ull * p)) % 8));
+			const size_t mask_g = ~(1ull << ((j + (13ull * p)) % 8));
+			const size_t mask_h = ~(1ull << ((j + (14ull * p)) % 8));
+
+			// Each iteration, j points to an (already marked) multiple of p*15.
+			// Clear eight multiples of p within each of eight strides of p*15.
+			// The first write in the first stride has a bit offset of 0.
 			do
 			{
-				j += p; // j + p
+				j = clear_8_of_15(p, j, sieve_data, mask_a, mask_b, mask_c, mask_d, mask_e, mask_f, mask_g, mask_h);
+				j = clear_8_of_15(p, j, sieve_data, mask_e, mask_a, mask_f, mask_h, mask_d, mask_b, mask_c, mask_g);
+				j = clear_8_of_15(p, j, sieve_data, mask_d, mask_e, mask_b, mask_g, mask_h, mask_a, mask_f, mask_c);
+				j = clear_8_of_15(p, j, sieve_data, mask_h, mask_d, mask_a, mask_c, mask_g, mask_e, mask_b, mask_f);
+				j = clear_8_of_15(p, j, sieve_data, mask_g, mask_h, mask_e, mask_f, mask_c, mask_d, mask_a, mask_b);
+				j = clear_8_of_15(p, j, sieve_data, mask_c, mask_g, mask_d, mask_b, mask_f, mask_h, mask_e, mask_a);
+				j = clear_8_of_15(p, j, sieve_data, mask_f, mask_c, mask_h, mask_a, mask_b, mask_g, mask_d, mask_e);
+				j = clear_8_of_15(p, j, sieve_data, mask_b, mask_f, mask_g, mask_e, mask_a, mask_c, mask_h, mask_d);
+			} while (j < extra_padded_end);
 
-				size_t j2 = j + p; // j + 2p;
-				size_t bit = _pdep_u64(j, 7);
-				j >>= 3;
-				sieve_data[j] &= ~(1 << bit);
-
-				j = j2 + 2 * p; // j + 4 * p;
-				bit = _pdep_u64(j2, 7);
-				j2 >>= 3;
-				sieve_data[j2] &= ~(1 << bit);
-
-				j2 = j + 3 * p; // j + 7 * p;
-				bit = _pdep_u64(j, 7);
-				j >>= 3;
-				sieve_data[j] &= ~(1 << bit);
-
-				j = j2 + p; // j + 8p;
-				bit = _pdep_u64(j2, 7);
-				j2 >>= 3;
-				sieve_data[j2] &= ~(1 << bit);
-
-				j2 = j + 3 * p; // j + 11p;
-				bit = _pdep_u64(j, 7);
-				j >>= 3;
-				sieve_data[j] &= ~(1 << bit);
-
-				j = j2 + 2 * p; // j + 13p;
-				bit = _pdep_u64(j2, 7);
-				j2 >>= 3;
-				sieve_data[j2] &= ~(1 << bit);
-
-				j2 = j + p; // j + 14p;
-				bit = _pdep_u64(j, 7);
-				j >>= 3;
-				sieve_data[j] &= ~(1 << bit);
-
-				j = j2 + p; // j + 15p;
-				bit = _pdep_u64(j2, 7);
-				j2 >>= 3;
-				sieve_data[j2] &= ~(1 << bit);
-
-			} while (j < padded_end);
+			// cleanup loop
+			while (j < padded_end)
+			{
+				j = clear_8_of_15(p, j, sieve_data);
+			}
 
 			// Calculate and cache the offset for the next sieving
 			*offset_cache_ptr++ = sieve_offset_t((j + (15 * p)) - sieve_end);
