@@ -578,8 +578,7 @@ namespace mbp::prime_sieve
 	}
 
 	void partial_sieve(const uint64_t number,
-					   sieve_container& sieve
-					   count_passes(, size_t& ps15))
+					   sieve_container& sieve)
 	{
 		// Sieve primes by strides of 15*p:
 		// 
@@ -690,7 +689,6 @@ namespace mbp::prime_sieve
 			if (p == largest_sieve_prime) break;
 		}
 
-		count_passes(ps15 += sieve.count_bits());
 	}
 
 

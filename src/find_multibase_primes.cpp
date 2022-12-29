@@ -289,8 +289,8 @@ namespace mbp
 			copy_static_sieve_with_bit_pattern_filters(number + (sieve_step * sieve.size() * 2));
 			count_passes(a += sieve.count_bits());
 
-			prime_sieve::partial_sieve(number + (sieve_step * sieve.size() * 2), sieve
-									   count_passes(, ps15));
+			prime_sieve::partial_sieve(number + (sieve_step * sieve.size() * 2), sieve);
+			count_passes(ps15 += sieve.count_bits());
 
 			candidates_end = prime_sieve::gather_sieve_results(
 				candidates_end, sieve, number + (sieve_step * sieve.size() * 2));
