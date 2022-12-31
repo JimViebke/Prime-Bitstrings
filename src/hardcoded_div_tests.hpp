@@ -377,9 +377,9 @@ namespace mbp
 			const uint256_t nybble_lookup_b3m13 = _mm256_loadu_si256(&static_nybble_lookup_b3m13);
 			const uint256_t nybble_lookup_b9m13 = _mm256_loadu_si256(&static_nybble_lookup_b9m13);
 
-			const uint64_t* const rounded_end = candidates_end - ((candidates_end - input) % 4);
+			const uint64_t* const rounded_end = candidates_end - ((candidates_end - input) & 0b11);
 
-			uint64_t pdep_candidates[8]{};
+			alignas(32) uint64_t pdep_candidates[8]{};
 			alignas(32) uint16_t rems[16]{};
 
 			// run pdep and vector instructions one iteration ahead
