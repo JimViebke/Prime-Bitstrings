@@ -39,7 +39,9 @@ namespace mbp
 
 		constexpr size_t steps = 2ull; // default 2
 		constexpr size_t largest_sieve_prime = 263; // default 263
-		constexpr double density_threshold = 0.038; // default 0.038 (3.8%)
+
+		constexpr double vector_density_threshold = 0.01; // default .01 (1%)
+		constexpr double scalar_density_threshold = 0.038; // default 0.038 (3.8%)
 	}
 
 	// trial division tests in bases 3..n

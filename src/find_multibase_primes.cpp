@@ -374,7 +374,7 @@ namespace mbp
 		ss << "Static sieve size: " << static_sieve_size
 			<< ", primes: 3-" << static_sieve_primes.back() << '\n';
 		ss << "Sieve limit: " << largest_sieve_prime
-			<< ", threshold: " << density_threshold
+			<< ", vector/scalar thresholds: " << vector_density_threshold << ", " << scalar_density_threshold
 			<< ", steps: " << steps
 			<< ", candidate capacity: " << candidates_capacity << '\n';
 

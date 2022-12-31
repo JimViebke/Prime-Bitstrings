@@ -592,6 +592,16 @@ namespace mbp::prime_sieve
 		const sieve_prime_t* prime_ptr = small_primes_lookup.data() + static_sieve_primes.size() + 1;
 		sieve_offset_t* offset_cache_ptr = sieve_offsets_cache.data() + static_sieve_primes.size() + 1;
 
+		// calculate sieve density
+		double density = double(sieve.count_bits()) / sieve_container::size();
+
+		// don't do any sieving if our bit pattern filters + static sieve already cleared enough
+		if (density < vector_density_threshold)
+		{
+			update_sieve_offsets_cache(number + 2 * sieve_container::size(), prime_ptr, offset_cache_ptr);
+			return;
+		}
+
 		if constexpr (small_primes_lookup[static_sieve_primes.size() + 1] == 19)
 		{
 			// one simd write from 1p, plus 0-1 scalar writes for 11, and 0-1 scalar writes for 13,14
@@ -618,13 +628,16 @@ namespace mbp::prime_sieve
 			vectorized_sieve_pass<79>(sieve, prime_ptr, offset_cache_ptr);
 		}
 
-		double density = double(sieve.count_bits()) / sieve_container::size();
+		constexpr double vectorized_sieving_removes = .3106; // 31.06%
+		constexpr double scale = 1.0 - vectorized_sieving_removes;
+
+		density *= scale;
 
 		for (;;)
 		{
-			// If we stop sieving early, we still need to update our offsets cache
-			if (density < density_threshold)
+			if (density < scalar_density_threshold)
 			{
+				// If we stop sieving early, we still need to update our offsets cache
 				update_sieve_offsets_cache(number + 2 * sieve_container::size(),
 										   prime_ptr, offset_cache_ptr);
 				break;
