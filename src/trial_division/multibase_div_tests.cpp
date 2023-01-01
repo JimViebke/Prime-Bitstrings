@@ -74,6 +74,20 @@ namespace mbp::div_test
 					if (base == 8 && p == 17) continue;
 					if (base == 9 && p == 17) continue;
 
+					// second set with 6 remainders
+					//if (base == 8 && p == 19) continue;
+					//if (base == 12 && p == 19) continue;
+
+					// 9 remainders
+					//if (base == 4 && p == 19) continue;
+					//if (base == 5 && p == 19) continue;
+					//if (base == 6 && p == 19) continue;
+					//if (base == 9 && p == 19) continue;
+
+					// second set with 3 remainders
+					//if (base == 7 && p == 19) continue;
+					//if (base == 11 && p == 19) continue;
+
 				#if !analyze_div_tests or suppress_extra_div_tests
 					if (base == 4 && p == 3) continue; //  base  4^n % 3 unused
 					if (base == 5 && p == 3) continue; //  base  5^n % 3 unused
@@ -94,7 +108,7 @@ namespace mbp::div_test
 					if (base == 6 && p == 7) continue; //  base  6^n % 7 unused
 					if (base == 8 && p == 7) continue; //  base  8^n % 7 unused
 					if (base == 9 && p == 7) continue; //  base  9^n % 7 unused
-					if (base == 13 && p == 7) continue; //  base 13 % 7 unused
+					if (base == 13 && p == 7) continue; // base 13^n % 7 unused
 
 					if (base == 10 && p == 11) continue; // base 10^n % 11 unused
 					if (base == 12 && p == 11) continue; // base 12^n % 11 unused

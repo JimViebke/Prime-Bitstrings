@@ -187,7 +187,7 @@ namespace mbp
 
 		count_passes(std::cout << "(counting passes)\n");
 		count_passes(a = ps15 = b = c = d = e = f = g = h = i = j = k = 0);
-		count_passes(l = m = b2 = b3 = b4 = b5 = passes = pc_hash = 0);
+		count_passes(bldt = bidt = b2 = b3 = b4 = b5 = passes = pc_hash = 0);
 	}
 
 	void mbp::find_multibase_primes::run()
@@ -266,9 +266,9 @@ namespace mbp
 		log_pass_counts("Passed 10-rem tests:   ", i, h);
 		log_pass_counts("Passed 12-rem tests:   ", j, i);
 		log_pass_counts("Passed 16-rem tests:   ", k, j);
-		log_pass_counts("P. branchless divtests:", l, k);
-		log_pass_counts("P. branching divtests: ", m, l);
-		log_pass_counts("Passed b2 BPSW test:   ", b2, m);
+		log_pass_counts("P. branchless divtests:", bldt, k);
+		log_pass_counts("P. branching divtests: ", bidt, bldt);
+		log_pass_counts("Passed b2 BPSW test:   ", b2, bidt);
 		log_pass_counts("Passed b3 prime test:  ", b3, b2);
 		log_pass_counts("Passed b4 prime test:  ", b4, b3);
 		log_pass_counts("Passed b5 prime test:  ", b5, b4);
@@ -340,14 +340,26 @@ namespace mbp
 		candidates_end = div_tests_with_16_rems<on_fast_path>(candidates, candidates_end);
 		count_passes(k += (candidates_end - candidates));
 
+		// bases 8 and 12 mod 19 (6 remainders)
+		//candidates_end = two_div_tests_with_six_rems<on_fast_path>(candidates, candidates_end);
+		//count_passes(dt6b += (candidates_end - candidates));
+
+		// bases 4, 5, 6, and 9 mod 19 (9 remainders)
+		//candidates_end = div_tests_with_nine_rems<on_fast_path>(candidates, candidates_end);
+		//count_passes(dt9 += (candidates_end - candidates));
+
+		// bases 7 and 11 mod 19 (3 remainders)
+		//candidates_end = two_div_tests_with_three_rems<on_fast_path>(candidates, candidates_end);
+		//count_passes(dt3b += (candidates_end - candidates));
+
 
 
 		// Check for small prime factors across all bases
 		candidates_end = div_test::branchless_div_tests<on_fast_path>(candidates, candidates_end, div_test::n_of_branchless_tests);
-		count_passes(l += (candidates_end - candidates));
+		count_passes(bldt += (candidates_end - candidates));
 
 		candidates_end = div_test::branching_div_tests<on_fast_path>(candidates, candidates_end, div_test::n_of_branchless_tests);
-		count_passes(m += (candidates_end - candidates));
+		count_passes(bidt += (candidates_end - candidates));
 
 
 
