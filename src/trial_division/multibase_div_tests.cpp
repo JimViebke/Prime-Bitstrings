@@ -2,6 +2,10 @@
 #include "multibase_div_tests.hpp"
 #include "../util/simd.hpp"
 
+#if analyze_div_tests
+#include <sstream>
+#endif
+
 namespace mbp::div_test
 {
 	namespace detail
@@ -185,6 +189,42 @@ namespace mbp::div_test
 
 			return div_tests;
 		}
+	}
+
+	constexpr size_t div_tests_size = detail::generate_div_tests_impl().size();
+	consteval std::array<div_test_t, div_tests_size> generate_div_tests()
+	{
+		std::array<div_test_t, div_tests_size> div_tests{};
+		const auto x = detail::generate_div_tests_impl();
+		std::copy(x.begin(), x.end(), div_tests.begin());
+		return div_tests;
+	}
+
+	using div_tests_t = std::array<div_test::div_test_t, div_test::div_tests_size>;
+	div_tests_t div_tests = generate_div_tests(); // intellisense false positive
+
+	namespace detail
+	{
+		consteval size_t calculate_prime_factor_lookup_size()
+		{
+			constexpr div_tests_t div_tests_constexpr = generate_div_tests();
+
+			size_t largest_sum = 0;
+
+			// Calculate the largest possible sum of remainders of a number with every bit set
+			for (const auto& div_test : div_tests_constexpr)
+			{
+				const size_t sum = std::accumulate(div_test.remainders.begin(), div_test.remainders.end(), size_t(0));
+
+				if (sum > largest_sum)
+					largest_sum = sum;
+			}
+
+			// + 1 so "lookup[sum]" is always in range
+			return largest_sum + 1;
+		}
+
+		constexpr size_t prime_factor_lookup_size = calculate_prime_factor_lookup_size(); // intellisense false positive
 
 		// Faster version
 		std::vector<prime_lookup_t> build_prime_factor_lookup_old()
@@ -217,25 +257,13 @@ namespace mbp::div_test
 
 				for (prime_lookup_t j = 0; j < prime_factor_lookup_size; j += p)
 				{
-					lookup[j] |= (0b1 << i);
+					lookup[j] |= (1ull << i);
 				}
 			}
 
 			return lookup;
 		}
 	}
-
-	constexpr size_t div_tests_size = detail::generate_div_tests_impl().size();
-	consteval std::array<div_test_t, div_tests_size> generate_div_tests()
-	{
-		std::array<div_test_t, div_tests_size> div_tests{};
-		const auto x = detail::generate_div_tests_impl();
-		std::copy(x.begin(), x.end(), div_tests.begin());
-		return div_tests;
-	}
-
-	using div_tests_t = std::array<div_test::div_test_t, div_test::div_tests_size>;
-	div_tests_t div_tests = generate_div_tests(); // intellisense false positive
 
 	namespace detail
 	{

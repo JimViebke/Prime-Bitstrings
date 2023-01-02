@@ -96,29 +96,7 @@ namespace mbp::div_test
 
 	namespace detail
 	{
-		//consteval size_t calculate_prime_factor_lookup_size()
-		//{
-		//	constexpr div_tests_t div_tests_constexpr = generate_div_tests();
-
-		//	size_t largest_sum = 0;
-
-		//	// Calculate the largest possible sum of remainders of a number with every bit set
-		//	for (const auto& div_test : div_tests_constexpr)
-		//	{
-		//		const size_t sum = std::accumulate(div_test.remainders.begin(), div_test.remainders.end(), size_t(0));
-
-		//		if (sum > largest_sum)
-		//			largest_sum = sum;
-		//	}
-
-		//	// + 1 so "lookup[sum]" is always in range
-		//	return largest_sum + 1;
-		//}
-
-		// come back to this
-
 		using prime_lookup_t = util::narrowest_uint_for_n_bits<div_test::n_of_primes>;
-		constexpr size_t prime_factor_lookup_size = 5'000; // calculate_prime_factor_lookup_size(); // intellisense false positive
 
 		std::vector<prime_lookup_t> build_prime_factor_lookup_old();
 		std::vector<prime_lookup_t> build_prime_factor_lookup_new();
