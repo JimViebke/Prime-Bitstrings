@@ -578,7 +578,8 @@ namespace mbp::prime_sieve
 	}
 
 	void partial_sieve(const uint64_t number,
-					   sieve_container& sieve)
+					   sieve_container& sieve,
+					   const size_t sieve_popcount)
 	{
 		// Sieve primes by strides of 15*p:
 		// 
@@ -593,7 +594,7 @@ namespace mbp::prime_sieve
 		sieve_offset_t* offset_cache_ptr = sieve_offsets_cache.data() + static_sieve_primes.size() + 1;
 
 		// calculate sieve density
-		double density = double(sieve.count_bits()) / sieve_container::size();
+		double density = double(sieve_popcount) / sieve_container::size();
 
 		// don't do any sieving if our bit pattern filters + static sieve already cleared enough
 		if (density < vector_density_threshold)

@@ -33,7 +33,67 @@ namespace mbp
 		return outer_even_pc - outer_odd_pc + 23; // +23 to normalize -23,24 to 0,47
 	}
 
-	void copy_static_sieve_with_bit_pattern_filters(size_t number)
+	template<typename block_t>
+	__forceinline void set_lookup_ptrs(const uint64_t next_number,
+									   const block_t*& pc_lookup_ptr,
+									   const block_t*& gcd_lookup_ptr)
+	{
+		constexpr uint64_t bits_1_16_mask = 0xFFFFull << 1;
+
+		const uint64_t bits_1_16 = (next_number & bits_1_16_mask) >> 1;
+
+		const size_t bit_offset = bits_1_16 & 0b111;
+		const size_t byte_offset = bits_1_16 / 8;
+
+		const auto pc_idx = pc_lookup_idx(next_number);
+		pc_lookup_ptr = (const block_t*)(pc_lookup[bit_offset][pc_idx].data() + byte_offset);
+
+		const auto gcd_idx = gcd_lookup_idx(next_number);
+		gcd_lookup_ptr = (const block_t*)(gcd_lookup[bit_offset][gcd_idx].data() + byte_offset);
+	}
+
+	template<typename block_t>
+	__forceinline void merge_one_block(uint64_t& number,
+									   const block_t*& in,
+									   block_t*& out,
+									   const block_t*& pc_lookup_ptr,
+									   const block_t*& gcd_lookup_ptr,
+									   size_t& sieve_popcount)
+	{
+		constexpr uint64_t bits_1_16_mask = 0xFFFFull << 1;
+		constexpr size_t elements_per_block = sizeof(block_t) * 8;
+
+		const size_t elements_to_rollover = (pow_2_16 - ((number & bits_1_16_mask) >> 1)) % pow_2_16; // map 65,536 -> 0
+
+		block_t mask = *in++;
+		const block_t bit_patterns_mask = (*pc_lookup_ptr++) & (*gcd_lookup_ptr++);
+
+		if (elements_to_rollover >= elements_per_block) // copy another block using lookup data
+		{
+			mask &= bit_patterns_mask;
+		}
+		else // elements_to_rollover is 0 to 63
+		{
+			set_lookup_ptrs(number + (elements_to_rollover * 2), pc_lookup_ptr, gcd_lookup_ptr);
+			const block_t new_pc_gcd_mask = (*pc_lookup_ptr & *gcd_lookup_ptr) << elements_to_rollover;
+
+			const block_t select_from_old = (1ull << elements_to_rollover) - 1; // up to and including rollover
+			const block_t select_from_new = ~select_from_old;
+
+			mask &= ((bit_patterns_mask & select_from_old) |
+					 (new_pc_gcd_mask & select_from_new));
+
+			// (re)set
+			set_lookup_ptrs(number + (elements_per_block * 2), pc_lookup_ptr, gcd_lookup_ptr);
+		}
+
+		*out++ = mask;
+		sieve_popcount += pop_count(mask);
+
+		number += elements_per_block * 2;
+	}
+
+	size_t copy_static_sieve_with_bit_pattern_filters(size_t number)
 	{
 		using block_t = uint64_t;
 		constexpr size_t elements_per_block = sizeof(block_t) * 8;
@@ -42,6 +102,14 @@ namespace mbp
 		constexpr size_t bits_1_16_mask = 0xFFFFull << 1;
 
 		constexpr size_t leftover_elements = sieve.size() % (elements_per_block * 4);
+
+		constexpr static uint256_t static_pc_shuf_lookup{ .m256i_u8{
+			0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
+			0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4 } };
+		constexpr static uint256_t static_nybble_mask{ .m256i_u64{
+			0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F } };
+
+		size_t sieve_popcount = 0;
 
 		const block_t* in = (const block_t*)static_sieve.data();
 		const block_t* const aligned_end = in + ((sieve.size() - leftover_elements) / elements_per_block);
@@ -57,53 +125,10 @@ namespace mbp
 		const block_t* pc_lookup_ptr{};
 		const block_t* gcd_lookup_ptr{};
 
-		const auto set_lookup_ptrs = [&](const size_t next_number) {
-			const size_t bits_1_16 = (next_number & bits_1_16_mask) >> 1;
-
-			const size_t bit_offset = bits_1_16 & 0b111;
-			const size_t byte_offset = bits_1_16 / 8;
-
-			const auto pc_idx = pc_lookup_idx(next_number);
-			pc_lookup_ptr = (const block_t*)(pc_lookup[bit_offset][pc_idx].data() + byte_offset);
-
-			const auto gcd_idx = gcd_lookup_idx(next_number);
-			gcd_lookup_ptr = (const block_t*)(gcd_lookup[bit_offset][gcd_idx].data() + byte_offset);
-		};
-
-		const auto merge_one_block = [&] {
-			const size_t elements_to_rollover = (pow_2_16 - ((number & bits_1_16_mask) >> 1)) % pow_2_16; // map 65,536 -> 0
-
-			block_t mask = *in++;
-			const block_t bit_patterns_mask = (*pc_lookup_ptr++) & (*gcd_lookup_ptr++);
-
-			if (elements_to_rollover >= elements_per_block) // copy another block using lookup data
-			{
-				mask &= bit_patterns_mask;
-			}
-			else // elements_to_rollover is 0 to 63
-			{
-				set_lookup_ptrs(number + (elements_to_rollover * 2));
-				const block_t new_pc_gcd_mask = (*pc_lookup_ptr & *gcd_lookup_ptr) << elements_to_rollover;
-
-				const block_t select_from_old = (1ull << elements_to_rollover) - 1; // up to and including rollover
-				const block_t select_from_new = ~select_from_old;
-
-				mask &= ((bit_patterns_mask & select_from_old) |
-						 (new_pc_gcd_mask & select_from_new));
-
-				// (re)set
-				set_lookup_ptrs(number + elements_per_block * 2);
-			}
-
-			*out++ = mask;
-
-			number += elements_per_block * 2;
-		};
+		set_lookup_ptrs(number, pc_lookup_ptr, gcd_lookup_ptr);
 
 		for (; in != aligned_end; )
 		{
-			set_lookup_ptrs(number);
-
 			// We are iterating and reading 4*elements_per_block elements per iteration.
 			// How many times can we do this before reaching the lookups' ends?
 			// Calculate this up front so the hot loop can run using a simpler condition.
@@ -119,6 +144,10 @@ namespace mbp
 			const uint8_t* const in_c = (const uint8_t* const)in;
 			uint8_t* const out_ptr = (uint8_t* const)out;
 
+			const uint256_t nybble_mask = _mm256_loadu_si256(&static_nybble_mask);
+			const uint256_t pc_shuf_lookup = _mm256_loadu_si256(&static_pc_shuf_lookup);
+			uint256_t pc{};
+
 			for (size_t offset = 0; offset < n_blocks * 4 * 8; offset += (4ull * 8))
 			{
 				const uint256_t pc_data = _mm256_loadu_si256((uint256_t*)(in_a + offset));
@@ -129,7 +158,22 @@ namespace mbp
 				merged_data = _mm256_and_si256(merged_data, ss_data);
 
 				_mm256_storeu_si256((uint256_t*)(out_ptr + offset), merged_data);
+
+				// data -> nybbles
+				const uint256_t nybbles_lo = _mm256_and_si256(merged_data, nybble_mask);
+				const uint256_t nybbles_hi = _mm256_and_si256(_mm256_srli_epi64(merged_data, 4), nybble_mask);
+				// nybbles -> pcs
+				uint256_t pc_256 = _mm256_add_epi8(_mm256_shuffle_epi8(pc_shuf_lookup, nybbles_lo),
+												   _mm256_shuffle_epi8(pc_shuf_lookup, nybbles_hi));
+				// 8-bit pcs -> 64-bit pcs
+				pc_256 = _mm256_sad_epu8(pc_256, _mm256_setzero_si256());
+				// add to running total
+				pc = _mm256_add_epi64(pc, pc_256);
 			}
+			sieve_popcount += pc.m256i_u64[0];
+			sieve_popcount += pc.m256i_u64[1];
+			sieve_popcount += pc.m256i_u64[2];
+			sieve_popcount += pc.m256i_u64[3];
 
 			in += n_blocks * 4;
 			out += n_blocks * 4;
@@ -143,7 +187,7 @@ namespace mbp
 				// handle 4 blocks
 				for (size_t block = 0; block < 4; ++block)
 				{
-					merge_one_block();
+					merge_one_block(number, in, out, pc_lookup_ptr, gcd_lookup_ptr, sieve_popcount);
 				}
 			}
 		} // end main copy/merge loop
@@ -152,22 +196,24 @@ namespace mbp
 
 		if constexpr (leftover_elements >= elements_per_block * 1)
 		{
-			merge_one_block();
+			merge_one_block(number, in, out, pc_lookup_ptr, gcd_lookup_ptr, sieve_popcount);
 		}
 		if constexpr (leftover_elements >= elements_per_block * 2)
 		{
-			merge_one_block();
+			merge_one_block(number, in, out, pc_lookup_ptr, gcd_lookup_ptr, sieve_popcount);
 		}
 		if constexpr (leftover_elements >= elements_per_block * 3)
 		{
-			merge_one_block();
+			merge_one_block(number, in, out, pc_lookup_ptr, gcd_lookup_ptr, sieve_popcount);
 		}
 
 		constexpr size_t adjust = leftover_elements % elements_per_block;
 		if constexpr (adjust > 0)
 		{
-			merge_one_block();
+			merge_one_block(number, in, out, pc_lookup_ptr, gcd_lookup_ptr, sieve_popcount);
 		}
+
+		return sieve_popcount;
 	}
 
 
@@ -286,10 +332,10 @@ namespace mbp
 		for (size_t sieve_step = 0; sieve_step < prime_sieve::steps; ++sieve_step)
 		{
 			// Merge the static sieve, popcount, and gcd data
-			copy_static_sieve_with_bit_pattern_filters(number + (sieve_step * sieve.size() * 2));
-			count_passes(a += sieve.count_bits());
+			const size_t sieve_popcount = copy_static_sieve_with_bit_pattern_filters(number + (sieve_step * sieve.size() * 2));
+			count_passes(a += sieve_popcount);
 
-			prime_sieve::partial_sieve(number + (sieve_step * sieve.size() * 2), sieve);
+			prime_sieve::partial_sieve(number + (sieve_step * sieve.size() * 2), sieve, sieve_popcount);
 			count_passes(ps15 += sieve.count_bits());
 
 			candidates_end = prime_sieve::gather_sieve_results(
