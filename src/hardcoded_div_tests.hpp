@@ -82,9 +82,8 @@ namespace mbp
 		using namespace div_test::detail;
 
 		// Intellisense may generate a number of false positives here
-		constexpr size_t bitmask = bitmask_for<3, 5>::val;
-		static_assert(bitmask == bitmask_for<5, 13>::val &&
-					  bitmask == bitmask_for<8, 13>::val &&
+		constexpr size_t bitmask = bitmask_for<5, 13>::val;
+		static_assert(bitmask == bitmask_for<8, 13>::val &&
 					  bitmask == bitmask_for<4, 17>::val);
 		static_assert(period_of<bitmask>::val == 4);
 
@@ -94,13 +93,11 @@ namespace mbp
 		{
 			const size_t* const candidates_end_rounded = candidates_end - (size_t(candidates_end - input) & 0b111);
 
-			constexpr static uint256_t static_nybble_lookup_a = mbp::detail::build_4rem_shuffle_lookup<3, 5>();
 			constexpr static uint256_t static_nybble_lookup_b = mbp::detail::build_4rem_shuffle_lookup<5, 13>();
 			constexpr static uint256_t static_nybble_lookup_c = mbp::detail::build_4rem_shuffle_lookup<8, 13>();
 			constexpr static uint256_t static_nybble_lookup_d = mbp::detail::build_4rem_shuffle_lookup<4, 17>();
 
 			const uint256_t nybble_mask = _mm256_set1_epi8(0b0000'1111);
-			const uint256_t nybble_lookup_a = _mm256_loadu_si256(&static_nybble_lookup_a);
 			const uint256_t nybble_lookup_b = _mm256_loadu_si256(&static_nybble_lookup_b);
 			const uint256_t nybble_lookup_c = _mm256_loadu_si256(&static_nybble_lookup_c);
 			const uint256_t nybble_lookup_d = _mm256_loadu_si256(&static_nybble_lookup_d);
@@ -108,26 +105,21 @@ namespace mbp
 			// calculate upper sum of remainders
 			const size_t number_upper = (*input) & (size_t(-1) << 32);
 			const size_t upc_0 = pop_count(number_upper & (bitmask << 0));
-			size_t b3m5_urem = upc_0;
 			size_t b8m13_urem = upc_0;
 			size_t b5m13_urem = upc_0;
 			size_t b4m17_urem = upc_0;
 			const size_t upc_1 = pop_count(number_upper & (bitmask << 1));
-			b3m5_urem += upc_1 * pow_mod<3, 1, 5>::rem;
 			b5m13_urem += upc_1 * pow_mod<5, 1, 13>::rem;
 			b8m13_urem += upc_1 * pow_mod<8, 1, 13>::rem;
 			b4m17_urem += upc_1 * pow_mod<4, 1, 17>::rem;
 			const size_t upc_2 = pop_count(number_upper & (bitmask << 2));
-			b3m5_urem += upc_2 * pow_mod<3, 2, 5>::rem;
 			b5m13_urem += upc_2 * pow_mod<5, 2, 13>::rem;
 			b8m13_urem += upc_2 * pow_mod<8, 2, 13>::rem;
 			b4m17_urem += upc_2 * pow_mod<4, 2, 17>::rem;
 			const size_t upc_3 = pop_count(number_upper & (bitmask << 3));
-			b3m5_urem += upc_3 * pow_mod<3, 3, 5>::rem;
 			b5m13_urem += upc_3 * pow_mod<5, 3, 13>::rem;
 			b8m13_urem += upc_3 * pow_mod<8, 3, 13>::rem;
 			b4m17_urem += upc_3 * pow_mod<4, 3, 17>::rem;
-			const uint8_t* const indivisible_by_5_ptr = indivisible_by[get_prime_index<5>::idx].data() + b3m5_urem;
 			const uint8_t* const indivisible_by_13_ptr_b5 = indivisible_by[get_prime_index<13>::idx].data() + b5m13_urem;
 			const uint8_t* const indivisible_by_13_ptr_b8 = indivisible_by[get_prime_index<13>::idx].data() + b8m13_urem;
 			const uint8_t* const indivisible_by_17_ptr = indivisible_by[get_prime_index<17>::idx].data() + b4m17_urem;
@@ -151,19 +143,14 @@ namespace mbp
 				const uint256_t candidates_1537 = _mm256_unpackhi_epi32(nybbles_lo, nybbles_hi);
 
 				// replace the bits of each nybble with their remainder, then sum remainders
-				uint256_t rems_0426 = _mm256_shuffle_epi8(nybble_lookup_a, candidates_0426);
-				uint256_t rems_1537 = _mm256_shuffle_epi8(nybble_lookup_a, candidates_1537);
-				rems_0426 = _mm256_sad_epu8(rems_0426, _mm256_setzero_si256());
-				rems_1537 = _mm256_sad_epu8(rems_1537, _mm256_setzero_si256());
-				const uint256_t sums_04152637_a = _mm256_packus_epi32(rems_0426, rems_1537);
 
-				rems_0426 = _mm256_shuffle_epi8(nybble_lookup_b, candidates_0426);
-				rems_1537 = _mm256_shuffle_epi8(nybble_lookup_b, candidates_1537);
+				uint256_t rems_0426 = _mm256_shuffle_epi8(nybble_lookup_b, candidates_0426);
+				uint256_t rems_1537 = _mm256_shuffle_epi8(nybble_lookup_b, candidates_1537);
 				rems_0426 = _mm256_sad_epu8(rems_0426, _mm256_setzero_si256());
 				rems_1537 = _mm256_sad_epu8(rems_1537, _mm256_setzero_si256());
 				const uint256_t sums_04152637_b = _mm256_packus_epi32(rems_0426, rems_1537);
 
-				const uint256_t sums_0415a_0415b_2637a_2637b = _mm256_packus_epi32(sums_04152637_a, sums_04152637_b);
+				const uint256_t sums_0415a_0415b_2637a_2637b = _mm256_packus_epi32(_mm256_setzero_si256(), sums_04152637_b);
 
 				rems_0426 = _mm256_shuffle_epi8(nybble_lookup_c, candidates_0426);
 				rems_1537 = _mm256_shuffle_epi8(nybble_lookup_c, candidates_1537);
@@ -200,19 +187,13 @@ namespace mbp
 				const uint256_t candidates_0426 = _mm256_unpacklo_epi32(nybbles_lo, nybbles_hi);
 				const uint256_t candidates_1537 = _mm256_unpackhi_epi32(nybbles_lo, nybbles_hi);
 
-				uint256_t rems_0426 = _mm256_shuffle_epi8(nybble_lookup_a, candidates_0426);
-				uint256_t rems_1537 = _mm256_shuffle_epi8(nybble_lookup_a, candidates_1537);
-				rems_0426 = _mm256_sad_epu8(rems_0426, _mm256_setzero_si256());
-				rems_1537 = _mm256_sad_epu8(rems_1537, _mm256_setzero_si256());
-				const uint256_t sums_04152637_a = _mm256_packus_epi32(rems_0426, rems_1537);
-
-				rems_0426 = _mm256_shuffle_epi8(nybble_lookup_b, candidates_0426);
-				rems_1537 = _mm256_shuffle_epi8(nybble_lookup_b, candidates_1537);
+				uint256_t rems_0426 = _mm256_shuffle_epi8(nybble_lookup_b, candidates_0426);
+				uint256_t rems_1537 = _mm256_shuffle_epi8(nybble_lookup_b, candidates_1537);
 				rems_0426 = _mm256_sad_epu8(rems_0426, _mm256_setzero_si256());
 				rems_1537 = _mm256_sad_epu8(rems_1537, _mm256_setzero_si256());
 				const uint256_t sums_04152637_b = _mm256_packus_epi32(rems_0426, rems_1537);
 
-				const uint256_t sums_0415a_0415b_2637a_2637b = _mm256_packus_epi32(sums_04152637_a, sums_04152637_b);
+				const uint256_t sums_0415a_0415b_2637a_2637b = _mm256_packus_epi32(_mm256_setzero_si256(), sums_04152637_b);
 
 				rems_0426 = _mm256_shuffle_epi8(nybble_lookup_c, candidates_0426);
 				rems_1537 = _mm256_shuffle_epi8(nybble_lookup_c, candidates_1537);
@@ -235,57 +216,49 @@ namespace mbp
 				// Only advance the pointer if the number is still a candidate, that is,
 				// it is not known to be divisible for the above tests
 
-				const size_t inc_0 = indivisible_by_5_ptr[sums_ab[0]]
-					& indivisible_by_13_ptr_b5[sums_ab[0 + 4]]
+				const size_t inc_0 = indivisible_by_13_ptr_b5[sums_ab[0 + 4]]
 					& indivisible_by_13_ptr_b8[sums_cd[0]]
 					& indivisible_by_17_ptr[sums_cd[0 + 4]];
 				*output = *input++; // always copy
 				output = (uint64_t*)(((uint8_t*)output) + inc_0); // branchless conditional increment
 
-				const size_t inc_1 = indivisible_by_5_ptr[sums_ab[2]]
-					& indivisible_by_13_ptr_b5[sums_ab[2 + 4]]
+				const size_t inc_1 = indivisible_by_13_ptr_b5[sums_ab[2 + 4]]
 					& indivisible_by_13_ptr_b8[sums_cd[2]]
 					& indivisible_by_17_ptr[sums_cd[2 + 4]];
 				*output = *input++;
 				output = (uint64_t*)(((uint8_t*)output) + inc_1);
 
-				const size_t inc_2 = indivisible_by_5_ptr[sums_ab[8]]
-					& indivisible_by_13_ptr_b5[sums_ab[8 + 4]]
+				const size_t inc_2 = indivisible_by_13_ptr_b5[sums_ab[8 + 4]]
 					& indivisible_by_13_ptr_b8[sums_cd[8]]
 					& indivisible_by_17_ptr[sums_cd[8 + 4]];
 				*output = *input++;
 				output = (uint64_t*)(((uint8_t*)output) + inc_2);
 
-				const size_t inc_3 = indivisible_by_5_ptr[sums_ab[10]]
-					& indivisible_by_13_ptr_b5[sums_ab[10 + 4]]
+				const size_t inc_3 = indivisible_by_13_ptr_b5[sums_ab[10 + 4]]
 					& indivisible_by_13_ptr_b8[sums_cd[10]]
 					& indivisible_by_17_ptr[sums_cd[10 + 4]];
 				*output = *input++;
 				output = (uint64_t*)(((uint8_t*)output) + inc_3);
 
-				const size_t inc_4 = indivisible_by_5_ptr[sums_ab[1]]
-					& indivisible_by_13_ptr_b5[sums_ab[1 + 4]]
+				const size_t inc_4 = indivisible_by_13_ptr_b5[sums_ab[1 + 4]]
 					& indivisible_by_13_ptr_b8[sums_cd[1]]
 					& indivisible_by_17_ptr[sums_cd[1 + 4]];
 				*output = *input++;
 				output = (uint64_t*)(((uint8_t*)output) + inc_4);
 
-				const size_t inc_5 = indivisible_by_5_ptr[sums_ab[3]]
-					& indivisible_by_13_ptr_b5[sums_ab[3 + 4]]
+				const size_t inc_5 = indivisible_by_13_ptr_b5[sums_ab[3 + 4]]
 					& indivisible_by_13_ptr_b8[sums_cd[3]]
 					& indivisible_by_17_ptr[sums_cd[3 + 4]];
 				*output = *input++;
 				output = (uint64_t*)(((uint8_t*)output) + inc_5);
 
-				const size_t inc_6 = indivisible_by_5_ptr[sums_ab[9]]
-					& indivisible_by_13_ptr_b5[sums_ab[9 + 4]]
+				const size_t inc_6 = indivisible_by_13_ptr_b5[sums_ab[9 + 4]]
 					& indivisible_by_13_ptr_b8[sums_cd[9]]
 					& indivisible_by_17_ptr[sums_cd[9 + 4]];
 				*output = *input++;
 				output = (uint64_t*)(((uint8_t*)output) + inc_6);
 
-				const size_t inc_7 = indivisible_by_5_ptr[sums_ab[11]]
-					& indivisible_by_13_ptr_b5[sums_ab[11 + 4]]
+				const size_t inc_7 = indivisible_by_13_ptr_b5[sums_ab[11 + 4]]
 					& indivisible_by_13_ptr_b8[sums_cd[11]]
 					& indivisible_by_17_ptr[sums_cd[11 + 4]];
 				*output = *input++;
@@ -297,7 +270,6 @@ namespace mbp
 			}
 		}
 
-		const uint8_t* const indivisible_by_5 = indivisible_by[get_prime_index<5>::idx].data();
 		const uint8_t* const indivisible_by_13 = indivisible_by[get_prime_index<13>::idx].data();
 		const uint8_t* const indivisible_by_17 = indivisible_by[get_prime_index<17>::idx].data();
 
@@ -309,31 +281,26 @@ namespace mbp
 			*output = number;
 
 			const size_t pc_0 = pop_count(number & (bitmask << 0));
-			size_t b3m5_rem = pc_0;
 			size_t b8m13_rem = pc_0;
 			size_t b5m13_rem = pc_0;
 			size_t b4m17_rem = pc_0;
 
 			const size_t pc_1 = pop_count(number & (bitmask << 1));
-			b3m5_rem += pc_1 * pow_mod<3, 1, 5>::rem;
 			b5m13_rem += pc_1 * pow_mod<5, 1, 13>::rem;
 			b8m13_rem += pc_1 * pow_mod<8, 1, 13>::rem;
 			b4m17_rem += pc_1 * pow_mod<4, 1, 17>::rem;
 
 			const size_t pc_2 = pop_count(number & (bitmask << 2));
-			b3m5_rem += pc_2 * pow_mod<3, 2, 5>::rem;
 			b5m13_rem += pc_2 * pow_mod<5, 2, 13>::rem;
 			b8m13_rem += pc_2 * pow_mod<8, 2, 13>::rem;
 			b4m17_rem += pc_2 * pow_mod<4, 2, 17>::rem;
 
 			const size_t pc_3 = pop_count(number & (bitmask << 3));
-			b3m5_rem += pc_3 * pow_mod<3, 3, 5>::rem;
 			b5m13_rem += pc_3 * pow_mod<5, 3, 13>::rem;
 			b8m13_rem += pc_3 * pow_mod<8, 3, 13>::rem;
 			b4m17_rem += pc_3 * pow_mod<4, 3, 17>::rem;
 
-			const size_t inc = indivisible_by_5[b3m5_rem]
-				& indivisible_by_13[b5m13_rem]
+			const size_t inc = indivisible_by_13[b5m13_rem]
 				& indivisible_by_13[b8m13_rem]
 				& indivisible_by_17[b4m17_rem];
 

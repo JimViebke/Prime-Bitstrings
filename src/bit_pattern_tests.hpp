@@ -2,6 +2,7 @@
 
 #include "config.hpp"
 #include "math/math.hpp"
+#include "trial_division/multibase_div_tests.hpp"
 
 namespace mbp
 {
@@ -114,5 +115,81 @@ namespace mbp
 	}
 	// [offset 0-7][outer abs 0-47][bitstring inner bits]
 	const std::vector<std::vector<bit_array<pow_2_16>>> gcd_lookup = build_gcd_lookup();
+
+	std::array<std::vector<bit_array<pow_2_16>>, 8> build_b3m5_lookup()
+	{
+		std::array<std::vector<bit_array<pow_2_16>>, 8> lookup{};
+
+		// 1, 3, 4, 2, 1, 3, 4, 2, 1, 3, 4, 2, 1, 3, 4, 2, 1
+		//    ^ start here
+		constexpr std::array<uint8_t, 16> nybble_lookup = []() consteval {
+			std::array<uint8_t, 16> arr{};
+			for (size_t i = 0; i < 16; ++i)
+			{
+				if (i & 0b0001) arr[i] += 3;
+				if (i & 0b0010) arr[i] += 4;
+				if (i & 0b0100) arr[i] += 2;
+				if (i & 0b1000) arr[i] += 1;
+			}
+			return arr;
+		}();
+
+		for (size_t bit_offset = 0; bit_offset < 8; ++bit_offset)
+		{
+			auto& offset_lookup = lookup[bit_offset];
+			offset_lookup.reserve(5);
+
+			for (size_t outer_rem = 0; outer_rem < 5; ++outer_rem)
+			{
+				auto& bit_array = offset_lookup.emplace_back();
+
+				// Start at 0-7 instead of 0. This drops off the first 0-7 (unused) values,
+				// and has the same effect as shifting this part of the lookup left by 0-7 bits.
+				// This also leave the upper 0-7 bits unset, which we will never read because they
+				// are past the 2^16 rollover.
+				auto nybble_d_idx = bit_offset;
+				size_t i = 0;
+
+				// 16^4 == the 65,536 bits we're looking for
+				for (auto nybble_a : nybble_lookup)
+				{
+					const auto sum_a = outer_rem + nybble_a;
+
+					for (auto nybble_b : nybble_lookup)
+					{
+						const auto sum_ab = sum_a + nybble_b;
+
+						for (auto nybble_c : nybble_lookup)
+						{
+							const auto sum_abc = sum_ab + nybble_c;
+
+							// nybble_d_idx starts at [bit_offset], then 0 for all other iterations
+							for (; nybble_d_idx < 16; ++nybble_d_idx)
+							{
+								// largest possible sum of four nybbles + outer_rem == 44 (45-bit lookup table)
+								constexpr size_t indivisible_by_5 = 0b11110'11110'11110'11110'11110'11110'11110'11110'11110;
+
+								// calculate the remainder sum of all 16 inner bits + the outer bits
+								const auto sum_abcd = sum_abc + nybble_lookup[nybble_d_idx];
+								// extract a bit from our lookup
+								const auto indivisible = (indivisible_by_5 >> sum_abcd) & 1;
+
+								// If a candidate is indivisible by 5 in base 3, it is still a candidate
+								// Set that bit high.
+								bit_array.data()[i / 8] |= (indivisible << (i % 8));
+
+								++i;
+							}
+							nybble_d_idx = 0;
+						}
+					}
+				}
+			}
+		}
+
+		return lookup;
+	}
+	// [offset 0-7][outer rem 0-4][bitstring inner bits]
+	const std::array<std::vector<bit_array<pow_2_16>>, 8> b3m5_lookup = build_b3m5_lookup();
 
 }
