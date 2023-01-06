@@ -27,6 +27,7 @@ namespace mbp::div_test
 
 					// Implemented with bit pattern filter
 					if (base == 3 && p == 5) continue;
+					if (base == 4 && p == 7) continue;
 
 					// Hardcoded div tests with 4 remainders
 					if (base == 5 && p == 13) continue;
@@ -37,7 +38,6 @@ namespace mbp::div_test
 					if (base == 13 && p == 17) continue;
 
 					// 3 remainders
-					if (base == 4 && p == 7) continue;
 					if (base == 3 && p == 13) continue;
 					if (base == 9 && p == 13) continue;
 
