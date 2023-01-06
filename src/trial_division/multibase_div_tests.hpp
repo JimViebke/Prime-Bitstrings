@@ -154,7 +154,7 @@ namespace mbp::div_test
 	namespace detail
 	{
 		template<size_t divisor, size_t base, size_t mask, size_t place_value>
-		__forceinline void get_sum_of_rems(size_t& rem, const size_t number)
+		constexpr __forceinline void get_sum_of_rems(size_t& rem, const size_t number)
 		{
 			rem += pop_count(number & (mask << place_value)) * pow_mod<base, place_value, divisor>::rem;
 			if constexpr (place_value > 0)
@@ -162,7 +162,7 @@ namespace mbp::div_test
 		}
 
 		template<size_t divisor, typename base_t>
-		__forceinline size_t get_sum_of_rems(const size_t number)
+		constexpr __forceinline size_t get_sum_of_rems(const size_t number)
 		{
 			constexpr size_t base = base_t::val;
 			static_assert(base >= 3 && base <= up_to_base);

@@ -64,9 +64,17 @@ namespace mbp
 		return mpz_likely_prime_p(p.get_mpz_t(), r.get_randstate_t(), 0);
 	}
 
-	inline auto pop_count(uint64_t n)
+	constexpr __forceinline auto pop_count(uint64_t n)
 	{
-		return _mm_popcnt_u64(n);
+		if (std::is_constant_evaluated())
+		{
+			using T = decltype(_mm_popcnt_u64(n));
+			return (T)std::popcount(n);
+		}
+		else
+		{
+			return _mm_popcnt_u64(n);
+		}
 	}
 
 	consteval uint64_t build_tiny_primes_lookup()
