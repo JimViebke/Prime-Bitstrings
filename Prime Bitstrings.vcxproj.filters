@@ -284,9 +284,6 @@
     <ClInclude Include="src\hardcoded_div_tests.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\full_div_tests.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\find_multibase_primes.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
