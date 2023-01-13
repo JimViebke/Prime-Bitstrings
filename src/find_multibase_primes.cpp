@@ -389,8 +389,18 @@ namespace mbp
 		candidates_end = base13_mod17_div_test<on_fast_path>(candidates, candidates_end);
 		count_passes(c += (candidates_end - candidates));
 
-		// base 12 mod 19, and 6 mod 37 (4 remainders, part 2)
-		candidates_end = two_div_tests_with_four_rems<on_fast_path>(candidates, candidates_end);
+		// slower:
+		// candidates_end = two_div_tests_with_four_rems<5, 13, 8, 13, on_fast_path>(candidates, candidates_end);
+		// count_passes(b += (candidates_end - candidates));
+		// candidates_end = two_div_tests_with_four_rems<4, 17, 13, 17, on_fast_path>(candidates, candidates_end);
+		// count_passes(c += (candidates_end - candidates));
+
+		// also slower:
+		// candidates_end = four_div_tests_with_four_rems<on_fast_path>(candidates, candidates_end);
+		// count_passes(b += (candidates_end - candidates));
+
+		// base 12 mod 29, and 6 mod 37 (4 remainders, part 2)
+		candidates_end = two_div_tests_with_four_rems<12, 29, 6, 37, on_fast_path>(candidates, candidates_end);
 		count_passes(d += (candidates_end - candidates));
 
 		// bases 3, 4, 5, and 9 mod 11 (5 remainders)
