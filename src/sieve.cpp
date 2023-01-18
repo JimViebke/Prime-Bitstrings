@@ -260,7 +260,7 @@ namespace mbp::prime_sieve
 	}
 
 	// m_offset = the number of multiples of p past the sieve pointer
-	template<size_t p, size_t m_offset>
+	template<size_t p, size_t m_offset = 1>
 	__forceinline void generate_vector_writes(uint8_t* const ptr_to_1p,
 											  const uint256_t& mask_0,
 											  const uint256_t& mask_1,
@@ -327,13 +327,14 @@ namespace mbp::prime_sieve
 		//    x  x     x        x  x        x     x  x   <-- values to mark composite/false
 		// x        x     x  x        x  x     x         <-- values to ignore
 
-		// 0-7 leading steps to get the hot loop to start with bit_idx == 0
+		// 0-7 leading steps to get the hot loop to start with a bit-aligned offset
 		for (size_t bit_index = 0; (bit_index = (j + p) % 8) != 0; )
 		{
 			uint256_t* const sieve_ptr = (uint256_t*)(sieve.data() + (j + p) / 8);
 
 			const uint256_t mask = _mm256_loadu_si256((uint256_t*)sieve_masks[bit_index].data());
 			uint256_t sieve_data = _mm256_loadu_si256(sieve_ptr);
+			sieve_data = _mm256_and_si256(mask, sieve_data);
 
 			if constexpr (p >= 37)
 			{
@@ -344,17 +345,11 @@ namespace mbp::prime_sieve
 
 				const uint256_t mask_hi = _mm256_loadu_si256((uint256_t*)sieve_masks[bit_index_hi].data());
 				uint256_t sieve_data_hi = _mm256_loadu_si256(sieve_ptr_hi);
-
-				sieve_data = _mm256_and_si256(mask, sieve_data);
 				sieve_data_hi = _mm256_and_si256(mask_hi, sieve_data_hi);
-				_mm256_storeu_si256(sieve_ptr, sieve_data);
+
 				_mm256_storeu_si256(sieve_ptr_hi, sieve_data_hi);
 			}
-			else // everyone else
-			{
-				sieve_data = _mm256_and_si256(mask, sieve_data);
-				_mm256_storeu_si256(sieve_ptr, sieve_data);
-			}
+			_mm256_storeu_si256(sieve_ptr, sieve_data);
 
 			if constexpr (p == 29 || p == 31)
 			{
@@ -402,8 +397,8 @@ namespace mbp::prime_sieve
 				static_assert(p < 89);
 
 				// Sieve by big strides of 8*15 * p.
-				// This is guaranteed to have no period (ie, the first bit offset is always the same)
-				generate_vector_writes<p, 1>(sieve_ptr, mask_0, mask_1, mask_2, mask_3, mask_4, mask_5, mask_6, mask_7);
+				// This is guaranteed to have a period of one (ie, the first bit offset is always the same)
+				generate_vector_writes<p>(sieve_ptr, mask_0, mask_1, mask_2, mask_3, mask_4, mask_5, mask_6, mask_7);
 
 				j += 8 * 15 * p;
 				sieve_ptr += (8 * 15 * p) / 8;
@@ -420,6 +415,7 @@ namespace mbp::prime_sieve
 
 			const uint256_t mask = _mm256_loadu_si256((uint256_t*)sieve_masks[bit_index].data());
 			uint256_t sieve_data = _mm256_loadu_si256(sieve_ptr);
+			sieve_data = _mm256_and_si256(mask, sieve_data);
 
 			if constexpr (p >= 37)
 			{
@@ -430,17 +426,11 @@ namespace mbp::prime_sieve
 
 				const uint256_t mask_hi = _mm256_loadu_si256((uint256_t*)sieve_masks[bit_index_hi].data());
 				uint256_t sieve_data_hi = _mm256_loadu_si256(sieve_ptr_hi);
-
-				sieve_data = _mm256_and_si256(mask, sieve_data);
 				sieve_data_hi = _mm256_and_si256(mask_hi, sieve_data_hi);
-				_mm256_storeu_si256(sieve_ptr, sieve_data);
+
 				_mm256_storeu_si256(sieve_ptr_hi, sieve_data_hi);
 			}
-			else // everyone else
-			{
-				sieve_data = _mm256_and_si256(mask, sieve_data);
-				_mm256_storeu_si256(sieve_ptr, sieve_data);
-			}
+			_mm256_storeu_si256(sieve_ptr, sieve_data);
 
 			if constexpr (p == 29 || p == 31)
 			{

@@ -15,14 +15,14 @@ namespace mbp
 	static const sieve_container static_sieve = prime_sieve::generate_static_sieve();
 	static sieve_container sieve;
 
-	__forceinline auto pc_lookup_idx(const size_t number)
+	__forceinline size_t pc_lookup_idx(const size_t number)
 	{
 		constexpr size_t outer_48_bits_mask = ~(0xFFFFull << 1);
 
 		return pop_count(number & outer_48_bits_mask) - 2; // -2 to normalize popcount 2-48 to idx 0-46
 	}
 
-	__forceinline auto gcd_lookup_idx(const size_t number)
+	__forceinline size_t gcd_lookup_idx(const size_t number)
 	{
 		constexpr size_t outer_48_bits_mask = ~(0xFFFFull << 1);
 		constexpr size_t even_mask = outer_48_bits_mask & 0x5555555555555555;
@@ -34,7 +34,7 @@ namespace mbp
 	}
 
 	template<size_t base, size_t prime>
-	__forceinline auto get_lookup_idx_for(const uint64_t number)
+	__forceinline size_t get_lookup_idx_for(const uint64_t number)
 	{
 		using namespace div_test;
 		using namespace div_test::detail;
@@ -48,85 +48,82 @@ namespace mbp
 		return sum % prime;
 	}
 
-	template<typename block_t>
 	__forceinline void set_lookup_ptrs(const uint64_t next_number,
-									   const block_t*& pc_lookup_ptr,
-									   const block_t*& gcd_lookup_ptr,
-									   const block_t*& b3m5_lookup_ptr,
-									   const block_t*& b4m7_lookup_ptr)
+									   const uint8_t*& pc_lookup_ptr,
+									   const uint8_t*& gcd_lookup_ptr,
+									   const uint8_t*& b3m5_lookup_ptr,
+									   const uint8_t*& b4m7_lookup_ptr)
 	{
 		constexpr uint64_t bits_1_16_mask = 0xFFFFull << 1;
 
-		const uint64_t bits_1_16 = (next_number & bits_1_16_mask) >> 1;
+		const size_t pc_idx = pc_lookup_idx(next_number);
+		const size_t gcd_idx = gcd_lookup_idx(next_number);
+		const size_t b3m5_idx = get_lookup_idx_for<3, 5>(next_number);
+		const size_t b4m7_idx = get_lookup_idx_for<4, 7>(next_number);
 
+		const uint64_t bits_1_16 = (next_number & bits_1_16_mask) >> 1;
 		const size_t bit_offset = bits_1_16 & 0b111;
 		const size_t byte_offset = bits_1_16 / 8;
 
-		const auto pc_idx = pc_lookup_idx(next_number);
-		pc_lookup_ptr = (const block_t*)(pc_lookup[bit_offset][pc_idx].data() + byte_offset);
-
-		const auto gcd_idx = gcd_lookup_idx(next_number);
-		gcd_lookup_ptr = (const block_t*)(gcd_lookup[bit_offset][gcd_idx].data() + byte_offset);
-
-		const auto b3m5_idx = get_lookup_idx_for<3, 5>(next_number);
-		b3m5_lookup_ptr = (const block_t*)(b3m5_lookup[bit_offset][b3m5_idx].data() + byte_offset);
-
-		const auto b4m7_idx = get_lookup_idx_for<4, 7>(next_number);
-		b4m7_lookup_ptr = (const block_t*)(b4m7_lookup[bit_offset][b4m7_idx].data() + byte_offset);
+		pc_lookup_ptr = pc_lookup[bit_offset][pc_idx].data() + byte_offset;
+		gcd_lookup_ptr = gcd_lookup[bit_offset][gcd_idx].data() + byte_offset;
+		b3m5_lookup_ptr = b3m5_lookup[bit_offset][b3m5_idx].data() + byte_offset;
+		b4m7_lookup_ptr = b4m7_lookup[bit_offset][b4m7_idx].data() + byte_offset;
 	}
 
-	template<typename block_t>
 	__forceinline void merge_one_block(uint64_t& number,
-									   const block_t*& in,
-									   block_t*& out,
-									   const block_t*& pc_lookup_ptr,
-									   const block_t*& gcd_lookup_ptr,
-									   const block_t*& b3m5_lookup_ptr,
-									   const block_t*& b4m7_lookup_ptr,
+									   const uint8_t*& in,
+									   uint8_t*& out,
+									   const uint8_t*& pc_ptr,
+									   const uint8_t*& gcd_ptr,
+									   const uint8_t*& b3m5_ptr,
+									   const uint8_t*& b4m7_ptr,
 									   size_t& sieve_popcount)
 	{
 		constexpr uint64_t bits_1_16_mask = 0xFFFFull << 1;
-		constexpr size_t elements_per_block = sizeof(block_t) * 8;
 
 		const size_t elements_to_rollover = (pow_2_16 - ((number & bits_1_16_mask) >> 1)) % pow_2_16; // map 65,536 -> 0
 
-		block_t mask = *in++;
-		const block_t bit_patterns_mask = (*pc_lookup_ptr++) & (*gcd_lookup_ptr++) & (*b3m5_lookup_ptr++) & (*b4m7_lookup_ptr++);
+		uint64_t mask = *(uint64_t*)in;
+		in += sizeof(uint64_t);
 
-		if (elements_to_rollover >= elements_per_block) // copy another block using lookup data
+		const uint64_t bit_patterns_mask = *(uint64_t*)pc_ptr & *(uint64_t*)gcd_ptr & *(uint64_t*)b3m5_ptr & *(uint64_t*)b4m7_ptr;
+		pc_ptr += sizeof(uint64_t);
+		gcd_ptr += sizeof(uint64_t);
+		b3m5_ptr += sizeof(uint64_t);
+		b4m7_ptr += sizeof(uint64_t);
+
+		if (elements_to_rollover >= 64) // copy another block using lookup data
 		{
 			mask &= bit_patterns_mask;
 		}
 		else // elements_to_rollover is 0 to 63
 		{
-			set_lookup_ptrs(number + (elements_to_rollover * 2), pc_lookup_ptr, gcd_lookup_ptr, b3m5_lookup_ptr, b4m7_lookup_ptr);
-			const block_t new_mask = (*pc_lookup_ptr & *gcd_lookup_ptr & *b3m5_lookup_ptr & *b4m7_lookup_ptr) << elements_to_rollover;
+			set_lookup_ptrs(number + (elements_to_rollover * 2), pc_ptr, gcd_ptr, b3m5_ptr, b4m7_ptr);
+			const uint64_t new_mask = (*(uint64_t*)pc_ptr & *(uint64_t*)gcd_ptr & *(uint64_t*)b3m5_ptr & *(uint64_t*)b4m7_ptr) << elements_to_rollover;
 
-			const block_t select_from_old = (1ull << elements_to_rollover) - 1; // up to and including rollover
-			const block_t select_from_new = ~select_from_old;
+			const uint64_t select_from_old = (1ull << elements_to_rollover) - 1; // up to and including rollover
+			const uint64_t select_from_new = ~select_from_old;
 
 			mask &= ((bit_patterns_mask & select_from_old) |
 					 (new_mask & select_from_new));
 
 			// (re)set
-			set_lookup_ptrs(number + (elements_per_block * 2), pc_lookup_ptr, gcd_lookup_ptr, b3m5_lookup_ptr, b4m7_lookup_ptr);
+			set_lookup_ptrs(number + (64ull * 2), pc_ptr, gcd_ptr, b3m5_ptr, b4m7_ptr);
 		}
 
-		*out++ = mask;
+		*(uint64_t*)out = mask;
+		out += sizeof(uint64_t);
+
 		sieve_popcount += pop_count(mask);
 
-		number += elements_per_block * 2;
+		number += (64ull * 2);
 	}
 
 	size_t copy_static_sieve_with_bit_pattern_filters(size_t number)
 	{
-		using block_t = uint64_t;
-		constexpr size_t elements_per_block = sizeof(block_t) * 8;
-
 		// 64 bits == 47 high bits + (16 "inner" bits) + 1 low bit (always set)
 		constexpr size_t bits_1_16_mask = 0xFFFFull << 1;
-
-		constexpr size_t leftover_elements = sieve.size() % (elements_per_block * 4);
 
 		constexpr static uint256_t static_pc_shuf_lookup{ .m256i_u8{
 			0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
@@ -136,10 +133,10 @@ namespace mbp
 
 		size_t sieve_popcount = 0;
 
-		const block_t* in = (const block_t*)static_sieve.data();
-		const block_t* const aligned_end = in + ((sieve.size() - leftover_elements) / elements_per_block);
+		const uint8_t* in = static_sieve.data();
+		const uint8_t* const aligned_end = in + ((sieve.size() / 256) * sizeof(uint256_t));
 
-		block_t* out = (block_t*)sieve.data();
+		uint8_t* out = sieve.data();
 
 		// while in != aligned_end:
 		// - iterate by 4 blocks until we hit aligned_end, or a rollover of bits 1-16, whichever happens first
@@ -147,105 +144,102 @@ namespace mbp
 		//   - handle the next 4 blocks seperately, then continue
 		// handle cleanup
 
-		const block_t* pc_lookup_ptr{};
-		const block_t* gcd_lookup_ptr{};
-		const block_t* b3m5_lookup_ptr{};
-		const block_t* b4m7_lookup_ptr{};
+		// pointers into our large bitmask lookups
+		const uint8_t* pc_ptr{};
+		const uint8_t* gcd_ptr{};
+		const uint8_t* b3m5_ptr{};
+		const uint8_t* b4m7_ptr{};
 
-
-		set_lookup_ptrs(number, pc_lookup_ptr, gcd_lookup_ptr, b3m5_lookup_ptr, b4m7_lookup_ptr);
+		set_lookup_ptrs(number, pc_ptr, gcd_ptr, b3m5_ptr, b4m7_ptr);
 
 		for (; in != aligned_end; )
 		{
-			// We are iterating and reading 4*elements_per_block elements per iteration.
+			// The hot loop handles 256 elements (256 bits) per iteration.
 			// How many times can we do this before reaching the lookups' ends?
 			// Calculate this up front so the hot loop can run using a simpler condition.
 
 			const size_t bits_1_16 = (number & bits_1_16_mask) >> 1;
-			size_t elements_to_rollover = (1ull << 16) - bits_1_16; // elements to rollover
+			const size_t elements_to_rollover = (1ull << 16) - bits_1_16;
 
-			const size_t n_blocks = std::min(elements_to_rollover / (4ull * elements_per_block), // 4*elements_per_block elements per iteration
-											 (aligned_end - in) / 4ull); // 4 reads of elements_per_block elements each
+			constexpr size_t bytes_per_step = sizeof(uint256_t);
+			constexpr size_t elements_per_step = bytes_per_step * 8;
 
-			const uint8_t* const in_a = (const uint8_t* const)pc_lookup_ptr;
-			const uint8_t* const in_b = (const uint8_t* const)gcd_lookup_ptr;
-			const uint8_t* const in_c = (const uint8_t* const)in;
-			const uint8_t* const in_d = (const uint8_t* const)b3m5_lookup_ptr;
-			const uint8_t* const in_e = (const uint8_t* const)b4m7_lookup_ptr;
-			uint8_t* const out_ptr = (uint8_t* const)out;
+			const size_t n_steps = std::min(elements_to_rollover / elements_per_step,
+											(aligned_end - in) / bytes_per_step);
 
 			const uint256_t nybble_mask = _mm256_loadu_si256(&static_nybble_mask);
 			const uint256_t pc_shuf_lookup = _mm256_loadu_si256(&static_pc_shuf_lookup);
 			uint256_t pc{};
 
-			for (size_t offset = 0; offset < n_blocks * 4 * 8; offset += (4ull * 8))
+			for (size_t offset = 0; offset < n_steps * bytes_per_step; offset += bytes_per_step)
 			{
-				const uint256_t pc_data = _mm256_loadu_si256((uint256_t*)(in_a + offset));
-				const uint256_t gcd_data = _mm256_loadu_si256((uint256_t*)(in_b + offset));
-				const uint256_t ss_data = _mm256_loadu_si256((uint256_t*)(in_c + offset));
-				const uint256_t b3m5_data = _mm256_loadu_si256((uint256_t*)(in_d + offset));
-				const uint256_t b4m7_data = _mm256_loadu_si256((uint256_t*)(in_e + offset));
+				const uint256_t pc_data = _mm256_loadu_si256((uint256_t*)(pc_ptr + offset));
+				const uint256_t gcd_data = _mm256_loadu_si256((uint256_t*)(gcd_ptr + offset));
+				const uint256_t b3m5_data = _mm256_loadu_si256((uint256_t*)(b3m5_ptr + offset));
+				const uint256_t b4m7_data = _mm256_loadu_si256((uint256_t*)(b4m7_ptr + offset));
+				const uint256_t ss_data = _mm256_loadu_si256((uint256_t*)(in + offset));
 
 				uint256_t merged_data = _mm256_and_si256(_mm256_and_si256(pc_data, gcd_data),
 														 _mm256_and_si256(b3m5_data, b4m7_data));
 				merged_data = _mm256_and_si256(merged_data, ss_data);
 
-				_mm256_storeu_si256((uint256_t*)(out_ptr + offset), merged_data);
+				_mm256_storeu_si256((uint256_t*)(out + offset), merged_data);
 
 				// data -> nybbles
 				const uint256_t nybbles_lo = _mm256_and_si256(merged_data, nybble_mask);
 				const uint256_t nybbles_hi = _mm256_and_si256(_mm256_srli_epi64(merged_data, 4), nybble_mask);
-				// nybbles -> pcs
+				// nybbles -> 8-bit pcs
 				uint256_t pc_256 = _mm256_add_epi8(_mm256_shuffle_epi8(pc_shuf_lookup, nybbles_lo),
 												   _mm256_shuffle_epi8(pc_shuf_lookup, nybbles_hi));
 				// 8-bit pcs -> 64-bit pcs
 				pc_256 = _mm256_sad_epu8(pc_256, _mm256_setzero_si256());
-				// add to running total
+				// 64-bit pcs -> running total
 				pc = _mm256_add_epi64(pc, pc_256);
 			}
+
+			in += n_steps * bytes_per_step;
+			out += n_steps * bytes_per_step;
+			pc_ptr += n_steps * bytes_per_step;
+			gcd_ptr += n_steps * bytes_per_step;
+			b3m5_ptr += n_steps * bytes_per_step;
+			b4m7_ptr += n_steps * bytes_per_step;
+
+			number += n_steps * elements_per_step * 2; // * 2 because the sieve only contains odd numbers
+
 			sieve_popcount += pc.m256i_u64[0];
 			sieve_popcount += pc.m256i_u64[1];
 			sieve_popcount += pc.m256i_u64[2];
 			sieve_popcount += pc.m256i_u64[3];
 
-			in += n_blocks * 4;
-			out += n_blocks * 4;
-			pc_lookup_ptr += n_blocks * 4;
-			gcd_lookup_ptr += n_blocks * 4;
-			b3m5_lookup_ptr += n_blocks * 4;
-			b4m7_lookup_ptr += n_blocks * 4;
-			number += n_blocks * 4 * elements_per_block * 2;
-
 			// if we are not at aligned_end, we are at a rollover
 			if (in != aligned_end)
 			{
-				// handle 4 blocks
+				// handle 4 64-bit blocks
 				for (size_t block = 0; block < 4; ++block)
 				{
-					merge_one_block(number, in, out, pc_lookup_ptr, gcd_lookup_ptr, b3m5_lookup_ptr, b4m7_lookup_ptr, sieve_popcount);
+					merge_one_block(number, in, out, pc_ptr, gcd_ptr, b3m5_ptr, b4m7_ptr, sieve_popcount);
 				}
 			}
 		} // end main copy/merge loop
 
-		// Less than elements_per_block*4 elements left. Generate instructions for 0-3 copies.
+		// Less than 256 elements left. Generate instructions for 0-4 final copies.
+		constexpr size_t leftover_elements = sieve.size() % 256;
 
-		if constexpr (leftover_elements >= elements_per_block * 1)
+		if constexpr (leftover_elements >= 64ull * 0)
 		{
-			merge_one_block(number, in, out, pc_lookup_ptr, gcd_lookup_ptr, b3m5_lookup_ptr, b4m7_lookup_ptr, sieve_popcount);
+			merge_one_block(number, in, out, pc_ptr, gcd_ptr, b3m5_ptr, b4m7_ptr, sieve_popcount);
 		}
-		if constexpr (leftover_elements >= elements_per_block * 2)
+		if constexpr (leftover_elements >= 64ull * 1)
 		{
-			merge_one_block(number, in, out, pc_lookup_ptr, gcd_lookup_ptr, b3m5_lookup_ptr, b4m7_lookup_ptr, sieve_popcount);
+			merge_one_block(number, in, out, pc_ptr, gcd_ptr, b3m5_ptr, b4m7_ptr, sieve_popcount);
 		}
-		if constexpr (leftover_elements >= elements_per_block * 3)
+		if constexpr (leftover_elements >= 64ull * 2)
 		{
-			merge_one_block(number, in, out, pc_lookup_ptr, gcd_lookup_ptr, b3m5_lookup_ptr, b4m7_lookup_ptr, sieve_popcount);
+			merge_one_block(number, in, out, pc_ptr, gcd_ptr, b3m5_ptr, b4m7_ptr, sieve_popcount);
 		}
-
-		constexpr size_t adjust = leftover_elements % elements_per_block;
-		if constexpr (adjust > 0)
+		if constexpr (leftover_elements >= 64ull * 3)
 		{
-			merge_one_block(number, in, out, pc_lookup_ptr, gcd_lookup_ptr, b3m5_lookup_ptr, b4m7_lookup_ptr, sieve_popcount);
+			merge_one_block(number, in, out, pc_ptr, gcd_ptr, b3m5_ptr, b4m7_ptr, sieve_popcount);
 		}
 
 		return sieve_popcount;
