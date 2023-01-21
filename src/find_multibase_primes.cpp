@@ -254,7 +254,7 @@ namespace mbp
 			cleared += (1.0 - cleared) * (1.0 / small_primes_lookup[i]);
 		return 2 * size_t((1.0 - cleared) * sieve.size() * prime_sieve::steps);
 	}();
-	static alignas(64) std::array<size_t, candidates_capacity> candidates_storage;
+	static alignas(64) std::array<uint64_t, candidates_capacity> candidates_storage;
 
 	mbp::find_multibase_primes::find_multibase_primes()
 	{
@@ -353,22 +353,24 @@ namespace mbp
 	}
 
 	template<bool on_fast_path>
-	void mbp::find_multibase_primes::main_loop(const size_t number)
+	void mbp::find_multibase_primes::main_loop(const uint64_t number)
 	{
-		size_t* const candidates = candidates_storage.data();
-		size_t* candidates_end = candidates;
+		uint64_t* const candidates = candidates_storage.data();
+		uint64_t* candidates_end = candidates;
 
 		for (size_t sieve_step = 0; sieve_step < prime_sieve::steps; ++sieve_step)
 		{
+			const uint64_t sieve_start = number + (sieve_step * sieve.size() * 2);
+
 			// Merge the static sieve, popcount, and gcd data
-			const size_t sieve_popcount = copy_static_sieve_with_bit_pattern_filters(number + (sieve_step * sieve.size() * 2));
+			const size_t sieve_popcount = copy_static_sieve_with_bit_pattern_filters(sieve_start);
 			count_passes(a += sieve_popcount);
 
-			prime_sieve::partial_sieve(number + (sieve_step * sieve.size() * 2), sieve, sieve_popcount);
+			prime_sieve::partial_sieve(sieve_start, sieve, sieve_popcount);
 			count_passes(ps15 += sieve.count_bits());
 
 			candidates_end = prime_sieve::gather_sieve_results(
-				candidates_end, sieve, number + (sieve_step * sieve.size() * 2));
+				candidates_end, sieve, sieve_start);
 		}
 
 

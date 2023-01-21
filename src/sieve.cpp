@@ -29,28 +29,41 @@ namespace mbp::prime_sieve
 		// Start with the first prime not in the static sieve.
 		for (size_t i = static_sieve_primes.size() + 1; i < small_primes_lookup.size(); ++i)
 		{
-			sieve_offset_t p = sieve_offset_t(small_primes_lookup[i]);
+			size_t p = small_primes_lookup[i];
 
 			// We sieve by strides of 15*p, so align p to an (odd) multiple of 15*p
-			p *= 15;
+			const size_t p15 = p * 15;
 
-			// Find out how far it is to the next multiple of p.
-			sieve_offset_t n = p - (start % p);
+			// Find out how far it is to the next multiple of 15p.
+			size_t n = p15 - (start % p15);
 
-			// Start is always odd. Therefore, if n is odd, it is pointing to the next even multiple of p.
-			// -- increase by p
+			// Start is always odd. Therefore, if n is odd, it is pointing to the next even multiple of p15.
+			// -- increase by p15
 			if (n % 2 == 1)
-				n += p;
-			// However, if n is even, it is pointing to the next odd multiple of p.
+				n += p15;
+			// However, if n is even, it is pointing to the next odd multiple of p15.
 			// -- do nothing
 
 			// handle edge cases where start % prime == 0
-			if (n == 2 * p)
+			if (n == 2 * p15)
 				n = 0;
 
-			// We now have the distance to the next odd multiple of p.
-			// Divide by 2 to store the *index* of the next odd multiple of p.
-			sieve_offsets_cache[i] = n / 2;
+			// We now have the distance to the next odd multiple of p15.
+			// Divide by 2 to get the *index* of the next odd multiple of p15.
+			n /= 2;
+
+			if (p <= largest_vector_sieve_prime)
+			{
+				// We sieve by strides of 8*15*p, starting with a bit offset of 0.
+				// Advance by 15*p until we have this alignment.
+				while (n % 8 != 0)
+					n += p15;
+
+				// If we've ended up at the second multiple of 8*15*p, step back to the first.
+				n = util::min(n, n - 8ull * p15);
+			}
+
+			sieve_offsets_cache[i] = sieve_offset_t(n);
 		}
 	}
 
@@ -62,46 +75,73 @@ namespace mbp::prime_sieve
 			 prime <= largest_sieve_prime;
 			 prime = *++prime_ptr, ++offset_ptr)
 		{
-			// We sieve by strides of 15*p, so align p to an (odd) multiple of 15*p
-			prime *= 15;
+			// We sieve by strides of 8*15*p, so align p to an (odd) multiple of 8*15*p
+			const size_t p15 = prime * 15;
 
-			// Find out how far it is to the next multiple of p.
-			const size_t rem = (start % prime);
-			size_t n = prime - rem;
+			// Find out how far it is to the next multiple of p15.
+			const size_t rem = (start % p15);
+			size_t n = p15 - rem;
 
 			// Start is always odd. Therefore:
-			// - If n is odd, it is pointing to the next even multiple of p. Increase by p.
-			// - If n is even, it is pointing to the next odd multiple of p. Do nothing.
+			// - If n is odd, it is pointing to the next even multiple of p15. Increase by p15.
+			// - If n is even, it is pointing to the next odd multiple of p15. Do nothing.
 			if (n % 2 == 1)
-				n += prime;
+				n += p15;
 
 			// Handle an edge case where start % prime == 0
 			if (rem == 0)
 				n = 0;
 
-			// Divide by 2 to convert the distance to the next odd multiple of p
-			// to the *index* of the next odd multiple of p.
-			*offset_ptr = sieve_offset_t(n / 2);
+			// We now have the distance to the next odd multiple of p.
+			// Divide by 2 to get the *index* of the next odd multiple of p.
+			n /= 2;
+
+			if (prime <= largest_vector_sieve_prime)
+			{
+				// We sieve by strides of 8*15*p, starting with a bit offset of 0.
+				// Advance by 15*p until we have this alignment.
+				while (n % 8 != 0)
+					n += p15;
+
+				// If we've ended up at the second multiple of 8*15*p, step back to the first.
+				n = util::min(n, n - 8ull * p15);
+			}
+
+			*offset_ptr = sieve_offset_t(n);
 		}
 	}
 
 	void detail::verify_sieve_offset_cache(const uint64_t start)
 	{
-		// - start + (2 * offset) should be evenly divisible by 15*p
-		// - the offset should be less than 15*p
-
 		for (size_t i = static_sieve_primes.size() + 1; small_primes_lookup[i] <= largest_sieve_prime; ++i)
 		{
-			const uint64_t p15 = 15ull * small_primes_lookup[i];
-			const uint64_t j = sieve_offsets_cache[i];
+			const uint64_t prime = small_primes_lookup[i];
+			const uint64_t p15 = 15ull * prime;
+			const uint64_t offset = sieve_offsets_cache[i];
 
-			const uint64_t remainder = (start + (2 * j)) % p15;
-
-			if (j >= p15 || remainder != 0)
+			// 1. start + (2 * offset) should be evenly divisible by 15*p
+			if ((start + (2 * offset)) % p15 != 0)
 			{
-				std::cout << "small_primes_lookup[" << i << "] = " << small_primes_lookup[i] << '\n';
-				std::cout << "sieve_offsets_cache[" << i << "] = " << j << '\n';
-				std::cout << "max allowed offset (p*15) = " << p15 << '\n';
+				std::cout << "(start + (2 * offset)) % p15 == " << (start + (2 * offset)) % p15 << ", should be 0\n";
+				std::cout << "start == " << start << '\n';
+				std::cout << "offset == " << offset << '\n';
+				std::cin.ignore();
+			}
+
+			// 2. For vectorized sieving, the offset should be evenly divisible by 8.
+			if (prime <= largest_vector_sieve_prime && offset % 8 != 0)
+			{
+				std::cout << "offset % 8 == " << offset % 8 << ", should be 0\n";
+				std::cin.ignore();
+			}
+
+			// 3. The offset should be less than 8 * 15*p
+			if (offset >= 8 * p15)
+			{
+				std::cout << "prime == " << prime << '\n';
+				std::cout << "15*p == " << p15 << '\n';
+				std::cout << "8 * 15*p == " << 8 * p15 << '\n';
+				std::cout << "offset == " << offset << ", should be < " << 8 * p15 << '\n';
 				std::cin.ignore();
 			}
 		}
@@ -241,27 +281,9 @@ namespace mbp::prime_sieve
 		}
 	}
 
-	template<size_t p>
-	consteval size_t hi_mask_offset()
-	{
-		// begin at the byte containing 8p
-		if constexpr (p == 37 || p == 41 || p == 43 || p == 47)
-			return 8;
-
-		// begin at the byte containing 7p
-		if constexpr (p == 53 || p == 59 || p == 61)
-			return 7;
-
-		// begin at the byte containing 11p
-		if constexpr (p == 67 || p == 71 || p == 73 || p == 79)
-			return 11;
-
-		// compile-time error if we don't find an answer
-	}
-
 	// m_offset = the number of multiples of p past the sieve pointer
 	template<size_t p, size_t m_offset = 1>
-	__forceinline void generate_vector_writes(uint8_t* const ptr_to_1p,
+	__forceinline void generate_vector_writes(uint8_t* const ptr_to_p,
 											  const uint256_t& mask_0,
 											  const uint256_t& mask_1,
 											  const uint256_t& mask_2,
@@ -272,24 +294,25 @@ namespace mbp::prime_sieve
 											  const uint256_t& mask_7)
 	{
 		constexpr size_t stride_size = 8ull * 3 * 5;
-		constexpr size_t multiples_per_vector_write = 1 + ((256 - 7) / p);
+
+		constexpr size_t element_offset = m_offset * p;
+		constexpr size_t bit_offset = element_offset % 8;
+
+		constexpr size_t multiples_per_vector_write = 1 + (((256 - 1) - bit_offset) / p);
 
 		if constexpr ((m_offset % 3 == 0 || m_offset % 5 == 0) &&
 					  (m_offset + 1) <= stride_size - multiples_per_vector_write + 1)
 		{
 			// m_offset is divisible by 3 or 5, and we still have room for at least one more write.
 			// Increment the offset and continue generating writes.
-			generate_vector_writes<p, m_offset + 1>(ptr_to_1p, mask_0, mask_1, mask_2, mask_3, mask_4, mask_5, mask_6, mask_7);
+			generate_vector_writes<p, m_offset + 1>(ptr_to_p, mask_0, mask_1, mask_2, mask_3, mask_4, mask_5, mask_6, mask_7);
 		}
 		else if constexpr (m_offset <= stride_size - multiples_per_vector_write + 1)
 		{
 			// Generate a vector write for this offset
-
-			constexpr size_t element_offset = (m_offset - 1) * p;
 			constexpr size_t byte_offset = element_offset / 8;
-			constexpr size_t bit_offset = element_offset % 8;
 
-			uint256_t sieve_data = _mm256_loadu_si256((uint256_t*)(ptr_to_1p + byte_offset));
+			uint256_t sieve_data = _mm256_loadu_si256((uint256_t*)(ptr_to_p + byte_offset));
 
 			// select from one of eight masks based on the bit offset of this write
 			if constexpr (bit_offset == 0) sieve_data = _mm256_and_si256(mask_0, sieve_data);
@@ -301,10 +324,10 @@ namespace mbp::prime_sieve
 			if constexpr (bit_offset == 6) sieve_data = _mm256_and_si256(mask_6, sieve_data);
 			if constexpr (bit_offset == 7) sieve_data = _mm256_and_si256(mask_7, sieve_data);
 
-			_mm256_storeu_si256((uint256_t*)(ptr_to_1p + byte_offset), sieve_data);
+			_mm256_storeu_si256((uint256_t*)(ptr_to_p + byte_offset), sieve_data);
 
 			// Advance by the size of the write and continue generating writes.
-			generate_vector_writes<p, m_offset + multiples_per_vector_write>(ptr_to_1p, mask_0, mask_1, mask_2, mask_3, mask_4, mask_5, mask_6, mask_7);
+			generate_vector_writes<p, m_offset + multiples_per_vector_write>(ptr_to_p, mask_0, mask_1, mask_2, mask_3, mask_4, mask_5, mask_6, mask_7);
 		}
 	}
 
@@ -314,68 +337,18 @@ namespace mbp::prime_sieve
 											 sieve_offset_t*& offset_cache_ptr)
 	{
 		constexpr size_t sieve_end = sieve_container::size();
-		constexpr size_t padded_end = sieve_end - (15 * p);
+		constexpr size_t padded_end = sieve_end - (8 * 15 * p);
 
 		constexpr static std::array<bit_array<256>, 8> sieve_masks = generate_sieve_masks<p>();
 
-		// Get the position of the next odd multiple of p*15
-		size_t j = *offset_cache_ptr;
-
 		// for every 15 multiples of a prime p:
-		// 
+		//
 		// 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14   <-- offset
 		//    x  x     x        x  x        x     x  x   <-- values to mark composite/false
 		// x        x     x  x        x  x     x         <-- values to ignore
 
-		// 0-7 leading steps to get the hot loop to start with a bit-aligned offset
-		for (size_t bit_index = 0; (bit_index = (j + p) % 8) != 0; )
-		{
-			uint256_t* const sieve_ptr = (uint256_t*)(sieve.data() + (j + p) / 8);
-
-			const uint256_t mask = _mm256_loadu_si256((uint256_t*)sieve_masks[bit_index].data());
-			uint256_t sieve_data = _mm256_loadu_si256(sieve_ptr);
-			sieve_data = _mm256_and_si256(mask, sieve_data);
-
-			if constexpr (p >= 37)
-			{
-				const size_t byte_index_hi = (j + (hi_mask_offset<p>() * p)) / 8;
-				const size_t bit_index_hi = (j + (hi_mask_offset<p>() * p)) % 8;
-
-				uint256_t* const sieve_ptr_hi = (uint256_t*)(sieve.data() + byte_index_hi);
-
-				const uint256_t mask_hi = _mm256_loadu_si256((uint256_t*)sieve_masks[bit_index_hi].data());
-				uint256_t sieve_data_hi = _mm256_loadu_si256(sieve_ptr_hi);
-				sieve_data_hi = _mm256_and_si256(mask_hi, sieve_data_hi);
-
-				_mm256_storeu_si256(sieve_ptr_hi, sieve_data_hi);
-			}
-			_mm256_storeu_si256(sieve_ptr, sieve_data);
-
-			if constexpr (p == 29 || p == 31)
-			{
-				sieve.clear_bit(j + 11 * p);
-			}
-
-			if constexpr (p == 23 || p == 29 || p == 31 || p == 53 || p == 59 || p == 61)
-			{
-				clear_two_adjacent<p>(sieve, j + 13 * p);
-			}
-
-			if constexpr (p == 43 || p == 47)
-			{
-				sieve.clear_bit(j + (7 * p));
-				sieve.clear_bit(j + (14 * p));
-			}
-
-			if constexpr (p == 67 || p == 71 || p == 73 || p == 79)
-			{
-				clear_two_adjacent<p>(sieve, j + 7 * p);
-			}
-
-			j += (15 * p);
-		}
-
-		constexpr size_t extra_padded_end = sieve_end - (8 * 15 * p);
+		// Get the position of the next odd multiple of 8*15*p
+		size_t j = *offset_cache_ptr;
 
 		const uint256_t mask_0 = _mm256_loadu_si256((const uint256_t*)sieve_masks[0].data());
 		const uint256_t mask_1 = _mm256_loadu_si256((const uint256_t*)sieve_masks[1].data());
@@ -387,8 +360,8 @@ namespace mbp::prime_sieve
 		const uint256_t mask_7 = _mm256_loadu_si256((const uint256_t*)sieve_masks[7].data());
 
 		{
-			// We've made sure j+p is evenly divisible by 8
-			uint8_t* sieve_ptr = sieve.data() + ((j + p) / 8);
+			// We've made sure j is evenly divisible by 8
+			uint8_t* sieve_ptr = sieve.data() + (j / 8);
 
 			do
 			{
@@ -403,61 +376,38 @@ namespace mbp::prime_sieve
 				j += 8 * 15 * p;
 				sieve_ptr += (8 * 15 * p) / 8;
 
-			} while (j < extra_padded_end);
+			} while (j <= padded_end);
 		}
 
-		// cleanup loop
-		while (j < padded_end) // stop marking 15*p early (don't handle padding)
-		{
-			const size_t bit_index = (j + p) % 8;
-
-			uint256_t* const sieve_ptr = (uint256_t*)(sieve.data() + (j + p) / 8);
-
-			const uint256_t mask = _mm256_loadu_si256((uint256_t*)sieve_masks[bit_index].data());
-			uint256_t sieve_data = _mm256_loadu_si256(sieve_ptr);
-			sieve_data = _mm256_and_si256(mask, sieve_data);
-
-			if constexpr (p >= 37)
+		// If we run the hot loop with a bit offset of 0, the size of the sieve will
+		// introduce the same new offset per iteration.
+		// For a given offset_increase, how many multiples of 15*p is it to the next bit offset of 0?
+		constexpr size_t step = []() consteval {
+			constexpr size_t new_offset_per_iter = 8ull - (sieve_container::size() % 8);
+			size_t n = new_offset_per_iter;
+			size_t multiples_of_15p = 0;
+			while (n % 8 != 0)
 			{
-				const size_t byte_index_hi = (j + (hi_mask_offset<p>() * p)) / 8;
-				const size_t bit_index_hi = (j + (hi_mask_offset<p>() * p)) % 8;
-
-				uint256_t* const sieve_ptr_hi = (uint256_t*)(sieve.data() + byte_index_hi);
-
-				const uint256_t mask_hi = _mm256_loadu_si256((uint256_t*)sieve_masks[bit_index_hi].data());
-				uint256_t sieve_data_hi = _mm256_loadu_si256(sieve_ptr_hi);
-				sieve_data_hi = _mm256_and_si256(mask_hi, sieve_data_hi);
-
-				_mm256_storeu_si256(sieve_ptr_hi, sieve_data_hi);
-			}
-			_mm256_storeu_si256(sieve_ptr, sieve_data);
-
-			if constexpr (p == 29 || p == 31)
-			{
-				sieve.clear_bit(j + 11 * p);
+				n += 15 * p;
+				++multiples_of_15p;
 			}
 
-			if constexpr (p == 23 || p == 29 || p == 31 || p == 53 || p == 59 || p == 61)
-			{
-				clear_two_adjacent<p>(sieve, j + 13 * p);
-			}
+			return multiples_of_15p;
+		}();
 
-			if constexpr (p == 43 || p == 47)
-			{
-				sieve.clear_bit(j + (7 * p));
-				sieve.clear_bit(j + (14 * p));
-			}
+		// Calculate and cache the offset for the next sieving.
 
-			if constexpr (p == 67 || p == 71 || p == 73 || p == 79)
-			{
-				clear_two_adjacent<p>(sieve, j + 7 * p);
-			}
+		// += 8 * 15*p advances one full stride, taking j past the end of the sieve. j % 8 is still 0.
+		// += step * 15*p cancels out the %8 offset introduced when we subtract the size of the sieve.
+		j += (8ull + step) * 15 * p;
 
-			j += (15 * p);
-		}
+		// The distance past the end of the sieve is the index for the start of the next sieving.
+		j -= sieve_container::size();
 
-		// Calculate and cache the offset for the next sieving
-		*offset_cache_ptr = sieve_offset_t((j + (15 * p)) - sieve_end);
+		// If we've ended up at the second multiple of 8*15*p, step back to the first.
+		j = util::min(j, j - 8ull * 15 * p);
+
+		*offset_cache_ptr = sieve_offset_t(j);
 
 		++prime_ptr;
 		++offset_cache_ptr;
@@ -530,7 +480,7 @@ namespace mbp::prime_sieve
 					   const size_t sieve_popcount)
 	{
 		// Sieve primes by strides of 15*p:
-		// 
+		//
 		// 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14   <-- offset
 		//    x  x     x        x  x        x     x  x   <-- values to mark composite/false
 		// x        x     x  x        x  x     x         <-- values to ignore
@@ -567,6 +517,7 @@ namespace mbp::prime_sieve
 		vectorized_sieve_pass<71>(sieve, prime_ptr, offset_cache_ptr);
 		vectorized_sieve_pass<73>(sieve, prime_ptr, offset_cache_ptr);
 		vectorized_sieve_pass<79>(sieve, prime_ptr, offset_cache_ptr);
+		static_assert(largest_vector_sieve_prime == 79);
 
 		constexpr double vectorized_sieving_removes = .3106; // 31.06%
 		constexpr double scale = 1.0 - vectorized_sieving_removes;
@@ -641,7 +592,6 @@ namespace mbp::prime_sieve
 
 			if (p == largest_sieve_prime) break;
 		}
-
 	}
 
 

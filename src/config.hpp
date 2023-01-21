@@ -38,6 +38,7 @@ namespace mbp
 															 static_sieve_primes.end(), 1ull, std::multiplies());
 
 		constexpr size_t steps = 2ull; // default 2
+		constexpr size_t largest_vector_sieve_prime = 79; // default 79
 		constexpr size_t largest_sieve_prime = 263; // default 263
 
 		constexpr double vector_density_threshold = 0.01; // default .01 (1%)
