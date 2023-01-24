@@ -602,31 +602,32 @@ namespace mbp::prime_sieve
 		constexpr size_t max_pc = 27; // 27 is the highest popcount of 64-bit chunks in the static sieve
 
 		using chunk_count_t = util::narrowest_uint_for_val<n_sieve_chunks>;
+		using chunk_idx_t = chunk_count_t;
+
+		// [popcount] -> number of chunks with popcount
 		static std::array<chunk_count_t, max_pc + 1> n_chunks_with_pc;
-		// [popcount][chunk]
+		// [popcount][chunks]
 		static std::array<std::array<uint64_t, n_sieve_chunks>, max_pc + 1> sorted_chunks;
+		// [popcount][chunk indexes]
+		static std::array<std::array<chunk_count_t, n_sieve_chunks>, max_pc + 1> chunk_indexes;
 
-		using chunk_idx_t = util::narrowest_uint_for_val<n_sieve_chunks>;
-		// [popcount][idx]
-		static std::array<std::array<chunk_idx_t, n_sieve_chunks>, max_pc + 1> chunk_indexes;
-
-		template<size_t n_bits>
+		template<size_t popcount>
 		__forceinline void extract_candidates(uint64_t& chunk,
-											  const uint64_t idx,
+											  const uint64_t chunk_index,
 											  uint64_t*& candidates)
 		{
 			// read the next bit in the chunk
 			const size_t tzcnt = _tzcnt_u64(chunk);
 
 			// reset the bit we just read
-			if constexpr (n_bits > 1)
+			if constexpr (popcount > 1)
 				chunk = _blsr_u64(chunk);
 
 			// store the chunk's index plus the bit's index
-			*candidates++ = idx + tzcnt;
+			*candidates++ = chunk_index + tzcnt;
 
-			if constexpr (n_bits - 1 > 0)
-				extract_candidates<n_bits - 1>(chunk, idx, candidates);
+			if constexpr (popcount - 1 > 0)
+				extract_candidates<popcount - 1>(chunk, chunk_index, candidates);
 		}
 
 		template<size_t popcount>
@@ -641,6 +642,144 @@ namespace mbp::prime_sieve
 				extract_candidates<popcount>(chunk, index, candidates);
 			}
 		}
+
+		__forceinline void sort_chunks(const uint64_t* sieve_data)
+		{
+			using namespace detail;
+
+			constexpr size_t n_chunks_rounded = n_sieve_chunks - (n_sieve_chunks % 3);
+
+			// load one iteration ahead
+			uint64_t chunk_0 = sieve_data[0];
+			uint64_t chunk_1 = sieve_data[1];
+			uint64_t chunk_2 = sieve_data[2];
+			for (size_t i = 0; i < n_chunks_rounded; i += 3)
+			{
+				const size_t pc_0 = pop_count(chunk_0);
+				const size_t pc_1 = pop_count(chunk_1);
+				const size_t pc_2 = pop_count(chunk_2);
+
+				const chunk_count_t idx_0 = n_chunks_with_pc[pc_0]++;
+				const chunk_count_t idx_1 = n_chunks_with_pc[pc_1]++;
+				const chunk_count_t idx_2 = n_chunks_with_pc[pc_2]++;
+
+				sorted_chunks[pc_0][idx_0] = chunk_0;
+				chunk_indexes[pc_0][idx_0] = chunk_idx_t(i + 0);
+				sorted_chunks[pc_1][idx_1] = chunk_1;
+				chunk_indexes[pc_1][idx_1] = chunk_idx_t(i + 1);
+				sorted_chunks[pc_2][idx_2] = chunk_2;
+				chunk_indexes[pc_2][idx_2] = chunk_idx_t(i + 2);
+
+				chunk_0 = sieve_data[i + 3 + 0];
+				chunk_1 = sieve_data[i + 3 + 1];
+				chunk_2 = sieve_data[i + 3 + 2];
+			}
+
+			for (size_t i = n_chunks_rounded; i < n_sieve_chunks; ++i)
+			{
+				const uint64_t chunk = sieve_data[i];
+
+				const size_t pc = pop_count(chunk);
+				const size_t idx = n_chunks_with_pc[pc]++;
+
+				sorted_chunks[pc][idx] = chunk;
+				chunk_indexes[pc][idx] = chunk_idx_t(i);
+			}
+		}
+
+		__forceinline void sort_chunks_vectorized(const uint64_t* sieve_data)
+		{
+			using namespace detail;
+
+			constexpr static uint256_t static_identity = { .m256i_u32{ 0, 1, 2, 3, 4, 5, 6, 7 } };
+			constexpr static uint256_t static_inc = { .m256i_u32{ 1, 1, 1, 1, 1, 1, 1, 1 } };
+
+			const uint256_t identity = _mm256_loadu_si256(&static_identity);
+			const uint256_t inc = _mm256_loadu_si256(&static_inc);
+			const uint256_t zero_register = _mm256_setzero_si256();
+
+			uint256_t pc_counts{};
+
+			for (size_t i = 0; i < n_sieve_chunks; ++i)
+			{
+				const uint64_t chunk = sieve_data[i];
+				const uint32_t pc = (uint32_t)pop_count(chunk);
+				uint32_t idx = 0;
+
+				if (pc < 8)
+				{
+					const uint256_t bcast_pc = _mm256_set1_epi32(pc); // copy the popcount (index) to all positions
+					const uint256_t mask = _mm256_cmpeq_epi32(bcast_pc, identity); // mask to select the element at [pc]
+					const uint256_t masked_inc = _mm256_and_si256(mask, inc); // select one increment
+
+					const uint256_t shuffled = _mm256_permutevar8x32_epi32(pc_counts, bcast_pc); // get existing idx
+
+					pc_counts = _mm256_add_epi16(pc_counts, masked_inc); // add one to the pc count
+
+					idx = _mm256_extract_epi32(shuffled, 0); // extract idx
+				}
+				else
+				{
+					idx = n_chunks_with_pc[pc]++;
+				}
+
+				sorted_chunks[pc][idx] = chunk;
+				chunk_indexes[pc][idx] = chunk_idx_t(i);
+			}
+
+			for (size_t i = 0; i < 8; ++i)
+			{
+				n_chunks_with_pc[i] = chunk_count_t(pc_counts.m256i_u32[i]);
+			}
+		}
+
+		__forceinline void extract_candidates_as_offsets(uint64_t*& candidates)
+		{
+			using namespace detail;
+
+			extract_candidates_with_popcount<1>(candidates);
+			extract_candidates_with_popcount<2>(candidates);
+			extract_candidates_with_popcount<3>(candidates);
+			extract_candidates_with_popcount<4>(candidates);
+			extract_candidates_with_popcount<5>(candidates);
+			extract_candidates_with_popcount<6>(candidates);
+			extract_candidates_with_popcount<7>(candidates);
+			extract_candidates_with_popcount<8>(candidates);
+			extract_candidates_with_popcount<9>(candidates);
+			extract_candidates_with_popcount<10>(candidates);
+			extract_candidates_with_popcount<11>(candidates);
+			extract_candidates_with_popcount<12>(candidates);
+			extract_candidates_with_popcount<13>(candidates);
+			extract_candidates_with_popcount<14>(candidates);
+			extract_candidates_with_popcount<15>(candidates);
+			extract_candidates_with_popcount<16>(candidates);
+			extract_candidates_with_popcount<17>(candidates);
+			extract_candidates_with_popcount<18>(candidates);
+			extract_candidates_with_popcount<19>(candidates);
+			extract_candidates_with_popcount<20>(candidates);
+			extract_candidates_with_popcount<21>(candidates);
+			extract_candidates_with_popcount<22>(candidates);
+			extract_candidates_with_popcount<23>(candidates);
+			extract_candidates_with_popcount<24>(candidates);
+			extract_candidates_with_popcount<25>(candidates);
+			extract_candidates_with_popcount<26>(candidates);
+			extract_candidates_with_popcount<27>(candidates);
+			static_assert(max_pc == 27);
+		}
+
+		__forceinline void convert_candidates_to_bitstrings(uint64_t* const candidates_start,
+															const uint64_t* const candidates_end,
+															const uint64_t number)
+		{
+			// autovectorizes
+			for (uint64_t* ptr = candidates_start; ptr < candidates_end; ++ptr)
+			{
+				uint64_t candidate = *ptr;
+				candidate *= 2;
+				candidate += number;
+				*ptr = candidate;
+			}
+		}
 	}
 
 	// sort 64-bit chunks of the sieve by popcount, then use custom loops that perform the exact number of required reads
@@ -650,89 +789,18 @@ namespace mbp::prime_sieve
 	{
 		using namespace detail;
 
-		const uint64_t* sieve_data = (uint64_t*)sieve.data();
-
 		// autovectorizes to three large writes
 		for (chunk_count_t& pc : n_chunks_with_pc)
 			pc = 0;
 
-		constexpr size_t n_chunks_rounded = n_sieve_chunks - (n_sieve_chunks % 3);
-
-		// load one iteration ahead
-		uint64_t chunk_0 = sieve_data[0];
-		uint64_t chunk_1 = sieve_data[1];
-		uint64_t chunk_2 = sieve_data[2];
-		for (size_t i = 0; i < n_chunks_rounded; i += 3)
-		{
-			const size_t pc_0 = pop_count(chunk_0);
-			const size_t pc_1 = pop_count(chunk_1);
-			const size_t pc_2 = pop_count(chunk_2);
-
-			const size_t idx_0 = n_chunks_with_pc[pc_0]++;
-			const size_t idx_1 = n_chunks_with_pc[pc_1]++;
-			const size_t idx_2 = n_chunks_with_pc[pc_2]++;
-
-			sorted_chunks[pc_0][idx_0] = chunk_0;
-			chunk_indexes[pc_0][idx_0] = chunk_idx_t(i + 0);
-			sorted_chunks[pc_1][idx_1] = chunk_1;
-			chunk_indexes[pc_1][idx_1] = chunk_idx_t(i + 1);
-			sorted_chunks[pc_2][idx_2] = chunk_2;
-			chunk_indexes[pc_2][idx_2] = chunk_idx_t(i + 2);
-
-			chunk_0 = sieve_data[i + 3 + 0];
-			chunk_1 = sieve_data[i + 3 + 1];
-			chunk_2 = sieve_data[i + 3 + 2];
-		}
-
-		for (size_t i = n_chunks_rounded; i < n_sieve_chunks; ++i)
-		{
-			const uint64_t chunk = sieve_data[i];
-
-			const size_t pc = pop_count(chunk);
-			const size_t idx = n_chunks_with_pc[pc]++;
-
-			sorted_chunks[pc][idx] = chunk;
-			chunk_indexes[pc][idx] = chunk_idx_t(i);
-		}
+		// prepare arrays of 64-bit chunks, where the chunks in array n contain exactly n set bits (n candidates)
+		sort_chunks((const uint64_t*)sieve.data());
 
 		uint64_t* const candidates_start = candidates;
 
-		extract_candidates_with_popcount<1>(candidates);
-		extract_candidates_with_popcount<2>(candidates);
-		extract_candidates_with_popcount<3>(candidates);
-		extract_candidates_with_popcount<4>(candidates);
-		extract_candidates_with_popcount<5>(candidates);
-		extract_candidates_with_popcount<6>(candidates);
-		extract_candidates_with_popcount<7>(candidates);
-		extract_candidates_with_popcount<8>(candidates);
-		extract_candidates_with_popcount<9>(candidates);
-		extract_candidates_with_popcount<10>(candidates);
-		extract_candidates_with_popcount<11>(candidates);
-		extract_candidates_with_popcount<12>(candidates);
-		extract_candidates_with_popcount<13>(candidates);
-		extract_candidates_with_popcount<14>(candidates);
-		extract_candidates_with_popcount<15>(candidates);
-		extract_candidates_with_popcount<16>(candidates);
-		extract_candidates_with_popcount<17>(candidates);
-		extract_candidates_with_popcount<18>(candidates);
-		extract_candidates_with_popcount<19>(candidates);
-		extract_candidates_with_popcount<20>(candidates);
-		extract_candidates_with_popcount<21>(candidates);
-		extract_candidates_with_popcount<22>(candidates);
-		extract_candidates_with_popcount<23>(candidates);
-		extract_candidates_with_popcount<24>(candidates);
-		extract_candidates_with_popcount<25>(candidates);
-		extract_candidates_with_popcount<26>(candidates);
-		extract_candidates_with_popcount<27>(candidates);
+		extract_candidates_as_offsets(candidates);
 
-		// autovectorizes
-		for (uint64_t* ptr = candidates_start; ptr < candidates; ++ptr)
-		{
-			uint64_t candidate = *ptr;
-			candidate *= 2;
-			candidate += number;
-			*ptr = candidate;
-		}
+		convert_candidates_to_bitstrings(candidates_start, candidates, number);
 
 		return candidates;
 	}
