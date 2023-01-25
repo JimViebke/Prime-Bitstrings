@@ -979,9 +979,8 @@ namespace mbp
 		using namespace div_test::detail;
 
 		// Intellisense may generate a number of false positives here
-		constexpr size_t bitmask = bitmask_for<3, 7>::val;
-		static_assert(bitmask == bitmask_for<5, 7>::val &&
-					  bitmask == bitmask_for<4, 13>::val &&
+		constexpr size_t bitmask = bitmask_for<5, 7>::val;
+		static_assert(bitmask == bitmask_for<4, 13>::val &&
 					  bitmask == bitmask_for<10, 13>::val);
 		static_assert(period_of<bitmask>::val == 6);
 
@@ -1001,37 +1000,30 @@ namespace mbp
 		size_t upper_bits = number & upper_bits_mask;
 
 		const size_t pc_0 = pop_count(upper_bits & (bitmask << 0));
-		size_t upper_sum_0 = pc_0;
 		size_t upper_sum_1 = pc_0;
 		size_t upper_sum_2 = pc_0;
 		size_t upper_sum_3 = pc_0;
 		const size_t pc_1 = pop_count(upper_bits & (bitmask << 1));
-		upper_sum_0 += pc_1 * pow_mod<3, 1, 7>::rem;
 		upper_sum_1 += pc_1 * pow_mod<5, 1, 7>::rem;
 		upper_sum_2 += pc_1 * pow_mod<4, 1, 13>::rem;
 		upper_sum_3 += pc_1 * pow_mod<10, 1, 13>::rem;
 		const size_t pc_2 = pop_count(upper_bits & (bitmask << 2));
-		upper_sum_0 += pc_2 * pow_mod<3, 2, 7>::rem;
 		upper_sum_1 += pc_2 * pow_mod<5, 2, 7>::rem;
 		upper_sum_2 += pc_2 * pow_mod<4, 2, 13>::rem;
 		upper_sum_3 += pc_2 * pow_mod<10, 2, 13>::rem;
 		const size_t pc_3 = pop_count(upper_bits & (bitmask << 3));
-		upper_sum_0 += pc_3 * pow_mod<3, 3, 7>::rem;
 		upper_sum_1 += pc_3 * pow_mod<5, 3, 7>::rem;
 		upper_sum_2 += pc_3 * pow_mod<4, 3, 13>::rem;
 		upper_sum_3 += pc_3 * pow_mod<10, 3, 13>::rem;
 		const size_t pc_4 = pop_count(upper_bits & (bitmask << 4));
-		upper_sum_0 += pc_4 * pow_mod<3, 4, 7>::rem;
 		upper_sum_1 += pc_4 * pow_mod<5, 4, 7>::rem;
 		upper_sum_2 += pc_4 * pow_mod<4, 4, 13>::rem;
 		upper_sum_3 += pc_4 * pow_mod<10, 4, 13>::rem;
 		const size_t pc_5 = pop_count(upper_bits & (bitmask << 5));
-		upper_sum_0 += pc_5 * pow_mod<3, 5, 7>::rem;
 		upper_sum_1 += pc_5 * pow_mod<5, 5, 7>::rem;
 		upper_sum_2 += pc_5 * pow_mod<4, 5, 13>::rem;
 		upper_sum_3 += pc_5 * pow_mod<10, 5, 13>::rem;
 
-		const uint8_t* indivisible_b3m7 = indivisible_by[get_prime_index<7>::idx].data() + upper_sum_0;
 		const uint8_t* indivisible_b5m7 = indivisible_by[get_prime_index<7>::idx].data() + upper_sum_1;
 		const uint8_t* indivisible_b4m13 = indivisible_by[get_prime_index<13>::idx].data() + upper_sum_2;
 		const uint8_t* indivisible_b10m13 = indivisible_by[get_prime_index<13>::idx].data() + upper_sum_3;
@@ -1092,7 +1084,6 @@ namespace mbp
 					upper_bits = number & upper_bits_mask;
 
 					// recalculate
-					indivisible_b3m7 = indivisible_by[get_prime_index<7>::idx].data() + get_upper_sum_of_rems<7, in_base<3>>(number);
 					indivisible_b5m7 = indivisible_by[get_prime_index<7>::idx].data() + get_upper_sum_of_rems<7, in_base<5>>(number);
 					indivisible_b4m13 = indivisible_by[get_prime_index<13>::idx].data() + get_upper_sum_of_rems<13, in_base<4>>(number);
 					indivisible_b10m13 = indivisible_by[get_prime_index<13>::idx].data() + get_upper_sum_of_rems<13, in_base<10>>(number);
@@ -1125,8 +1116,7 @@ namespace mbp
 			number = *++input; // load one iteration ahead
 
 			// Only advance the pointer if the number is still a candidate
-			size_t inc = indivisible_b3m7[sums[0]]
-				& indivisible_b5m7[sums[1]]
+			size_t inc = indivisible_b5m7[sums[1]]
 				& indivisible_b4m13[sums[2]]
 				& indivisible_b10m13[sums[3]];
 			output = (uint64_t*)(((uint8_t*)output) + inc);

@@ -173,6 +173,7 @@ namespace mbp
 	}
 	// [offset 0-7][outer rem 0-(prime - 1)][bitstring inner bits]
 	static const std::array<std::array<bit_array<pow_2_16>, 5>, 8> b3m5_lookup = build_bit_pattern_filter_for<3, 5>();
+	static const std::array<std::array<bit_array<pow_2_16>, 7>, 8> b3m7_lookup = build_bit_pattern_filter_for<3, 7>();
 	static const std::array<std::array<bit_array<pow_2_16>, 7>, 8> b4m7_lookup = build_bit_pattern_filter_for<4, 7>();
 
 }
