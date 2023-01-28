@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include "config.hpp"
 #include "math/math.hpp"
 #include "trial_division/multibase_div_tests.hpp"
@@ -117,11 +119,13 @@ namespace mbp
 	const std::vector<std::vector<bit_array<pow_2_16>>> gcd_lookup = build_gcd_lookup();
 
 	template<size_t base, size_t prime>
-	const std::array<std::array<bit_array<pow_2_16>, prime>, 8> build_bit_pattern_filter_for()
+	std::unique_ptr<std::array<std::array<bit_array<pow_2_16>, prime>, 8>> build_bit_pattern_filter_for()
 	{
 		using namespace div_test::detail;
 
-		std::array<std::array<bit_array<pow_2_16>, prime>, 8> lookup{};
+		using lookup_t = decltype(build_bit_pattern_filter_for<base, prime>())::element_type;
+
+		std::unique_ptr<lookup_t> lookup = std::make_unique<lookup_t>();
 
 		// Generate a small lookup mapping a bit index to its remainder
 		// This is size 16+1 so we can lookup with rems[bit_index] instead of rems[bit_index % period]
@@ -133,7 +137,7 @@ namespace mbp
 
 		for (size_t bit_offset = 0; bit_offset < 8; ++bit_offset)
 		{
-			std::array<bit_array<pow_2_16>, prime>& offset_lookup = lookup[bit_offset];
+			std::array<bit_array<pow_2_16>, prime>& offset_lookup = (*lookup)[bit_offset];
 
 			for (size_t outer_rem = 0; outer_rem < prime; ++outer_rem)
 			{
@@ -169,12 +173,14 @@ namespace mbp
 			}
 		}
 
-		return lookup;
+		return std::move(lookup);
 	}
 	// [offset 0-7][outer rem 0-(prime - 1)][bitstring inner bits]
-	static const std::array<std::array<bit_array<pow_2_16>, 5>, 8> b3m5_lookup = build_bit_pattern_filter_for<3, 5>();
-	static const std::array<std::array<bit_array<pow_2_16>, 7>, 8> b3m7_lookup = build_bit_pattern_filter_for<3, 7>();
-	static const std::array<std::array<bit_array<pow_2_16>, 7>, 8> b4m7_lookup = build_bit_pattern_filter_for<4, 7>();
-	static const std::array<std::array<bit_array<pow_2_16>, 7>, 8> b5m7_lookup = build_bit_pattern_filter_for<5, 7>();
+	static const std::unique_ptr<std::array<std::array<bit_array<pow_2_16>, 5>, 8>> b3m5_lookup = build_bit_pattern_filter_for<3, 5>();
+	static const std::unique_ptr<std::array<std::array<bit_array<pow_2_16>, 7>, 8>> b3m7_lookup = build_bit_pattern_filter_for<3, 7>();
+	static const std::unique_ptr<std::array<std::array<bit_array<pow_2_16>, 7>, 8>> b4m7_lookup = build_bit_pattern_filter_for<4, 7>();
+	static const std::unique_ptr<std::array<std::array<bit_array<pow_2_16>, 13>, 8>> b4m13_lookup = build_bit_pattern_filter_for<4, 13>();
+	static const std::unique_ptr<std::array<std::array<bit_array<pow_2_16>, 7>, 8>> b5m7_lookup = build_bit_pattern_filter_for<5, 7>();
+	static const std::unique_ptr<std::array<std::array<bit_array<pow_2_16>, 13>, 8>> b10m13_lookup = build_bit_pattern_filter_for<10, 13>();
 
 }

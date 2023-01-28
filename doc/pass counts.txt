@@ -912,3 +912,78 @@ Passed b4 prime test:          3,300 (removed ~ 87%) (~      0 candidates pass p
 Passed b5 prime test:            396 (removed ~ 88%) (~      0 candidates pass per main loop iteration)
 
 hash of pass counts: 7f1d5da9f1ca4a0
+
+
+
+Current version, without sieve thresholds:
+
+146913 main loop iters
+Passed static sieve and
+  bit pattern filters: 1,907,678,619 (removed ~ 98%) (~ 12,985 candidates pass per main loop iteration)
+Passed sieve:          1,063,636,104 (removed ~ 45%) (~  7,239 candidates pass per main loop iteration)
+Passed 4-rem tests:      714,722,327 (removed ~ 33%) (~  4,864 candidates pass per main loop iteration)
+Passed b13m17 test:      595,006,099 (removed ~ 17%) (~  4,050 candidates pass per main loop iteration)
+Passed 4-rem tests, p2:  498,935,414 (removed ~ 17%) (~  3,396 candidates pass per main loop iteration)
+Passed 5-rem tests:      339,478,142 (removed ~ 32%) (~  2,310 candidates pass per main loop iteration)
+Passed 6-rem tests:      271,382,954 (removed ~ 21%) (~  1,847 candidates pass per main loop iteration)
+Passed 10-rem tests:     203,677,769 (removed ~ 25%) (~  1,386 candidates pass per main loop iteration)
+Passed 3-rem tests:      167,096,850 (removed ~ 18%) (~  1,137 candidates pass per main loop iteration)
+Passed 8-rem tests:      148,466,365 (removed ~ 12%) (~  1,010 candidates pass per main loop iteration)
+Passed 12-rem tests:     117,378,767 (removed ~ 21%) (~    798 candidates pass per main loop iteration)
+Passed 16-rem tests:      76,908,409 (removed ~ 35%) (~    523 candidates pass per main loop iteration)
+P. branchless divtests:    5,522,536 (removed ~ 93%) (~     37 candidates pass per main loop iteration)
+P. branching divtests:       495,935 (removed ~ 92%) (~      3 candidates pass per main loop iteration)
+Passed b2 BPSW test:         148,125 (removed ~ 71%) (~      1 candidates pass per main loop iteration)
+Passed b3 prime test:         24,901 (removed ~ 84%) (~      0 candidates pass per main loop iteration)
+Passed b4 prime test:          3,300 (removed ~ 87%) (~      0 candidates pass per main loop iteration)
+Passed b5 prime test:            396 (removed ~ 88%) (~      0 candidates pass per main loop iteration)
+
+hash of pass counts: a5521f7ff763d500
+
+Add 6-rem bit pattern filter, still without sieve thresholds:
+
+146913 main loop iters
+Passed static sieve and
+  bit pattern filters: 1,524,804,359 (removed ~ 98%) (~ 10,378 candidates pass per main loop iteration)
+Passed sieve:            850,145,664 (removed ~ 45%) (~  5,786 candidates pass per main loop iteration)
+Passed 4-rem tests:      571,652,374 (removed ~ 33%) (~  3,891 candidates pass per main loop iteration)
+Passed b13m17 test:      475,829,256 (removed ~ 17%) (~  3,238 candidates pass per main loop iteration)
+Passed 4-rem tests, p2:  398,848,134 (removed ~ 17%) (~  2,714 candidates pass per main loop iteration)
+Passed 5-rem tests:      271,382,954 (removed ~ 32%) (~  1,847 candidates pass per main loop iteration)
+Passed 10-rem tests:     203,677,769 (removed ~ 25%) (~  1,386 candidates pass per main loop iteration)
+Passed 3-rem tests:      167,096,850 (removed ~ 18%) (~  1,137 candidates pass per main loop iteration)
+Passed 8-rem tests:      148,466,365 (removed ~ 12%) (~  1,010 candidates pass per main loop iteration)
+Passed 12-rem tests:     117,378,767 (removed ~ 21%) (~    798 candidates pass per main loop iteration)
+Passed 16-rem tests:      76,908,409 (removed ~ 35%) (~    523 candidates pass per main loop iteration)
+P. branchless divtests:    5,522,536 (removed ~ 93%) (~     37 candidates pass per main loop iteration)
+P. branching divtests:       495,935 (removed ~ 92%) (~      3 candidates pass per main loop iteration)
+Passed b2 BPSW test:         148,125 (removed ~ 71%) (~      1 candidates pass per main loop iteration)
+Passed b3 prime test:         24,901 (removed ~ 84%) (~      0 candidates pass per main loop iteration)
+Passed b4 prime test:          3,300 (removed ~ 87%) (~      0 candidates pass per main loop iteration)
+Passed b5 prime test:            396 (removed ~ 88%) (~      0 candidates pass per main loop iteration)
+
+hash of pass counts: aa0082e086ed7e61
+
+Add 6-rem bit pattern filter, with sieve thresholds:
+
+146913 main loop iters
+Passed static sieve and
+  bit pattern filters: 1,524,804,359 (removed ~ 98%) (~ 10,378 candidates pass per main loop iteration)
+Passed sieve:          1,080,375,514 (removed ~ 30%) (~  7,353 candidates pass per main loop iteration)
+Passed 4-rem tests:      726,153,566 (removed ~ 33%) (~  4,942 candidates pass per main loop iteration)
+Passed b13m17 test:      603,249,661 (removed ~ 17%) (~  4,106 candidates pass per main loop iteration)
+Passed 4-rem tests, p2:  505,436,158 (removed ~ 17%) (~  3,440 candidates pass per main loop iteration)
+Passed 5-rem tests:      343,998,014 (removed ~ 32%) (~  2,341 candidates pass per main loop iteration)
+Passed 10-rem tests:     258,140,074 (removed ~ 25%) (~  1,757 candidates pass per main loop iteration)
+Passed 3-rem tests:      211,724,876 (removed ~ 18%) (~  1,441 candidates pass per main loop iteration)
+Passed 8-rem tests:      188,104,265 (removed ~ 12%) (~  1,280 candidates pass per main loop iteration)
+Passed 12-rem tests:     148,692,835 (removed ~ 21%) (~  1,012 candidates pass per main loop iteration)
+Passed 16-rem tests:      97,439,429 (removed ~ 35%) (~    663 candidates pass per main loop iteration)
+P. branchless divtests:    6,996,990 (removed ~ 93%) (~     47 candidates pass per main loop iteration)
+P. branching divtests:       628,093 (removed ~ 92%) (~      4 candidates pass per main loop iteration)
+Passed b2 BPSW test:         148,125 (removed ~ 77%) (~      1 candidates pass per main loop iteration)
+Passed b3 prime test:         24,901 (removed ~ 84%) (~      0 candidates pass per main loop iteration)
+Passed b4 prime test:          3,300 (removed ~ 87%) (~      0 candidates pass per main loop iteration)
+Passed b5 prime test:            396 (removed ~ 88%) (~      0 candidates pass per main loop iteration)
+
+hash of pass counts: 3970c371cc4a08f8

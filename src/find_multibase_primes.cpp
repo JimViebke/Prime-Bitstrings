@@ -56,7 +56,9 @@ namespace mbp
 									   const uint8_t*& b3m5_lookup_ptr,
 									   const uint8_t*& b3m7_lookup_ptr,
 									   const uint8_t*& b4m7_lookup_ptr,
-									   const uint8_t*& b5m7_lookup_ptr)
+									   const uint8_t*& b4m13_lookup_ptr,
+									   const uint8_t*& b5m7_lookup_ptr,
+									   const uint8_t*& b10m13_lookup_ptr)
 	{
 		constexpr uint64_t bits_1_16_mask = 0xFFFFull << 1;
 
@@ -65,7 +67,9 @@ namespace mbp
 		const size_t b3m5_idx = get_lookup_idx_for<3, 5>(next_number);
 		const size_t b3m7_idx = get_lookup_idx_for<3, 7>(next_number);
 		const size_t b4m7_idx = get_lookup_idx_for<4, 7>(next_number);
+		const size_t b4m13_idx = get_lookup_idx_for<4, 13>(next_number);
 		const size_t b5m7_idx = get_lookup_idx_for<5, 7>(next_number);
+		const size_t b10m13_idx = get_lookup_idx_for<10, 13>(next_number);
 
 		const uint64_t bits_1_16 = (next_number & bits_1_16_mask) >> 1;
 		const size_t bit_offset = bits_1_16 & 0b111;
@@ -73,10 +77,12 @@ namespace mbp
 
 		pc_lookup_ptr = pc_lookup[bit_offset][pc_idx].data() + byte_offset;
 		gcd_lookup_ptr = gcd_lookup[bit_offset][gcd_idx].data() + byte_offset;
-		b3m5_lookup_ptr = b3m5_lookup[bit_offset][b3m5_idx].data() + byte_offset;
-		b3m7_lookup_ptr = b3m7_lookup[bit_offset][b3m7_idx].data() + byte_offset;
-		b4m7_lookup_ptr = b4m7_lookup[bit_offset][b4m7_idx].data() + byte_offset;
-		b5m7_lookup_ptr = b5m7_lookup[bit_offset][b5m7_idx].data() + byte_offset;
+		b3m5_lookup_ptr = (*b3m5_lookup)[bit_offset][b3m5_idx].data() + byte_offset;
+		b3m7_lookup_ptr = (*b3m7_lookup)[bit_offset][b3m7_idx].data() + byte_offset;
+		b4m7_lookup_ptr = (*b4m7_lookup)[bit_offset][b4m7_idx].data() + byte_offset;
+		b4m13_lookup_ptr = (*b4m13_lookup)[bit_offset][b4m13_idx].data() + byte_offset;
+		b5m7_lookup_ptr = (*b5m7_lookup)[bit_offset][b5m7_idx].data() + byte_offset;
+		b10m13_lookup_ptr = (*b10m13_lookup)[bit_offset][b10m13_idx].data() + byte_offset;
 	}
 
 	__forceinline void merge_one_block(uint64_t& number,
@@ -87,7 +93,9 @@ namespace mbp
 									   const uint8_t*& b3m5_ptr,
 									   const uint8_t*& b3m7_ptr,
 									   const uint8_t*& b4m7_ptr,
+									   const uint8_t*& b4m13_ptr,
 									   const uint8_t*& b5m7_ptr,
+									   const uint8_t*& b10m13_ptr,
 									   size_t& sieve_popcount)
 	{
 		constexpr uint64_t bits_1_16_mask = 0xFFFFull << 1;
@@ -102,13 +110,17 @@ namespace mbp
 											*(uint64_t*)b3m5_ptr &
 											*(uint64_t*)b3m7_ptr &
 											*(uint64_t*)b4m7_ptr &
-											*(uint64_t*)b5m7_ptr);
+											*(uint64_t*)b4m13_ptr &
+											*(uint64_t*)b5m7_ptr &
+											*(uint64_t*)b10m13_ptr);
 		pc_ptr += sizeof(uint64_t);
 		gcd_ptr += sizeof(uint64_t);
 		b3m5_ptr += sizeof(uint64_t);
 		b3m7_ptr += sizeof(uint64_t);
 		b4m7_ptr += sizeof(uint64_t);
+		b4m13_ptr += sizeof(uint64_t);
 		b5m7_ptr += sizeof(uint64_t);
+		b10m13_ptr += sizeof(uint64_t);
 
 		if (elements_to_rollover >= 64) // copy another block using lookup data
 		{
@@ -116,13 +128,15 @@ namespace mbp
 		}
 		else // elements_to_rollover is 0 to 63
 		{
-			set_lookup_ptrs(number + (elements_to_rollover * 2), pc_ptr, gcd_ptr, b3m5_ptr, b3m7_ptr, b4m7_ptr, b5m7_ptr);
+			set_lookup_ptrs(number + (elements_to_rollover * 2), pc_ptr, gcd_ptr, b3m5_ptr, b3m7_ptr, b4m7_ptr, b4m13_ptr, b5m7_ptr, b10m13_ptr);
 			const uint64_t new_mask = (*(uint64_t*)pc_ptr &
 									   *(uint64_t*)gcd_ptr &
 									   *(uint64_t*)b3m5_ptr &
 									   *(uint64_t*)b3m7_ptr &
 									   *(uint64_t*)b4m7_ptr &
-									   *(uint64_t*)b5m7_ptr) << elements_to_rollover;
+									   *(uint64_t*)b4m13_ptr &
+									   *(uint64_t*)b5m7_ptr &
+									   *(uint64_t*)b10m13_ptr) << elements_to_rollover;
 
 			const uint64_t select_from_old = (1ull << elements_to_rollover) - 1; // up to and including rollover
 			const uint64_t select_from_new = ~select_from_old;
@@ -131,7 +145,7 @@ namespace mbp
 					 (new_mask & select_from_new));
 
 			// (re)set
-			set_lookup_ptrs(number + (64ull * 2), pc_ptr, gcd_ptr, b3m5_ptr, b3m7_ptr, b4m7_ptr, b5m7_ptr);
+			set_lookup_ptrs(number + (64ull * 2), pc_ptr, gcd_ptr, b3m5_ptr, b3m7_ptr, b4m7_ptr, b4m13_ptr, b5m7_ptr, b10m13_ptr);
 		}
 
 		*(uint64_t*)out = mask;
@@ -172,9 +186,11 @@ namespace mbp
 		const uint8_t* b3m5_ptr{};
 		const uint8_t* b3m7_ptr{};
 		const uint8_t* b4m7_ptr{};
+		const uint8_t* b4m13_ptr{};
 		const uint8_t* b5m7_ptr{};
+		const uint8_t* b10m13_ptr{};
 
-		set_lookup_ptrs(number, pc_ptr, gcd_ptr, b3m5_ptr, b3m7_ptr, b4m7_ptr, b5m7_ptr);
+		set_lookup_ptrs(number, pc_ptr, gcd_ptr, b3m5_ptr, b3m7_ptr, b4m7_ptr, b4m13_ptr, b5m7_ptr, b10m13_ptr);
 
 		for (; in != aligned_end; )
 		{
@@ -202,14 +218,19 @@ namespace mbp
 				const uint256_t b3m5_data = _mm256_loadu_si256((uint256_t*)(b3m5_ptr + offset));
 				const uint256_t b3m7_data = _mm256_loadu_si256((uint256_t*)(b3m7_ptr + offset));
 				const uint256_t b4m7_data = _mm256_loadu_si256((uint256_t*)(b4m7_ptr + offset));
+				const uint256_t b4m13_data = _mm256_loadu_si256((uint256_t*)(b4m13_ptr + offset));
 				const uint256_t b5m7_data = _mm256_loadu_si256((uint256_t*)(b5m7_ptr + offset));
+				const uint256_t b10m13_data = _mm256_loadu_si256((uint256_t*)(b10m13_ptr + offset));
 				const uint256_t ss_data = _mm256_loadu_si256((uint256_t*)(in + offset));
 
-				uint256_t m1 = _mm256_and_si256(pc_data, gcd_data);
-				uint256_t m2 = _mm256_and_si256(b3m5_data, b3m7_data);
-				uint256_t m3 = _mm256_and_si256(b4m7_data, b5m7_data);
+				const uint256_t m1 = _mm256_and_si256(pc_data, gcd_data);
+				const uint256_t m2 = _mm256_and_si256(b3m5_data, b3m7_data);
+				const uint256_t m3 = _mm256_and_si256(b4m7_data, b4m13_data);
+				const uint256_t m4 = _mm256_and_si256(b5m7_data, b10m13_data);
+
 				uint256_t merged_data = _mm256_and_si256(_mm256_and_si256(m1, m2),
-														 _mm256_and_si256(m3, ss_data));
+														 _mm256_and_si256(m3, m4));
+				merged_data = _mm256_and_si256(merged_data, ss_data);
 
 				_mm256_storeu_si256((uint256_t*)(out + offset), merged_data);
 
@@ -232,7 +253,9 @@ namespace mbp
 			b3m5_ptr += n_steps * bytes_per_step;
 			b3m7_ptr += n_steps * bytes_per_step;
 			b4m7_ptr += n_steps * bytes_per_step;
+			b4m13_ptr += n_steps * bytes_per_step;
 			b5m7_ptr += n_steps * bytes_per_step;
+			b10m13_ptr += n_steps * bytes_per_step;
 
 			number += n_steps * elements_per_step * 2; // * 2 because the sieve only contains odd numbers
 
@@ -247,7 +270,7 @@ namespace mbp
 				// handle 4 64-bit blocks
 				for (size_t block = 0; block < 4; ++block)
 				{
-					merge_one_block(number, in, out, pc_ptr, gcd_ptr, b3m5_ptr, b3m7_ptr, b4m7_ptr, b5m7_ptr, sieve_popcount);
+					merge_one_block(number, in, out, pc_ptr, gcd_ptr, b3m5_ptr, b3m7_ptr, b4m7_ptr, b4m13_ptr, b5m7_ptr, b10m13_ptr, sieve_popcount);
 				}
 			}
 		} // end main copy/merge loop
@@ -257,19 +280,19 @@ namespace mbp
 
 		if constexpr (leftover_elements >= 64ull * 0)
 		{
-			merge_one_block(number, in, out, pc_ptr, gcd_ptr, b3m5_ptr, b3m7_ptr, b4m7_ptr, b5m7_ptr, sieve_popcount);
+			merge_one_block(number, in, out, pc_ptr, gcd_ptr, b3m5_ptr, b3m7_ptr, b4m7_ptr, b4m13_ptr, b5m7_ptr, b10m13_ptr, sieve_popcount);
 		}
 		if constexpr (leftover_elements >= 64ull * 1)
 		{
-			merge_one_block(number, in, out, pc_ptr, gcd_ptr, b3m5_ptr, b3m7_ptr, b4m7_ptr, b5m7_ptr, sieve_popcount);
+			merge_one_block(number, in, out, pc_ptr, gcd_ptr, b3m5_ptr, b3m7_ptr, b4m7_ptr, b4m13_ptr, b5m7_ptr, b10m13_ptr, sieve_popcount);
 		}
 		if constexpr (leftover_elements >= 64ull * 2)
 		{
-			merge_one_block(number, in, out, pc_ptr, gcd_ptr, b3m5_ptr, b3m7_ptr, b4m7_ptr, b5m7_ptr, sieve_popcount);
+			merge_one_block(number, in, out, pc_ptr, gcd_ptr, b3m5_ptr, b3m7_ptr, b4m7_ptr, b4m13_ptr, b5m7_ptr, b10m13_ptr, sieve_popcount);
 		}
 		if constexpr (leftover_elements >= 64ull * 3)
 		{
-			merge_one_block(number, in, out, pc_ptr, gcd_ptr, b3m5_ptr, b3m7_ptr, b4m7_ptr, b5m7_ptr, sieve_popcount);
+			merge_one_block(number, in, out, pc_ptr, gcd_ptr, b3m5_ptr, b3m7_ptr, b4m7_ptr, b4m13_ptr, b5m7_ptr, b10m13_ptr, sieve_popcount);
 		}
 
 		return sieve_popcount;
@@ -291,7 +314,7 @@ namespace mbp
 		gmp_rand.seed(mpir_ui{ 0xdeadbeef });
 
 		count_passes(std::cout << "(counting passes)\n");
-		count_passes(a = ps15 = b = c = d = e = f = g = h = i = j = k = 0);
+		count_passes(a = ps15 = b = c = d = e = f = g = h = i = j = 0);
 		count_passes(bldt = bidt = b2 = b3 = b4 = b5 = passes = pc_hash = 0);
 	}
 
@@ -365,13 +388,12 @@ namespace mbp
 		log_pass_counts("Passed b13m17 test:    ", c, b);
 		log_pass_counts("Passed 4-rem tests, p2:", d, c);
 		log_pass_counts("Passed 5-rem tests:    ", e, d);
-		log_pass_counts("Passed 6-rem tests:    ", f, e);
-		log_pass_counts("Passed 10-rem tests:   ", g, f);
-		log_pass_counts("Passed 3-rem tests:    ", h, g);
-		log_pass_counts("Passed 8-rem tests:    ", i, h);
-		log_pass_counts("Passed 12-rem tests:   ", j, i);
-		log_pass_counts("Passed 16-rem tests:   ", k, j);
-		log_pass_counts("P. branchless divtests:", bldt, k);
+		log_pass_counts("Passed 10-rem tests:   ", f, e);
+		log_pass_counts("Passed 3-rem tests:    ", g, f);
+		log_pass_counts("Passed 8-rem tests:    ", h, g);
+		log_pass_counts("Passed 12-rem tests:   ", i, h);
+		log_pass_counts("Passed 16-rem tests:   ", j, i);
+		log_pass_counts("P. branchless divtests:", bldt, j);
 		log_pass_counts("P. branching divtests: ", bidt, bldt);
 		log_pass_counts("Passed b2 BPSW test:   ", b2, bidt);
 		log_pass_counts("Passed b3 prime test:  ", b3, b2);
@@ -433,29 +455,25 @@ namespace mbp
 		candidates_end = div_tests_with_five_rems<on_fast_path>(candidates, candidates_end);
 		count_passes(e += (candidates_end - candidates));
 
-		// bases 4 and 10 mod 13 (6 remainders)
-		candidates_end = div_tests_with_six_rems<on_fast_path>(candidates, candidates_end);
-		count_passes(f += (candidates_end - candidates));
-
 		// bases 6, 7, and 8 mod 11 (10 remainders)
 		candidates_end = div_tests_with_10_rems<on_fast_path>(candidates, candidates_end);
-		count_passes(g += (candidates_end - candidates));
+		count_passes(f += (candidates_end - candidates));
 
 		// bases 3 and 9 mod 13 (3 remainders)
 		candidates_end = div_tests_with_three_rems<on_fast_path>(candidates, candidates_end);
-		count_passes(h += (candidates_end - candidates));
+		count_passes(g += (candidates_end - candidates));
 
 		// bases 8 and 9 mod 17 (8 remainders)
 		candidates_end = div_tests_with_8_rems<on_fast_path>(candidates, candidates_end);
-		count_passes(i += (candidates_end - candidates));
+		count_passes(h += (candidates_end - candidates));
 
 		// bases 6, 7, and 11 mod 13 (12 remainders)
 		candidates_end = div_tests_with_12_rems<on_fast_path>(candidates, candidates_end);
-		count_passes(j += (candidates_end - candidates));
+		count_passes(i += (candidates_end - candidates));
 
 		// bases 3, 5, 6, 7, 10, 11 and 12 mod 17 (16 remainders)
 		candidates_end = div_tests_with_16_rems<on_fast_path>(candidates, candidates_end);
-		count_passes(k += (candidates_end - candidates));
+		count_passes(j += (candidates_end - candidates));
 
 		// bases 8 and 12 mod 19 (6 remainders)
 		//candidates_end = two_div_tests_with_six_rems<on_fast_path>(candidates, candidates_end);
