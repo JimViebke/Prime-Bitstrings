@@ -180,7 +180,10 @@ namespace mbp
 	static const std::unique_ptr<std::array<std::array<bit_array<pow_2_16>, 7>, 8>> b3m7_lookup = build_bit_pattern_filter_for<3, 7>();
 	static const std::unique_ptr<std::array<std::array<bit_array<pow_2_16>, 7>, 8>> b4m7_lookup = build_bit_pattern_filter_for<4, 7>();
 	static const std::unique_ptr<std::array<std::array<bit_array<pow_2_16>, 13>, 8>> b4m13_lookup = build_bit_pattern_filter_for<4, 13>();
+	static const std::unique_ptr<std::array<std::array<bit_array<pow_2_16>, 17>, 8>> b4m17_lookup = build_bit_pattern_filter_for<4, 17>();
 	static const std::unique_ptr<std::array<std::array<bit_array<pow_2_16>, 7>, 8>> b5m7_lookup = build_bit_pattern_filter_for<5, 7>();
+	static const std::unique_ptr<std::array<std::array<bit_array<pow_2_16>, 13>, 8>> b5m13_lookup = build_bit_pattern_filter_for<5, 13>();
+	static const std::unique_ptr<std::array<std::array<bit_array<pow_2_16>, 13>, 8>> b8m13_lookup = build_bit_pattern_filter_for<8, 13>();
 	static const std::unique_ptr<std::array<std::array<bit_array<pow_2_16>, 13>, 8>> b10m13_lookup = build_bit_pattern_filter_for<10, 13>();
 
 }

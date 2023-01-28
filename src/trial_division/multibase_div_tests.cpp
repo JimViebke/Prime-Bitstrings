@@ -30,13 +30,11 @@ namespace mbp::div_test
 					if (base == 3 && p == 7) continue;
 					if (base == 4 && p == 7) continue;
 					if (base == 4 && p == 13) continue;
+					if (base == 4 && p == 17) continue;
 					if (base == 5 && p == 7) continue;
-					if (base == 10 && p == 13) continue;
-
-					// Hardcoded div tests with 4 remainders
 					if (base == 5 && p == 13) continue;
 					if (base == 8 && p == 13) continue;
-					if (base == 4 && p == 17) continue;
+					if (base == 10 && p == 13) continue;
 
 					// 4 remainders, standalone
 					if (base == 13 && p == 17) continue;
