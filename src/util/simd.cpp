@@ -1,4 +1,7 @@
 
+#include <iomanip>
+#include <iostream>
+
 #include "simd.hpp"
 
 namespace mbp::util
@@ -35,4 +38,14 @@ namespace mbp::util
 
 		return sum;
 	}
+
+	namespace detail
+	{
+		void setw_wrapper(const size_t n) { std::cout << std::setw(n); }
+
+		void print(const char c) { std::cout << c; }
+		void print(const char* c) { std::cout << c; }
+		void print(const size_t s) { std::cout << s; }
+	}
+
 }

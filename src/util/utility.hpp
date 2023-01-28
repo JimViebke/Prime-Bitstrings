@@ -1,13 +1,15 @@
 #pragma once
 
-#include <string>
+#include <numeric>
+
+#include "stdint.h"
 
 namespace mbp::util
 {
 	long long current_time_in_ms();
 
-	std::string to_bits(const uint64_t n);
-	std::string to_bits(const uint32_t n);
+	void print_as_bits(const uint64_t n);
+	void print_as_bits(const uint32_t n);
 
 	__forceinline bool upper_32_bits_match(const size_t a, const size_t b)
 	{

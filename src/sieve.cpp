@@ -1,4 +1,6 @@
 
+#include <iostream>
+
 #include "math/math.hpp"
 #include "sieve.hpp"
 

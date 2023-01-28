@@ -7,8 +7,6 @@
 #endif
 
 #include <immintrin.h>
-#include <iomanip>
-#include <iostream>
 
 namespace mbp
 {
@@ -66,27 +64,39 @@ namespace mbp::util
 		return _mm256_cmpeq_epi8(ymm0, _mm256_setzero_si256());
 	}
 
+	namespace detail
+	{
+		void setw_wrapper(const size_t n);
+
+		void print(const char c);
+		void print(const char* c);
+		void print(const size_t s);
+	}
+
 	template<typename scalar_t, typename vector_t>
 	void print_vector_as(const vector_t& data)
 	{
 		static_assert(std::is_unsigned<scalar_t>());
+		
+		using namespace detail;
 
 		const scalar_t* ptr = (const scalar_t*)&data;
 
-		std::cout << '[';
+		print('[');
 
 		for (size_t i = 0; i < sizeof(vector_t) / sizeof(scalar_t); ++i)
 		{
-			if (i % 8 == 0 && i > 0) std::cout << "  "; // padding
+			if (i % 8 == 0 && i > 0) print("  "); // padding
 
-			std::cout << ' ' << std::setw(3);
+			print(' ');
+			setw_wrapper(3);
 			if (ptr[i] != 0)
-				std::cout << size_t(ptr[i]);
+				print(size_t(ptr[i]));
 			else // write a dot in place of a 0
-				std::cout << '.';
+				print('.');
 		}
 
-		std::cout << "]\n";
+		print("]\n");
 	}
 
 	size_t vector_count_ones(const uint8_t* data, const size_t size);

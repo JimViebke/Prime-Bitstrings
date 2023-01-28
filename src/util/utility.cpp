@@ -2,6 +2,7 @@
 
 #include <bitset>
 #include <chrono>
+#include <iostream>
 
 namespace mbp::util
 {
@@ -10,7 +11,7 @@ namespace mbp::util
 		return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 	}
 
-	std::string to_bits(const uint64_t n)
+	void print_as_bits(const uint64_t n)
 	{
 		std::stringstream ss;
 		ss << std::bitset<8>(uint8_t(n >> (8 * 7))) << ' ';
@@ -21,16 +22,16 @@ namespace mbp::util
 		ss << std::bitset<8>(uint8_t(n >> (8 * 2))) << ' ';
 		ss << std::bitset<8>(uint8_t(n >> (8 * 1))) << ' ';
 		ss << std::bitset<8>(uint8_t(n >> (8 * 0)));
-		return ss.str();
+		std::cout << ss.str();
 	}
-	std::string to_bits(const uint32_t n)
+	void print_as_bits(const uint32_t n)
 	{
 		std::stringstream ss;
 		ss << std::bitset<8>(uint8_t(n >> (8 * 3))) << ' ';
 		ss << std::bitset<8>(uint8_t(n >> (8 * 2))) << ' ';
 		ss << std::bitset<8>(uint8_t(n >> (8 * 1))) << ' ';
 		ss << std::bitset<8>(uint8_t(n >> (8 * 0)));
-		return ss.str();
+		std::cout << ss.str();
 	}
 
 	// via https://stackoverflow.com/a/12996028/2924233

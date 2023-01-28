@@ -1,4 +1,6 @@
 
+#include <iomanip>
+#include <iostream>
 #include <sstream>
 
 #include "bit_pattern_tests.hpp"
