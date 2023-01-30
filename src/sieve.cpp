@@ -444,7 +444,7 @@ namespace mbp::prime_sieve
 
 	__forceinline size_t clear_bit(uint8_t* const sieve_data,
 								   size_t offset, size_t delta_to_next_offset,
-								   const size_t mask)
+								   const uint8_t mask)
 	{
 		size_t next_offset = offset + delta_to_next_offset;
 
@@ -455,14 +455,14 @@ namespace mbp::prime_sieve
 	}
 
 	__forceinline size_t clear_8_of_15(const size_t p, size_t j, uint8_t* const sieve_data,
-									   const size_t mask_a,
-									   const size_t mask_b,
-									   const size_t mask_c,
-									   const size_t mask_d,
-									   const size_t mask_e,
-									   const size_t mask_f,
-									   const size_t mask_g,
-									   const size_t mask_h)
+									   const uint8_t mask_a,
+									   const uint8_t mask_b,
+									   const uint8_t mask_c,
+									   const uint8_t mask_d,
+									   const uint8_t mask_e,
+									   const uint8_t mask_f,
+									   const uint8_t mask_g,
+									   const uint8_t mask_h)
 	{
 		j += p;
 		j = clear_bit(sieve_data, j, 1 * p, mask_a); // mark j + p, advance by 1p
@@ -559,14 +559,14 @@ namespace mbp::prime_sieve
 			}
 
 			// generate eight byte masks in usage order, starting from (j + p) % 8 == 0
-			const size_t mask_a = ~(1ull << ((j + (1ull * p)) % 8));
-			const size_t mask_b = ~(1ull << ((j + (2ull * p)) % 8));
-			const size_t mask_c = ~(1ull << ((j + (4ull * p)) % 8));
-			const size_t mask_d = ~(1ull << ((j + (7ull * p)) % 8));
-			const size_t mask_e = ~(1ull << ((j + (8ull * p)) % 8));
-			const size_t mask_f = ~(1ull << ((j + (11ull * p)) % 8));
-			const size_t mask_g = ~(1ull << ((j + (13ull * p)) % 8));
-			const size_t mask_h = ~(1ull << ((j + (14ull * p)) % 8));
+			const uint8_t mask_a = ~(1ull << ((j + (1ull * p)) % 8));
+			const uint8_t mask_b = ~(1ull << ((j + (2ull * p)) % 8));
+			const uint8_t mask_c = ~(1ull << ((j + (4ull * p)) % 8));
+			const uint8_t mask_d = ~(1ull << ((j + (7ull * p)) % 8));
+			const uint8_t mask_e = ~(1ull << ((j + (8ull * p)) % 8));
+			const uint8_t mask_f = ~(1ull << ((j + (11ull * p)) % 8));
+			const uint8_t mask_g = ~(1ull << ((j + (13ull * p)) % 8));
+			const uint8_t mask_h = ~(1ull << ((j + (14ull * p)) % 8));
 
 			// Each iteration, j points to an (already marked) multiple of p*15.
 			// Clear eight multiples of p within each of eight strides of p*15.
