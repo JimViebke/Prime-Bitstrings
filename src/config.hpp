@@ -32,16 +32,17 @@ namespace mbp
 
 	namespace prime_sieve
 	{
-		// The size of the static sieve is the product of these numbers. Exercise caution.
-		constexpr std::array static_sieve_primes{ 3ull, 5ull, 7ull, 11ull, 13ull, 17ull };
-		constexpr size_t static_sieve_size = std::accumulate(static_sieve_primes.begin(),
-															 static_sieve_primes.end(), 1ull, std::multiplies());
+		constexpr std::array static_sieve_primes{ 3ull, 5ull, 7ull, 11ull, 13ull };
+		constexpr size_t product_of_static_sieve_primes = std::accumulate(static_sieve_primes.begin(),
+																		  static_sieve_primes.end(),
+																		  1ull, std::multiplies());
+		constexpr size_t static_sieve_size = 2 * 8 * product_of_static_sieve_primes;
 
 		constexpr size_t steps = 2ull; // default 2
 		constexpr size_t largest_vector_sieve_prime = 79; // default 79
 		constexpr size_t largest_sieve_prime = 263; // default 263
 
-		constexpr double vector_density_threshold = 0.01; // default .01 (1%)
+		constexpr double vector_density_threshold = 0.009; // default .009 (.9%)
 		constexpr double scalar_density_threshold = 0.030; // default 0.030 (3%)
 	}
 

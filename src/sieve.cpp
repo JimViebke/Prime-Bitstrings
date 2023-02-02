@@ -503,7 +503,8 @@ namespace mbp::prime_sieve
 			return;
 		}
 
-		static_assert(small_primes_lookup[static_sieve_primes.size() + 1] == 19);
+		static_assert(small_primes_lookup[static_sieve_primes.size() + 1] == 17);
+		vectorized_sieve_pass<17>(sieve, prime_ptr, offset_cache_ptr);
 		vectorized_sieve_pass<19>(sieve, prime_ptr, offset_cache_ptr);
 		vectorized_sieve_pass<23>(sieve, prime_ptr, offset_cache_ptr);
 		vectorized_sieve_pass<29>(sieve, prime_ptr, offset_cache_ptr);

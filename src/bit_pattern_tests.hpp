@@ -10,50 +10,42 @@ namespace mbp
 {
 	constexpr size_t pow_2_16 = 1ull << 16;
 
-	std::vector<std::vector<bit_array<pow_2_16>>> build_popcounts_lookup()
+	std::vector<bit_array<pow_2_16>> build_popcounts_lookup()
 	{
 		constexpr size_t tiny_primes_lookup = build_tiny_primes_lookup();
 
-		std::vector<std::vector<bit_array<pow_2_16>>> pc_lookup;
-		pc_lookup.reserve(8);
+		std::vector<bit_array<pow_2_16>> pc_lookup;
 
-		// for each offset
-		for (size_t bit_offset = 0; bit_offset < 8; ++bit_offset)
+		// subtract 2 to normalize outer popcount of 2-48 to idx 0-46 (47 elements)
+		pc_lookup.reserve(47);
+
+		// for each outer popcount
+		for (size_t outer_pc = 2; outer_pc <= 48; ++outer_pc)
 		{
-			auto& offset_lookup = pc_lookup.emplace_back();
-			// subtract 2 to normalize outer popcount of 2-48 to idx 0-46 (47 elements)
-			offset_lookup.reserve(47);
+			const size_t shifted_primes_lookup = tiny_primes_lookup >> outer_pc;
+			uint64_t* bit_array_ptr = (uint64_t*)pc_lookup.emplace_back().data();
 
-			// for each outer popcount
-			for (size_t outer_pc = 2; outer_pc <= 48; ++outer_pc)
+			// inner bits == bits 1 through 16 (not 0 through 15)
+
+			for (size_t inner_bits = 0; inner_bits < pow_2_16; /* increment below */)
 			{
-				const size_t shifted_primes_lookup = tiny_primes_lookup >> outer_pc;
-				uint64_t* bit_array_ptr = (uint64_t*)offset_lookup.emplace_back().data();
-
-				// inner bits == bits 1 through 16 (not 0 through 15)
-
-				// Start inner_bits at 0-7 instead of 0. This drops off the first 0-7 (unused) values,
-				// and has the same effect as shifting this part of the lookup left by 0-7 bits.
-				for (size_t inner_bits = bit_offset; inner_bits < pow_2_16; /* increment below */)
+				uint64_t chunk = 0;
+				for (size_t j = 0; j < 64; ++j, ++inner_bits)
 				{
-					uint64_t chunk = 0;
-					for (size_t j = 0; j < 64; ++j, ++inner_bits)
-					{
-						const size_t bit = (shifted_primes_lookup >> pop_count(inner_bits)) & 1;
-						chunk |= (bit << j);
-					}
-					*bit_array_ptr = chunk;
-					++bit_array_ptr;
+					const size_t bit = (shifted_primes_lookup >> pop_count(inner_bits)) & 1;
+					chunk |= (bit << j);
 				}
+				*bit_array_ptr = chunk;
+				++bit_array_ptr;
 			}
 		}
 
 		return pc_lookup;
 	}
-	// [offset 0-7][outer pc 0-46][bitstring inner bits]
-	const std::vector<std::vector<bit_array<pow_2_16>>> pc_lookup = build_popcounts_lookup();
+	// [outer popcount 0-46][bitstring inner bits]
+	const std::vector<bit_array<pow_2_16>> pc_lookup = build_popcounts_lookup();
 
-	std::vector<std::vector<bit_array<pow_2_16>>> build_gcd_lookup()
+	std::vector<bit_array<pow_2_16>> build_gcd_lookup()
 	{
 		/*
 		We have 48 "outer" bits (47 upper and 1 lower) and 16 "inner" bits (bits 1 through 16; not 0 through 15)
@@ -76,50 +68,41 @@ namespace mbp
 			return val;
 		}();
 
-		std::vector<std::vector<bit_array<pow_2_16>>> gcd_lookup;
-		gcd_lookup.reserve(8);
+		std::vector<bit_array<pow_2_16>> gcd_lookup;
+		gcd_lookup.reserve(48);
 
-		// for each offset
-		for (size_t bit_offset = 0; bit_offset < 8; ++bit_offset)
+		// for each outer alternating bitsum
+		for (int outer_abs = -23; outer_abs <= 24; ++outer_abs)
 		{
-			auto& offset_lookup = gcd_lookup.emplace_back();
-			offset_lookup.reserve(48);
+			uint64_t* bit_array_ptr = (uint64_t*)gcd_lookup.emplace_back().data();
 
-			// for each outer alternating bitsum
-			for (int outer_abs = -23; outer_abs <= 24; ++outer_abs)
+			for (size_t inner_bits = 0; inner_bits < pow_2_16; /* increment below */)
 			{
-				uint64_t* bit_array_ptr = (uint64_t*)offset_lookup.emplace_back().data();
-
-				// Start inner_bits at 0-7 instead of 0. This drops off the first 0-7 (unused) values,
-				// and has the same effect as shifting this part of the lookup left by 0-7 bits.
-				for (size_t inner_bits = bit_offset; inner_bits < pow_2_16; /* increment below */)
+				// combine the next 64 writes
+				uint64_t chunk = 0;
+				for (size_t j = 0; j < 64; ++j, ++inner_bits)
 				{
-					// combine the next 64 writes
-					uint64_t chunk = 0;
-					for (size_t j = 0; j < 64; ++j, ++inner_bits)
-					{
-						// calculate the alternating bitsum of the inner bits, add outer_abs
-						const auto even_pc = pop_count(inner_bits & 0xAAAAAAAAAAAAAAAA); // We're generating a lookup for bits 1-16,
-						const auto odd_pc = pop_count(inner_bits & 0x5555555555555555); //  so the even/odd masks are swapped
-						const auto alternating_bitsum = (even_pc - odd_pc) + outer_abs;
+					// calculate the alternating bitsum of the inner bits, add outer_abs
+					const auto even_pc = pop_count(inner_bits & 0xAAAAAAAAAAAAAAAA); // We're generating a lookup for bits 1-16,
+					const auto odd_pc = pop_count(inner_bits & 0x5555555555555555); //  so the even/odd masks are swapped
+					const auto alternating_bitsum = (even_pc - odd_pc) + outer_abs;
 
-						const size_t bit = (tiny_gcd_lookup >> abs(alternating_bitsum)) & 1;
-						chunk |= (bit << j);
-					}
-
-					*bit_array_ptr = chunk;
-					++bit_array_ptr;
+					const size_t bit = (tiny_gcd_lookup >> abs(alternating_bitsum)) & 1;
+					chunk |= (bit << j);
 				}
+
+				*bit_array_ptr = chunk;
+				++bit_array_ptr;
 			}
 		}
 
 		return gcd_lookup;
 	}
-	// [offset 0-7][outer abs 0-47][bitstring inner bits]
-	const std::vector<std::vector<bit_array<pow_2_16>>> gcd_lookup = build_gcd_lookup();
+	// [outer alternating bitsum 0-47][bitstring inner bits]
+	const std::vector<bit_array<pow_2_16>> gcd_lookup = build_gcd_lookup();
 
 	template<size_t base, size_t prime>
-	std::unique_ptr<std::array<std::array<bit_array<pow_2_16>, prime>, 8>> build_bit_pattern_filter_for()
+	std::unique_ptr<std::array<bit_array<pow_2_16>, prime>> build_bit_pattern_filter_for()
 	{
 		using namespace div_test::detail;
 
@@ -135,55 +118,47 @@ namespace mbp
 			rems[i] = pk::powMod(base, i, prime);
 		}
 
-		for (size_t bit_offset = 0; bit_offset < 8; ++bit_offset)
+		for (size_t outer_rem = 0; outer_rem < prime; ++outer_rem)
 		{
-			std::array<bit_array<pow_2_16>, prime>& offset_lookup = (*lookup)[bit_offset];
+			bit_array<pow_2_16>& bit_array = (*lookup)[outer_rem];
 
-			for (size_t outer_rem = 0; outer_rem < prime; ++outer_rem)
+			for (size_t i = 0; i < pow_2_16; ++i)
 			{
-				bit_array<pow_2_16>& bit_array = offset_lookup[outer_rem];
+				// our 16 bits represent bits 1-16, not 0-15
+				const size_t bitstring = i << 1;
+				size_t sum = outer_rem; // start with the remainder of the outer 48 bits (0 through prime-1)
 
-				// Start at 0-7 instead of 0. This drops off the first 0-7 (unused) values,
-				// and has the same effect as shifting this lookup left by 0-7 bits.
-				// This also leaves the upper 0-7 bits unset, which we will never read because
-				// they are past the 2^16 rollover.
-				for (size_t i = bit_offset; i < pow_2_16; ++i)
+				// for each bit (1-16) in the bitstring
+				for (size_t bit_idx = 1; bit_idx <= 16; ++bit_idx)
 				{
-					// our 16 bits represent bits 1-16, not 0-15
-					const size_t bitstring = i << 1;
-					size_t sum = outer_rem; // start with the remainder of the outer 48 bits (0 through prime-1)
-
-					// for each bit (1-16) in the bitstring
-					for (size_t bit_idx = 1; bit_idx <= 16; ++bit_idx)
+					// if the bit is set
+					if ((bitstring >> bit_idx) & 1)
 					{
-						// if the bit is set
-						if ((bitstring >> bit_idx) & 1)
-						{
-							// add that bit's remainder to the sum
-							sum += rems[bit_idx];
-						}
+						// add that bit's remainder to the sum
+						sum += rems[bit_idx];
 					}
+				}
 
-					// keep the candidate if the remainder is non-zero
-					if (sum % prime != 0)
-					{
-						bit_array.set_bit(i - bit_offset);
-					}
+				// keep the candidate if the remainder is non-zero
+				if (sum % prime != 0)
+				{
+					bit_array.set_bit(i);
 				}
 			}
 		}
 
 		return std::move(lookup);
 	}
-	// [offset 0-7][outer rem 0-(prime - 1)][bitstring inner bits]
-	static const std::unique_ptr<std::array<std::array<bit_array<pow_2_16>, 5>, 8>> b3m5_lookup = build_bit_pattern_filter_for<3, 5>();
-	static const std::unique_ptr<std::array<std::array<bit_array<pow_2_16>, 7>, 8>> b3m7_lookup = build_bit_pattern_filter_for<3, 7>();
-	static const std::unique_ptr<std::array<std::array<bit_array<pow_2_16>, 7>, 8>> b4m7_lookup = build_bit_pattern_filter_for<4, 7>();
-	static const std::unique_ptr<std::array<std::array<bit_array<pow_2_16>, 13>, 8>> b4m13_lookup = build_bit_pattern_filter_for<4, 13>();
-	static const std::unique_ptr<std::array<std::array<bit_array<pow_2_16>, 17>, 8>> b4m17_lookup = build_bit_pattern_filter_for<4, 17>();
-	static const std::unique_ptr<std::array<std::array<bit_array<pow_2_16>, 7>, 8>> b5m7_lookup = build_bit_pattern_filter_for<5, 7>();
-	static const std::unique_ptr<std::array<std::array<bit_array<pow_2_16>, 13>, 8>> b5m13_lookup = build_bit_pattern_filter_for<5, 13>();
-	static const std::unique_ptr<std::array<std::array<bit_array<pow_2_16>, 13>, 8>> b8m13_lookup = build_bit_pattern_filter_for<8, 13>();
-	static const std::unique_ptr<std::array<std::array<bit_array<pow_2_16>, 13>, 8>> b10m13_lookup = build_bit_pattern_filter_for<10, 13>();
-
+	// [outer rem 0-(prime - 1)][bitstring inner bits]
+	static const std::unique_ptr<std::array<bit_array<pow_2_16>, 5>> b3m5_lookup = build_bit_pattern_filter_for<3, 5>();
+	static const std::unique_ptr<std::array<bit_array<pow_2_16>, 7>> b3m7_lookup = build_bit_pattern_filter_for<3, 7>();
+	static const std::unique_ptr<std::array<bit_array<pow_2_16>, 13>> b3m13_lookup = build_bit_pattern_filter_for<3, 13>();
+	static const std::unique_ptr<std::array<bit_array<pow_2_16>, 7>> b4m7_lookup = build_bit_pattern_filter_for<4, 7>();
+	static const std::unique_ptr<std::array<bit_array<pow_2_16>, 13>> b4m13_lookup = build_bit_pattern_filter_for<4, 13>();
+	static const std::unique_ptr<std::array<bit_array<pow_2_16>, 17>> b4m17_lookup = build_bit_pattern_filter_for<4, 17>();
+	static const std::unique_ptr<std::array<bit_array<pow_2_16>, 7>> b5m7_lookup = build_bit_pattern_filter_for<5, 7>();
+	static const std::unique_ptr<std::array<bit_array<pow_2_16>, 13>> b5m13_lookup = build_bit_pattern_filter_for<5, 13>();
+	static const std::unique_ptr<std::array<bit_array<pow_2_16>, 13>> b8m13_lookup = build_bit_pattern_filter_for<8, 13>();
+	static const std::unique_ptr<std::array<bit_array<pow_2_16>, 13>> b9m13_lookup = build_bit_pattern_filter_for<9, 13>();
+	static const std::unique_ptr<std::array<bit_array<pow_2_16>, 13>> b10m13_lookup = build_bit_pattern_filter_for<10, 13>();
 }
