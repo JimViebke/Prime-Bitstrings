@@ -602,7 +602,8 @@ namespace mbp::prime_sieve
 	namespace detail
 	{
 		constexpr uint64_t n_sieve_chunks = (sieve_container::size() / 64) + (sieve_container::size() % 64 != 0);
-		constexpr size_t max_pc = 27; // 27 is the highest popcount of 64-bit chunks in the static sieve
+		constexpr size_t max_pc = 28; // 28 is the highest popcount of 64-bit chunks in the static sieve
+		// TODO: calculate max_pc at compile time
 
 		using chunk_count_t = util::narrowest_uint_for_val<n_sieve_chunks>;
 		using chunk_idx_t = chunk_count_t;
@@ -767,7 +768,8 @@ namespace mbp::prime_sieve
 			extract_candidates_with_popcount<25>(candidates);
 			extract_candidates_with_popcount<26>(candidates);
 			extract_candidates_with_popcount<27>(candidates);
-			static_assert(max_pc == 27);
+			extract_candidates_with_popcount<28>(candidates);
+			static_assert(max_pc == 28);
 		}
 
 		__forceinline void convert_candidates_to_bitstrings(uint64_t* const candidates_start,
