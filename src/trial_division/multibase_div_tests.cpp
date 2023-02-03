@@ -37,8 +37,6 @@ namespace mbp::div_test
 					if (base == 8 && p == 13) continue;
 					if (base == 9 && p == 13) continue;
 					if (base == 10 && p == 13) continue;
-
-					// 4 remainders, standalone
 					if (base == 13 && p == 17) continue;
 
 					// second set with 4 remainders
