@@ -10,7 +10,7 @@ namespace mbp
 	size_t load_from_results();
 
 	void log_time();
-	void log_result(const size_t n, const size_t up_to_base);
+	void log_result(const uint64_t n, const size_t up_to_base);
 
 
 

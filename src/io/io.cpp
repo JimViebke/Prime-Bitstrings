@@ -45,7 +45,7 @@ void mbp::set_up_results_path()
 
 size_t mbp::load_from_results()
 {
-	// Load the largest (not necessarily last) number from the "results" log.
+	// Load the largest (not necessarily last) number from the results log.
 	set_up_results_path();
 
 	std::ifstream ifs(results_path);
@@ -94,15 +94,17 @@ void mbp::log_time()
 	std::cout << std::setw(2) << ((now.tm_hour % 12 == 0) ? 12 : now.tm_hour % 12) << ':' << std::setfill('0') << std::setw(2) << now.tm_min << std::setfill(' ') << '\t';
 }
 
-void mbp::log_result(const size_t n, const size_t up_to_base)
+void mbp::log_result(const uint64_t n, const size_t up_to_base)
 {
 	log_time();
 
 	std::stringstream ss;
-	ss << std::bitset<64>(n).to_string().c_str() + std::countl_zero(n) << " is a p" << up_to_base << " (" << n << ')';
+	ss << std::bitset<64>(n).to_string().c_str() + std::countl_zero(n) << " is a p" << up_to_base;
+	if (up_to_base < 10) ss << ' '; // padding space for alignment
+	ss << " (" << n << ')';
 
 	static auto last_perf_time = util::current_time_in_ms();
-	static size_t last_n = 0;
+	static uint64_t last_n = 0;
 	static uint64_t results_hash = 0xdeadbeef;
 
 	const auto perf_time = util::current_time_in_ms();
@@ -124,10 +126,13 @@ void mbp::log_result(const size_t n, const size_t up_to_base)
 
 		const double elapsed_seconds = double(perf_time - last_perf_time) / 1'000.0;
 		const double ints_per_second = double(n - last_n) / elapsed_seconds;
-		ss << "    " << std::setfill(' ') << std::setw(4) << size_t((ints_per_second / 1'000'000.0) + 0.5) << " M integers/second";
+		const double billions_of_ints_per_second = ints_per_second / 1'000'000'000.0;
+		ss << "    " << std::setfill(' ') << std::setw(4) << std::setprecision(1) << std::fixed << std::right
+			<< billions_of_ints_per_second << " B ints/second";
 	}
 
-	std::cout << ss.str() << '\n';
+	ss << '\n';
+	std::cout << ss.str();
 
 	last_perf_time = perf_time;
 	last_n = n;
