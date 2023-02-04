@@ -266,9 +266,6 @@
     <ClInclude Include="src\math\sieve_tests.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\trial_division\div_test_hits.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\trial_division\types.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>

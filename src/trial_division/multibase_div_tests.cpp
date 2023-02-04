@@ -3,6 +3,8 @@
 #include "../util/simd.hpp"
 
 #if analyze_div_tests
+#include <iomanip>
+#include <iostream>
 #include <sstream>
 #endif
 
@@ -10,7 +12,7 @@ namespace mbp::div_test
 {
 	namespace detail
 	{
-		consteval std::vector<div_test_t> generate_div_tests_impl()
+		constexpr std::vector<div_test_t> generate_div_tests_impl()
 		{
 			std::vector<uncompressed_div_test_t> uncompressed_dts;
 
@@ -142,21 +144,6 @@ namespace mbp::div_test
 				}
 			}
 
-			// Div tests are periodically re-ordered during runtime based on performance.
-			// To reflect real-world performance in benchmarks, pre-order the div tests based
-			// on cached performance data (the hitcount of each test).
-			// Otherwise, start with the default ordering of primes, low to high.
-			if constexpr (benchmark_mode)
-			{
-				for (auto& dt : uncompressed_dts)
-				{
-					dt.hits = cached_hitcount_for(dt.base, small_primes_lookup[dt.prime_idx]);
-				}
-
-				std::sort(uncompressed_dts.begin(), uncompressed_dts.end(),
-						  [](const auto& a, const auto& b) { return a.hits > b.hits; });
-			}
-
 			std::vector<div_test_t> div_tests;
 			div_tests.reserve(uncompressed_dts.size());
 
@@ -185,28 +172,19 @@ namespace mbp::div_test
 		}
 	}
 
-	constexpr size_t div_tests_size = detail::generate_div_tests_impl().size();
-	consteval std::array<div_test_t, div_tests_size> generate_div_tests()
-	{
-		std::array<div_test_t, div_tests_size> div_tests{};
-		const auto x = detail::generate_div_tests_impl();
-		std::copy(x.begin(), x.end(), div_tests.begin());
-		return div_tests;
-	}
-
-	using div_tests_t = std::array<div_test::div_test_t, div_test::div_tests_size>;
-	div_tests_t div_tests = generate_div_tests(); // intellisense false positive
+	using div_tests_t = std::vector<div_test::div_test_t>;
+	div_tests_t div_tests = detail::generate_div_tests_impl();
 
 	namespace detail
 	{
-		consteval size_t calculate_prime_factor_lookup_size()
+		size_t calculate_prime_factor_lookup_size()
 		{
-			constexpr div_tests_t div_tests_constexpr = generate_div_tests();
+			div_tests_t div_tests_temp = detail::generate_div_tests_impl();
 
 			size_t largest_sum = 0;
 
 			// Calculate the largest possible sum of remainders of a number with every bit set
-			for (const auto& div_test : div_tests_constexpr)
+			for (const auto& div_test : div_tests_temp)
 			{
 				const size_t sum = std::accumulate(div_test.remainders.begin(), div_test.remainders.end(), size_t(0));
 
@@ -218,11 +196,11 @@ namespace mbp::div_test
 			return largest_sum + 1;
 		}
 
-		constexpr size_t prime_factor_lookup_size = calculate_prime_factor_lookup_size(); // intellisense false positive
-
 		// Faster version
 		std::vector<prime_lookup_t> build_prime_factor_lookup_old()
 		{
+			const size_t prime_factor_lookup_size = calculate_prime_factor_lookup_size();
+
 			std::vector<prime_lookup_t> lookup;
 			lookup.reserve(prime_factor_lookup_size);
 
@@ -243,6 +221,7 @@ namespace mbp::div_test
 		// Slower version
 		std::vector<prime_lookup_t> build_prime_factor_lookup_new()
 		{
+			const size_t prime_factor_lookup_size = calculate_prime_factor_lookup_size();
 			std::vector<prime_lookup_t> lookup(prime_factor_lookup_size, 0);
 
 			for (size_t i = 0; i < div_test::n_of_primes; ++i)

@@ -13,7 +13,6 @@ Therefore, for base b, place value n, and a small prime p, we calculate and stor
 #include "../math/math.hpp"
 #include "../math/pk_prime.hpp"
 #include "types.hpp"
-#include "div_test_hits.hpp"
 
 namespace mbp::div_test
 {
@@ -34,8 +33,6 @@ namespace mbp::div_test
 
 	namespace detail
 	{
-		// consteval std::vector<div_test_t> generate_div_tests_impl();
-
 		// calculate a^b mod m
 		template<size_t a, size_t b, size_t m>
 		struct pow_mod

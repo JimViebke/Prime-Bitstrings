@@ -49,7 +49,7 @@ namespace mbp
 	// trial division tests in bases 3..n
 	namespace div_test
 	{
-		constexpr size_t n_of_primes = 32; // default: 32
+		constexpr size_t n_of_primes = 54; // default: 54
 		constexpr size_t up_to_base = 13; // default: 13
 
 		constexpr size_t n_of_branchless_tests = 75;
