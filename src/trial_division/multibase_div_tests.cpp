@@ -173,7 +173,7 @@ namespace mbp::div_test
 	}
 
 	using div_tests_t = std::vector<div_test::div_test_t>;
-	div_tests_t div_tests = detail::generate_div_tests_impl();
+	static div_tests_t div_tests = detail::generate_div_tests_impl();
 
 	namespace detail
 	{
@@ -304,7 +304,7 @@ namespace mbp::div_test
 		}
 
 		// increment_in_bytes = indivisible_by[prime_index][sum_of_remainders]
-		std::array<std::vector<uint8_t>, n_of_primes> indivisible_by = build_indivisible_lookup();
+		const std::array<std::vector<uint8_t>, n_of_primes> indivisible_by = build_indivisible_lookup();
 	}
 
 

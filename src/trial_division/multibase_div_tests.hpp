@@ -100,7 +100,7 @@ namespace mbp::div_test
 
 		const std::vector<prime_lookup_t> prime_factor_lookup = build_prime_factor_lookup_old();
 
-		extern std::array<std::vector<uint8_t>, div_test::n_of_primes> indivisible_by;
+		extern const std::array<std::vector<uint8_t>, div_test::n_of_primes> indivisible_by;
 	}
 
 	// Replaces "n % prime[idx] == 0" with "lookup[n] & (1 << idx)", usually as bittest + cmov
