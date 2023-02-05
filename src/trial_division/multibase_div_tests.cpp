@@ -1,4 +1,6 @@
 
+#include <algorithm>
+
 #include "multibase_div_tests.hpp"
 #include "../util/simd.hpp"
 
@@ -18,13 +20,15 @@ namespace mbp::div_test
 
 			for (size_t i = 1; i < n_of_primes; ++i) // for each small prime starting from 3
 			{
-				for (size_t base = 3; base <= up_to_base; ++base) // for each base 3..n
+				for (size_t base = 2; base <= up_to_base; ++base) // for each base 2..n
 				{
 					const auto p = small_primes_lookup[i];
 
 					// Skip always-composite cases
 					if (base % p == 0) continue;
 
+					// Skip candidates removed by the static sieve
+					if (base == 2 && p <= prime_sieve::static_sieve_primes.back()) continue;
 
 					// Implemented with bit pattern filter
 					if (base == 3 && p == 5) continue;
@@ -144,6 +148,11 @@ namespace mbp::div_test
 					uncompressed_dts.push_back(dt);
 				}
 			}
+
+			// move base 2 tests to the end
+			std::stable_partition(uncompressed_dts.begin(),
+								  uncompressed_dts.end(),
+								  [](auto dt) { return dt.base != 2; });
 
 			std::vector<div_test_t> div_tests;
 			div_tests.reserve(uncompressed_dts.size());
@@ -269,7 +278,7 @@ namespace mbp::div_test
 
 					const auto prime = small_primes_lookup[prime_idx];
 
-					for (size_t base = 3; base < up_to_base; ++base)
+					for (size_t base = 2; base < up_to_base; ++base)
 					{
 						std::array<remainder_t, 64> rems{};
 						size_t i = 0;

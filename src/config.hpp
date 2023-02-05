@@ -46,7 +46,7 @@ namespace mbp
 		constexpr double scalar_density_threshold = 0.030; // default 0.030 (3%)
 	}
 
-	// trial division tests in bases 3..n
+	// trial division tests in bases 2..n
 	namespace div_test
 	{
 		constexpr size_t n_of_primes = 54; // default: 54

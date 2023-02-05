@@ -572,7 +572,7 @@ namespace mbp
 		//	<< div_test::n_of_branchless_tests << "branchless + "
 		//	<< div_test::div_tests.size() - div_test::n_of_branchless_tests << " branching), "
 		//	<< div_test::n_of_primes << " prime factors, "
-		//	<< "bases 3-" << div_test::up_to_base
+		//	<< "bases 2-" << div_test::up_to_base
 		//	<< ", partial reorder every " << div_test::reorder_interval / 1'000'000'000 << " B\n";
 
 		ss << "SPRP rounds: " << prime_test::n_random_bases << ", td limit: " << largest_sieve_prime << '\n';
