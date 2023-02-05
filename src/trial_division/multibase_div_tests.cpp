@@ -12,7 +12,7 @@ namespace mbp::div_test
 {
 	namespace detail
 	{
-		constexpr std::vector<div_test_t> generate_div_tests_impl()
+		std::vector<div_test_t> generate_div_tests_impl()
 		{
 			std::vector<uncompressed_div_test_t> uncompressed_dts;
 
@@ -25,7 +25,6 @@ namespace mbp::div_test
 					// Skip always-composite cases
 					if (base % p == 0) continue;
 
-					// Always suppress hardcoded div tests
 
 					// Implemented with bit pattern filter
 					if (base == 3 && p == 5) continue;
@@ -40,6 +39,8 @@ namespace mbp::div_test
 					if (base == 9 && p == 13) continue;
 					if (base == 10 && p == 13) continue;
 					if (base == 13 && p == 17) continue;
+
+					// Always suppress hardcoded div tests
 
 					// second set with 4 remainders
 					if (base == 12 && p == 29) continue;
@@ -625,7 +626,7 @@ namespace mbp::div_test
 		std::stringstream ss;
 
 		ss << '\n';
-		ss << "Prime factor lookup size: " << div_test::detail::prime_factor_lookup_size << '\n';
+		ss << "Prime factor lookup size: " << div_test::detail::prime_factor_lookup.size() << '\n';
 		ss << div_tests.size() << " div tests:\n";
 
 		auto w = std::setw;
