@@ -373,6 +373,11 @@ namespace mbp
 	}();
 	static alignas(64) std::array<uint64_t, candidates_capacity> candidates_storage;
 
+	// buffer candidates for full primality testing until we have 64
+	constexpr size_t pt_buffer_capacity = 64;
+	static alignas(64) std::array<uint64_t, pt_buffer_capacity> pt_buffer;
+	static size_t pt_buffer_size = 0;
+
 	mbp::find_multibase_primes::find_multibase_primes()
 	{
 		gmp_rand.seed(mpir_ui{ 0xdeadbeef });
@@ -541,8 +546,18 @@ namespace mbp
 
 
 
-		// Do full primality tests, starting with base 2
-		full_primality_tests(candidates, candidates_end);
+		// Collect prime candidates until we have filled our buffer, then do full primality tests starting with base 2
+		for (const auto* ptr = candidates; ptr != candidates_end; ++ptr)
+		{
+			pt_buffer[pt_buffer_size++] = *ptr;
+
+			if (pt_buffer_size == pt_buffer_capacity)
+			{
+				full_primality_tests(pt_buffer.data(), pt_buffer.data() + pt_buffer.size());
+				pt_buffer_size = 0;
+			}
+		}
+
 	}
 
 
