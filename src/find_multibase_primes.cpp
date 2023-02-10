@@ -15,7 +15,9 @@
 namespace mbp
 {
 	static const sieve_container static_sieve = prime_sieve::generate_static_sieve();
-	static sieve_container sieve;
+	static std::unique_ptr<std::array<sieve_container, prime_sieve::steps>> sieves =
+		std::make_unique<decltype(sieves)::element_type>();
+	static std::array<size_t, prime_sieve::steps> sieve_popcounts{};
 
 	__forceinline size_t pc_lookup_idx(const size_t number)
 	{
@@ -52,7 +54,8 @@ namespace mbp
 
 	// out_ptr is used to set ss_ptr in pass 1, and sieve_data in pass 2
 	template<size_t pass>
-	__forceinline void set_lookup_ptrs(const uint8_t* const out_ptr,
+	__forceinline void set_lookup_ptrs(const uint8_t* out_ptr,
+									   const size_t sieve_offset,
 									   const uint64_t next_number,
 									   const uint8_t*& in_ptr,
 									   const uint8_t*& lookup_1_ptr,
@@ -78,7 +81,7 @@ namespace mbp
 			const size_t b8m13_idx = get_lookup_idx_for<8, 13>(next_number);
 			const size_t b13m17_idx = get_lookup_idx_for<13, 17>(next_number);
 
-			in_ptr = static_sieve.data() + (out_ptr - sieve.data()); // the offset into the sieve is also the offset into the static sieve
+			in_ptr = static_sieve.data() + sieve_offset; // the offset into the sieve is also the offset into the static sieve
 			lookup_1_ptr = pc_lookup[pc_idx].data() + byte_offset;
 			lookup_2_ptr = gcd_lookup[gcd_idx].data() + byte_offset;
 			lookup_3_ptr = (*b3m5_lookup)[b3m5_idx].data() + byte_offset;
@@ -113,6 +116,7 @@ namespace mbp
 
 	template<size_t pass>
 	__forceinline void merge_one_block(uint8_t*& out,
+									   const size_t sieve_offset,
 									   uint64_t& number,
 									   const uint8_t*& in,
 									   const uint8_t*& lookup_1_ptr,
@@ -155,7 +159,7 @@ namespace mbp
 			const uint8_t v{}; // we don't want set_lookup_ptrs() to modify the input ptr
 			auto dummy_ptr = &v;
 
-			set_lookup_ptrs<pass>(out, number + (elements_to_rollover * 2), dummy_ptr,
+			set_lookup_ptrs<pass>(out, 0, number + (elements_to_rollover * 2), dummy_ptr,
 								  lookup_1_ptr, lookup_2_ptr, lookup_3_ptr, lookup_4_ptr, lookup_5_ptr, lookup_6_ptr, lookup_7_ptr);
 
 			const uint64_t new_mask = (*(uint64_t*)lookup_1_ptr &
@@ -173,7 +177,7 @@ namespace mbp
 					 (new_mask & select_from_new));
 
 			// (re)set
-			set_lookup_ptrs<pass>(out, number + (64ull * 2), dummy_ptr,
+			set_lookup_ptrs<pass>(out, sieve_offset + sizeof(uint64_t), number + (64ull * 2), dummy_ptr,
 								  lookup_1_ptr, lookup_2_ptr, lookup_3_ptr, lookup_4_ptr, lookup_5_ptr, lookup_6_ptr, lookup_7_ptr);
 		}
 
@@ -189,7 +193,7 @@ namespace mbp
 	}
 
 	template<size_t pass>
-	size_t merge_bitmasks(size_t number)
+	size_t merge_bitmasks(size_t number, sieve_container& sieve)
 	{
 		// 64 bits == 47 high bits + (16 "inner" bits) + 1 low bit (always set)
 		constexpr size_t bits_1_16_mask = 0xFFFFull << 1;
@@ -221,7 +225,7 @@ namespace mbp
 		const uint8_t* lookup_6_ptr{};
 		const uint8_t* lookup_7_ptr{};
 
-		set_lookup_ptrs<pass>(out, number, in,
+		set_lookup_ptrs<pass>(out, 0, number, in,
 							  lookup_1_ptr,
 							  lookup_2_ptr,
 							  lookup_3_ptr,
@@ -334,7 +338,7 @@ namespace mbp
 				// handle 4 64-bit blocks
 				for (size_t block = 0; block < 4; ++block)
 				{
-					merge_one_block<pass>(out, number, in,
+					merge_one_block<pass>(out, out - sieve.data(), number, in,
 										  lookup_1_ptr, lookup_2_ptr, lookup_3_ptr, lookup_4_ptr, lookup_5_ptr, lookup_6_ptr, lookup_7_ptr,
 										  sieve_popcount);
 				}
@@ -346,25 +350,25 @@ namespace mbp
 
 		if constexpr (leftover_elements >= 64ull * 0)
 		{
-			merge_one_block<pass>(out, number, in,
+			merge_one_block<pass>(out, out - sieve.data(), number, in,
 								  lookup_1_ptr, lookup_2_ptr, lookup_3_ptr, lookup_4_ptr, lookup_5_ptr, lookup_6_ptr, lookup_7_ptr,
 								  sieve_popcount);
 		}
 		if constexpr (leftover_elements >= 64ull * 1)
 		{
-			merge_one_block<pass>(out, number, in,
+			merge_one_block<pass>(out, out - sieve.data(), number, in,
 								  lookup_1_ptr, lookup_2_ptr, lookup_3_ptr, lookup_4_ptr, lookup_5_ptr, lookup_6_ptr, lookup_7_ptr,
 								  sieve_popcount);
 		}
 		if constexpr (leftover_elements >= 64ull * 2)
 		{
-			merge_one_block<pass>(out, number, in,
+			merge_one_block<pass>(out, out - sieve.data(), number, in,
 								  lookup_1_ptr, lookup_2_ptr, lookup_3_ptr, lookup_4_ptr, lookup_5_ptr, lookup_6_ptr, lookup_7_ptr,
 								  sieve_popcount);
 		}
 		if constexpr (leftover_elements >= 64ull * 3)
 		{
-			merge_one_block<pass>(out, number, in,
+			merge_one_block<pass>(out, out - sieve.data(), number, in,
 								  lookup_1_ptr, lookup_2_ptr, lookup_3_ptr, lookup_4_ptr, lookup_5_ptr, lookup_6_ptr, lookup_7_ptr,
 								  sieve_popcount);
 		}
@@ -379,7 +383,7 @@ namespace mbp
 		double cleared = 0.0;
 		for (size_t i = 1; i < small_primes_lookup.size(); ++i)
 			cleared += (1.0 - cleared) * (1.0 / small_primes_lookup[i]);
-		return 2 * size_t((1.0 - cleared) * sieve.size() * prime_sieve::steps);
+		return 2 * size_t((1.0 - cleared) * sieve_container::size() * prime_sieve::steps);
 	}();
 	static alignas(64) std::array<uint64_t, candidates_capacity> candidates_storage;
 
@@ -399,7 +403,7 @@ namespace mbp
 
 	void mbp::find_multibase_primes::run()
 	{
-		constexpr size_t loop_size = 2ull * sieve.size() * prime_sieve::steps;
+		constexpr size_t loop_size = 2ull * sieve_container::size() * prime_sieve::steps;
 
 		size_t number = benchmark_mode ? bm_start : load_from_results();
 
@@ -490,23 +494,33 @@ namespace mbp
 		uint64_t* const candidates = candidates_storage.data();
 		uint64_t* candidates_end = candidates;
 
-		for (size_t sieve_step = 0; sieve_step < prime_sieve::steps; ++sieve_step)
+		// Merge static sieve, popcount, gcd, and div test bitmasks
+		for (size_t i = 0; i < prime_sieve::steps; ++i)
 		{
-			const uint64_t sieve_start = number + (sieve_step * sieve.size() * 2);
-
-			// Merge static sieve, popcount, gcd, and div test bitmasks
-			merge_bitmasks<1>(sieve_start);
-			const size_t sieve_popcount = merge_bitmasks<2>(sieve_start);
-			count_passes(a += sieve_popcount);
-
-			prime_sieve::partial_sieve(sieve_start, sieve, sieve_popcount);
-			count_passes(ps15 += sieve.count_bits());
-
-			candidates_end = prime_sieve::gather_sieve_results(
-				candidates_end, sieve, sieve_start);
+			const uint64_t sieve_start = number + (i * sieve_container::size() * 2);
+			merge_bitmasks<1>(sieve_start, (*sieves)[i]);
+		}
+		for (size_t i = 0; i < prime_sieve::steps; ++i)
+		{
+			const uint64_t sieve_start = number + (i * sieve_container::size() * 2);
+			sieve_popcounts[i] = merge_bitmasks<2>(sieve_start, (*sieves)[i]);
+			count_passes(a += sieve_popcounts[i]);
 		}
 
+		// Sieve until one of our density thresholds is reached
+		for (size_t i = 0; i < prime_sieve::steps; ++i)
+		{
+			const uint64_t sieve_start = number + (i * sieve_container::size() * 2);
+			prime_sieve::partial_sieve(sieve_start, (*sieves)[i], sieve_popcounts[i]);
+			count_passes(ps15 += (*sieves)[i].count_bits());
+		}
 
+		// Convert 1-bit candidates to 64-bit candidates
+		for (size_t i = 0; i < prime_sieve::steps; ++i)
+		{
+			const uint64_t sieve_start = number + (i * sieve_container::size() * 2);
+			candidates_end = prime_sieve::gather_sieve_results(candidates_end, (*sieves)[i], sieve_start);
+		}
 
 		// Perform some div tests separately when a specialized implementation is faster
 

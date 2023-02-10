@@ -1242,3 +1242,27 @@ Passed b4 prime test:         1,138 (removed ~ 86%) (~     0 candidates pass per
 Passed b5 prime test:           159 (removed ~ 87%) (~     0 candidates pass per main loop iteration)
 
 hash of pass counts: 16c794980b7e3845
+
+
+
+Split merge/sieve/gather loops; adjust sieve constants:
+
+Finished. 14582 ms elapsed
+19512 main loop iters
+Passed static sieve and
+  bit pattern filters:  743,834,082 (removed ~100%) (~ 38,121 candidates pass per main loop iteration)
+Passed sieve:           538,897,845 (removed ~ 28%) (~ 27,618 candidates pass per main loop iteration)
+Passed 4-rem tests, p2: 450,869,744 (removed ~ 17%) (~ 23,107 candidates pass per main loop iteration)
+Passed 5-rem tests:     307,132,825 (removed ~ 32%) (~ 15,740 candidates pass per main loop iteration)
+Passed 10-rem tests:    230,464,191 (removed ~ 25%) (~ 11,811 candidates pass per main loop iteration)
+Passed 8-rem tests:     204,781,414 (removed ~ 12%) (~ 10,495 candidates pass per main loop iteration)
+Passed 12-rem tests:    161,877,903 (removed ~ 21%) (~  8,296 candidates pass per main loop iteration)
+Passed 16-rem tests:    106,079,318 (removed ~ 35%) (~  5,436 candidates pass per main loop iteration)
+P. branchless divtests:   7,887,074 (removed ~ 93%) (~    404 candidates pass per main loop iteration)
+P. branching divtests:      134,847 (removed ~ 99%) (~      6 candidates pass per main loop iteration)
+Passed b2 BPSW test:         40,184 (removed ~ 71%) (~      2 candidates pass per main loop iteration)
+Passed b3 prime test:         7,588 (removed ~ 82%) (~      0 candidates pass per main loop iteration)
+Passed b4 prime test:         1,138 (removed ~ 86%) (~      0 candidates pass per main loop iteration)
+Passed b5 prime test:           159 (removed ~ 87%) (~      0 candidates pass per main loop iteration)
+
+hash of pass counts: 1e2607120c091588
