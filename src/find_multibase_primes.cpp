@@ -19,18 +19,22 @@ namespace mbp
 		std::make_unique<decltype(sieves)::element_type>();
 	static std::array<size_t, prime_sieve::steps> sieve_popcounts{};
 
-	__forceinline size_t pc_lookup_idx(const size_t number)
+	namespace detail
 	{
-		constexpr size_t outer_48_bits_mask = ~(0xFFFFull << 1);
-
-		return pop_count(number & outer_48_bits_mask) - 2; // -2 to normalize popcount 2-48 to idx 0-46
+		// 64 bits == (47 high bits) + (16 "inner" bits) + (1 low bit (always set))
+		constexpr uint64_t bits_1_16_mask = 0xFFFFull << 1;
+		constexpr uint64_t outer_48_bits_mask = ~bits_1_16_mask;
 	}
 
-	__forceinline size_t gcd_lookup_idx(const size_t number)
+	__forceinline size_t pc_lookup_idx(const uint64_t number)
 	{
-		constexpr size_t outer_48_bits_mask = ~(0xFFFFull << 1);
-		constexpr size_t even_mask = outer_48_bits_mask & 0x5555555555555555;
-		constexpr size_t odd_mask = outer_48_bits_mask & 0xAAAAAAAAAAAAAAAA;
+		return pop_count(number & detail::outer_48_bits_mask) - 2; // -2 to normalize popcount 2-48 to idx 0-46
+	}
+
+	__forceinline size_t gcd_lookup_idx(const uint64_t number)
+	{
+		constexpr uint64_t even_mask = detail::outer_48_bits_mask & 0x5555555555555555;
+		constexpr uint64_t odd_mask = detail::outer_48_bits_mask & 0xAAAAAAAAAAAAAAAA;
 
 		const auto outer_even_pc = pop_count(number & even_mask);
 		const auto outer_odd_pc = pop_count(number & odd_mask);
@@ -40,10 +44,10 @@ namespace mbp
 	template<size_t base, size_t prime>
 	__forceinline size_t get_lookup_idx_for(const uint64_t number)
 	{
+		using namespace detail;
 		using namespace div_test;
 		using namespace div_test::detail;
 
-		constexpr size_t outer_48_bits_mask = ~(0xFFFFull << 1);
 		constexpr size_t max_sum_of_rems = get_sum_of_rems<prime, in_base<base>>(outer_48_bits_mask);
 
 		const size_t sum = get_sum_of_rems<prime, in_base<base>>(number & outer_48_bits_mask);
@@ -66,7 +70,9 @@ namespace mbp
 									   const uint8_t*& lookup_6_ptr,
 									   const uint8_t*& lookup_7_ptr)
 	{
-		constexpr uint64_t bits_1_16_mask = 0xFFFFull << 1;
+		using namespace detail;
+		using namespace div_test;
+		using namespace div_test::detail;
 
 		const uint64_t bits_1_16 = (next_number & bits_1_16_mask) >> 1;
 		const size_t byte_offset = bits_1_16 / 8;
@@ -75,40 +81,136 @@ namespace mbp
 		{
 			const size_t pc_idx = pc_lookup_idx(next_number);
 			const size_t gcd_idx = gcd_lookup_idx(next_number);
-			const size_t b3m5_idx = get_lookup_idx_for<3, 5>(next_number);
-			const size_t b4m17_idx = get_lookup_idx_for<4, 17>(next_number);
-			const size_t b5m13_idx = get_lookup_idx_for<5, 13>(next_number);
-			const size_t b8m13_idx = get_lookup_idx_for<8, 13>(next_number);
-			const size_t b13m17_idx = get_lookup_idx_for<13, 17>(next_number);
 
 			in_ptr = static_sieve.data() + sieve_offset; // the offset into the sieve is also the offset into the static sieve
 			lookup_1_ptr = pc_lookup[pc_idx].data() + byte_offset;
 			lookup_2_ptr = gcd_lookup[gcd_idx].data() + byte_offset;
-			lookup_3_ptr = (*b3m5_lookup)[b3m5_idx].data() + byte_offset;
-			lookup_4_ptr = (*b4m17_lookup)[b4m17_idx].data() + byte_offset;
-			lookup_5_ptr = (*b5m13_lookup)[b5m13_idx].data() + byte_offset;
-			lookup_6_ptr = (*b8m13_lookup)[b8m13_idx].data() + byte_offset;
-			lookup_7_ptr = (*b13m17_lookup)[b13m17_idx].data() + byte_offset;
+
+			constexpr uint64_t bitmask = bitmask_for<3, 5>::val;
+			static_assert(bitmask == bitmask_for<4, 17>::val);
+			static_assert(bitmask == bitmask_for<5, 13>::val);
+			static_assert(bitmask == bitmask_for<8, 13>::val);
+			static_assert(bitmask == bitmask_for<13, 17>::val);
+			static_assert(period_of<bitmask>::val == 4);
+
+			const size_t pc_0 = pop_count(next_number & ((bitmask << 0) & outer_48_bits_mask));
+			size_t b3_sum = pc_0;
+			size_t b4_sum = pc_0;
+			size_t b5_sum = pc_0;
+			size_t b8_sum = pc_0;
+			size_t b13_sum = pc_0;
+			const size_t pc_1 = pop_count(next_number & ((bitmask << 1) & outer_48_bits_mask));
+			b3_sum += pc_1 * pow_mod<3, 1, 5>::rem;
+			b4_sum += pc_1 * pow_mod<4, 1, 17>::rem;
+			b5_sum += pc_1 * pow_mod<5, 1, 13>::rem;
+			b8_sum += pc_1 * pow_mod<8, 1, 13>::rem;
+			b13_sum += pc_1 * pow_mod<13, 1, 17>::rem;
+			const size_t pc_2 = pop_count(next_number & ((bitmask << 2) & outer_48_bits_mask));
+			b3_sum += pc_2 * pow_mod<3, 2, 5>::rem;
+			b4_sum += pc_2 * pow_mod<4, 2, 17>::rem;
+			b5_sum += pc_2 * pow_mod<5, 2, 13>::rem;
+			b8_sum += pc_2 * pow_mod<8, 2, 13>::rem;
+			b13_sum += pc_2 * pow_mod<13, 2, 17>::rem;
+			const size_t pc_3 = pop_count(next_number & ((bitmask << 3) & outer_48_bits_mask));
+			b3_sum += pc_3 * pow_mod<3, 3, 5>::rem;
+			b4_sum += pc_3 * pow_mod<4, 3, 17>::rem;
+			b5_sum += pc_3 * pow_mod<5, 3, 13>::rem;
+			b8_sum += pc_3 * pow_mod<8, 3, 13>::rem;
+			b13_sum += pc_3 * pow_mod<13, 3, 17>::rem;
+
+			__assume(b3_sum <= get_sum_of_rems<5, in_base<3>>(outer_48_bits_mask));
+			__assume(b4_sum <= get_sum_of_rems<17, in_base<4>>(outer_48_bits_mask));
+			__assume(b5_sum <= get_sum_of_rems<13, in_base<5>>(outer_48_bits_mask));
+			__assume(b8_sum <= get_sum_of_rems<13, in_base<8>>(outer_48_bits_mask));
+			__assume(b13_sum <= get_sum_of_rems<17, in_base<13>>(outer_48_bits_mask));
+
+			lookup_3_ptr = (*b3m5_lookup)[b3_sum % 5].data() + byte_offset;
+			lookup_4_ptr = (*b4m17_lookup)[b4_sum % 17].data() + byte_offset;
+			lookup_5_ptr = (*b5m13_lookup)[b5_sum % 13].data() + byte_offset;
+			lookup_6_ptr = (*b8m13_lookup)[b8_sum % 13].data() + byte_offset;
+			lookup_7_ptr = (*b13m17_lookup)[b13_sum % 17].data() + byte_offset;
 		}
 
 		if constexpr (pass == 2)
 		{
-			const size_t b3m13_idx = get_lookup_idx_for<3, 13>(next_number);
-			const size_t b4m7_idx = get_lookup_idx_for<4, 7>(next_number);
-			const size_t b9m13_idx = get_lookup_idx_for<9, 13>(next_number);
-			const size_t b3m7_idx = get_lookup_idx_for<3, 7>(next_number);
-			const size_t b4m13_idx = get_lookup_idx_for<4, 13>(next_number);
-			const size_t b5m7_idx = get_lookup_idx_for<5, 7>(next_number);
-			const size_t b10m13_idx = get_lookup_idx_for<10, 13>(next_number);
-
 			in_ptr = out_ptr; // wherever we're writing to in the sieve is also the location we have to read from
-			lookup_1_ptr = (*b3m13_lookup)[b3m13_idx].data() + byte_offset;
-			lookup_2_ptr = (*b4m7_lookup)[b4m7_idx].data() + byte_offset;
-			lookup_3_ptr = (*b9m13_lookup)[b9m13_idx].data() + byte_offset;
-			lookup_4_ptr = (*b3m7_lookup)[b3m7_idx].data() + byte_offset;
-			lookup_5_ptr = (*b4m13_lookup)[b4m13_idx].data() + byte_offset;
-			lookup_6_ptr = (*b5m7_lookup)[b5m7_idx].data() + byte_offset;
-			lookup_7_ptr = (*b10m13_lookup)[b10m13_idx].data() + byte_offset;
+
+			{
+				constexpr uint64_t bitmask = bitmask_for<3, 13>::val;
+				static_assert(bitmask == bitmask_for<4, 7>::val);
+				static_assert(bitmask == bitmask_for<9, 13>::val);
+				static_assert(period_of<bitmask>::val == 3);
+
+				const size_t pc_0 = pop_count(next_number & ((bitmask << 0) & outer_48_bits_mask));
+				size_t b3_sum = pc_0;
+				size_t b4_sum = pc_0;
+				size_t b9_sum = pc_0;
+				const size_t pc_1 = pop_count(next_number & ((bitmask << 1) & outer_48_bits_mask));
+				b3_sum += pc_1 * pow_mod<3, 1, 13 >::rem;
+				b4_sum += pc_1 * pow_mod<4, 1, 7>::rem;
+				b9_sum += pc_1 * pow_mod<9, 1, 13>::rem;
+				const size_t pc_2 = pop_count(next_number & ((bitmask << 2) & outer_48_bits_mask));
+				b3_sum += pc_2 * pow_mod<3, 2, 13>::rem;
+				b4_sum += pc_2 * pow_mod<4, 2, 7>::rem;
+				b9_sum += pc_2 * pow_mod<9, 2, 13>::rem;
+
+				__assume(b3_sum <= get_sum_of_rems<13, in_base<3>>(outer_48_bits_mask));
+				__assume(b4_sum <= get_sum_of_rems<7, in_base<4>>(outer_48_bits_mask));
+				__assume(b9_sum <= get_sum_of_rems<13, in_base<9>>(outer_48_bits_mask));
+
+				lookup_1_ptr = (*b3m13_lookup)[b3_sum % 13].data() + byte_offset;
+				lookup_2_ptr = (*b4m7_lookup)[b4_sum % 7].data() + byte_offset;
+				lookup_3_ptr = (*b9m13_lookup)[b9_sum % 13].data() + byte_offset;
+			}
+
+			{
+				constexpr uint64_t bitmask = bitmask_for<3, 7>::val;
+				static_assert(bitmask == bitmask_for<4, 13>::val);
+				static_assert(bitmask == bitmask_for<5, 7>::val);
+				static_assert(bitmask == bitmask_for<10, 13>::val);
+				static_assert(period_of<bitmask>::val == 6);
+
+				const size_t pc_0 = pop_count(next_number & ((bitmask << 0) & outer_48_bits_mask));
+				size_t b3_sum = pc_0;
+				size_t b4_sum = pc_0;
+				size_t b5_sum = pc_0;
+				size_t b10_sum = pc_0;
+				const size_t pc_1 = pop_count(next_number & ((bitmask << 1) & outer_48_bits_mask));
+				b3_sum += pc_1 * pow_mod<3, 1, 7>::rem;
+				b4_sum += pc_1 * pow_mod<4, 1, 13>::rem;
+				b5_sum += pc_1 * pow_mod<5, 1, 7>::rem;
+				b10_sum += pc_1 * pow_mod<10, 1, 13>::rem;
+				const size_t pc_2 = pop_count(next_number & ((bitmask << 2) & outer_48_bits_mask));
+				b3_sum += pc_2 * pow_mod<3, 2, 7>::rem;
+				b4_sum += pc_2 * pow_mod<4, 2, 13>::rem;
+				b5_sum += pc_2 * pow_mod<5, 2, 7>::rem;
+				b10_sum += pc_2 * pow_mod<10, 2, 13>::rem;
+				const size_t pc_3 = pop_count(next_number & ((bitmask << 3) & outer_48_bits_mask));
+				b3_sum += pc_3 * pow_mod<3, 3, 7>::rem;
+				b4_sum += pc_3 * pow_mod<4, 3, 13>::rem;
+				b5_sum += pc_3 * pow_mod<5, 3, 7>::rem;
+				b10_sum += pc_3 * pow_mod<10, 3, 13>::rem;
+				const size_t pc_4 = pop_count(next_number & ((bitmask << 4) & outer_48_bits_mask));
+				b3_sum += pc_4 * pow_mod<3, 4, 7>::rem;
+				b4_sum += pc_4 * pow_mod<4, 4, 13>::rem;
+				b5_sum += pc_4 * pow_mod<5, 4, 7>::rem;
+				b10_sum += pc_4 * pow_mod<10, 4, 13>::rem;
+				const size_t pc_5 = pop_count(next_number & ((bitmask << 5) & outer_48_bits_mask));
+				b3_sum += pc_5 * pow_mod<3, 5, 7>::rem;
+				b4_sum += pc_5 * pow_mod<4, 5, 13>::rem;
+				b5_sum += pc_5 * pow_mod<5, 5, 7>::rem;
+				b10_sum += pc_5 * pow_mod<10, 5, 13>::rem;
+
+				__assume(b3_sum <= get_sum_of_rems<7, in_base<3>>(outer_48_bits_mask));
+				__assume(b4_sum <= get_sum_of_rems<13, in_base<4>>(outer_48_bits_mask));
+				__assume(b5_sum <= get_sum_of_rems<7, in_base<5>>(outer_48_bits_mask));
+				__assume(b10_sum <= get_sum_of_rems<13, in_base<10>>(outer_48_bits_mask));
+
+				lookup_4_ptr = (*b3m7_lookup)[b3_sum % 7].data() + byte_offset;
+				lookup_5_ptr = (*b4m13_lookup)[b4_sum % 13].data() + byte_offset;
+				lookup_6_ptr = (*b5m7_lookup)[b5_sum % 7].data() + byte_offset;
+				lookup_7_ptr = (*b10m13_lookup)[b10_sum % 13].data() + byte_offset;
+			}
 		}
 	}
 
@@ -128,9 +230,7 @@ namespace mbp
 									   const uint8_t*& lookup_7_ptr,
 									   size_t& sieve_popcount)
 	{
-		constexpr uint64_t bits_1_16_mask = 0xFFFFull << 1;
-
-		const size_t elements_to_rollover = (pow_2_16 - ((number & bits_1_16_mask) >> 1)) % pow_2_16; // map 65,536 -> 0
+		const size_t elements_to_rollover = (pow_2_16 - ((number & detail::bits_1_16_mask) >> 1)) % pow_2_16; // map 65,536 -> 0
 
 		uint64_t mask = *(uint64_t*)in;
 		const uint64_t bit_patterns_mask = (*(uint64_t*)lookup_1_ptr &
@@ -195,9 +295,6 @@ namespace mbp
 	template<size_t pass>
 	size_t merge_bitmasks(size_t number, sieve_container& sieve)
 	{
-		// 64 bits == 47 high bits + (16 "inner" bits) + 1 low bit (always set)
-		constexpr size_t bits_1_16_mask = 0xFFFFull << 1;
-
 		constexpr static uint256_t static_pc_shuf_lookup{ .m256i_u8{
 			0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
 			0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4 } };
@@ -240,7 +337,7 @@ namespace mbp
 			// How many times can we do this before reaching the lookups' ends?
 			// Calculate this up front so the hot loop can run using a simpler condition.
 
-			const size_t elements_to_rollover = pow_2_16 - ((number & bits_1_16_mask) >> 1);
+			const size_t elements_to_rollover = pow_2_16 - ((number & detail::bits_1_16_mask) >> 1);
 
 			constexpr size_t bytes_per_step = sizeof(uint256_t);
 			constexpr size_t elements_per_step = bytes_per_step * 8;

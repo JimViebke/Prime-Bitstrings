@@ -1247,7 +1247,6 @@ hash of pass counts: 16c794980b7e3845
 
 Split merge/sieve/gather loops; adjust sieve constants:
 
-Finished. 14582 ms elapsed
 19512 main loop iters
 Passed static sieve and
   bit pattern filters:  743,834,082 (removed ~100%) (~ 38,121 candidates pass per main loop iteration)
