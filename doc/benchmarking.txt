@@ -154,3 +154,5 @@ Calculate change: 1 - (  /  )
 13148 ms : Split merge/sieve/gather loops; adjust sieve constants (~2% faster)
 13058 ms : Save instructions in set_lookup_ptrs() (<1% faster)
 12846 ms : Vectorize gathering bits from sieve (~1.6% faster)
+ === change benchmark from p11 + 150 billion to p11 + 500 billion ===
+40011 ms : (no changes)

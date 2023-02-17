@@ -27,7 +27,7 @@ namespace mbp
 	constexpr bool benchmark_mode = true;
 
 	const size_t bm_start = p11; // default: p11
-	const size_t bm_size = 150'000'000'000; // default 150'000'000'000
+	const size_t bm_size = 500'000'000'000; // default 500'000'000'000
 	const size_t bm_stop = bm_start + bm_size;
 
 	namespace prime_sieve
