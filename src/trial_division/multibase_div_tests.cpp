@@ -1,12 +1,12 @@
 
 #include <algorithm>
+#include <iostream>
 
 #include "multibase_div_tests.hpp"
 #include "../util/simd.hpp"
 
 #if analyze_div_tests
 #include <iomanip>
-#include <iostream>
 #include <sstream>
 #endif
 
@@ -180,16 +180,10 @@ namespace mbp::div_test
 
 			return div_tests;
 		}
-	}
 
-	using div_tests_t = std::vector<div_test::div_test_t>;
-	static div_tests_t div_tests = detail::generate_div_tests_impl();
-
-	namespace detail
-	{
 		size_t calculate_prime_factor_lookup_size()
 		{
-			div_tests_t div_tests_temp = detail::generate_div_tests_impl();
+			const div_tests_t div_tests_temp = detail::generate_div_tests_impl();
 
 			size_t largest_sum = 0;
 
@@ -246,12 +240,11 @@ namespace mbp::div_test
 
 			return lookup;
 		}
-	}
 
-	namespace detail
-	{
 		std::array<std::vector<uint8_t>, n_of_primes> build_indivisible_lookup()
 		{
+			const div_tests_t div_tests_temp = detail::generate_div_tests_impl();
+
 			std::array<std::vector<uint8_t>, n_of_primes> lookup;
 
 			// start from 5, at idx 2
@@ -262,7 +255,7 @@ namespace mbp::div_test
 
 				size_t largest_sum = 0;
 
-				for (const auto& div_test : div_tests)
+				for (const auto& div_test : div_tests_temp)
 				{
 					if (div_test.prime_idx != prime_idx) continue;
 
@@ -319,17 +312,35 @@ namespace mbp::div_test
 
 
 
+	full_div_tests::full_div_tests() :
+		div_tests{ detail::generate_div_tests_impl() },
+		permuted_div_tests{}
+	{
+		const size_t n_of_branching_tests = div_tests.size() - n_of_branchless_tests;
+
+		if (n_of_branching_tests & 1)
+		{
+			std::cout << "error - odd number of branching div tests";
+			std::cin.ignore();
+		}
+
+		permuted_div_tests.assign(n_of_branching_tests, decltype(permuted_div_tests)::value_type{});
+		permute_div_tests();
+	}
+
+
+
 	template<bool on_fast_path>
-	size_t* branchless_div_tests(size_t* const candidates_begin,
-								 size_t* const candidates_end,
-								 const size_t n_of_tests)
+	uint64_t* full_div_tests::branchless_div_tests(uint64_t* const candidates_begin,
+												   uint64_t* const candidates_end,
+												   const size_t n_of_tests)
 	{
 		using namespace div_test;
 		using namespace div_test::detail;
 
-		constexpr size_t upper_bits_mask = size_t(-1) << 32;
+		constexpr uint64_t upper_bits_mask = uint64_t(-1) << 32;
 
-		size_t* shrinking_end = candidates_end;
+		uint64_t* shrinking_end = candidates_end;
 
 		static constexpr uint256_t static_shuffle_mask_byte_0{ .m256i_u64{
 			0x0000000000000000, 0x0808080808080808, 0x0000000000000000, 0x0808080808080808 } };
@@ -350,10 +361,10 @@ namespace mbp::div_test
 		{
 			div_test_t& div_test = div_tests[i];
 
-			const size_t* input = candidates_begin;
-			size_t* output = candidates_begin;
+			const uint64_t* input = candidates_begin;
+			uint64_t* output = candidates_begin;
 
-			size_t upper_bits = *input & upper_bits_mask;
+			uint64_t upper_bits = *input & upper_bits_mask;
 			const uint8_t* indivisible_ptr = indivisible_by[div_test.prime_idx].data() +
 				util::vcl_hadd_x(_mm256_and_si256(util::expand_bits_to_bytes(upper_bits >> 32),
 												  _mm256_loadu_si256((uint256_t*)&div_test.remainders[32])));
@@ -367,7 +378,7 @@ namespace mbp::div_test
 
 				// calculate the number of candidates, rounded down to the nearest 4
 				const size_t n_of_candidates = shrinking_end - input;
-				const size_t* const rounded_end = input + (n_of_candidates - (n_of_candidates % 4));
+				const uint64_t* const rounded_end = input + (n_of_candidates - (n_of_candidates % 4));
 
 				// load four candidates
 				uint256_t candidates = _mm256_loadu_si256((uint256_t*)input);
@@ -481,7 +492,7 @@ namespace mbp::div_test
 			const uint256_t rems_lo = _mm256_loadu_si256((uint256_t*)&div_test.remainders[0]);
 			const uint256_t rems_hi = _mm256_loadu_si256((uint256_t*)&div_test.remainders[32]);
 
-			size_t number = *input; // load one iteration ahead
+			uint64_t number = *input; // load one iteration ahead
 
 			for (; input < shrinking_end; )
 			{
@@ -518,36 +529,37 @@ namespace mbp::div_test
 		return shrinking_end;
 	}
 
-	template size_t* branchless_div_tests<true>(size_t* const, size_t* const, const size_t);
-	template size_t* branchless_div_tests<false>(size_t* const, size_t* const, const size_t);
+	template uint64_t* full_div_tests::branchless_div_tests<true>(uint64_t* const, uint64_t* const, const size_t);
+	template uint64_t* full_div_tests::branchless_div_tests<false>(uint64_t* const, uint64_t* const, const size_t);
+
+
 
 	template<bool on_fast_path>
-	size_t* branching_div_tests(size_t* input,
-								const size_t* const candidates_end,
-								const size_t start_offset)
+	uint64_t* full_div_tests::branching_div_tests(uint64_t* input,
+												  const uint64_t* const candidates_end,
+												  const size_t start_offset)
 	{
 		using namespace div_test;
 
 		static_assert(sizeof(remainder_t) == 1);
 
-		constexpr size_t upper_bits_mask = size_t(-1) << 32;
+		constexpr uint64_t upper_bits_mask = uint64_t(-1) << 32;
 
-		size_t upper_bits = *input & upper_bits_mask;
-		uint256_t mask_upper = util::expand_bits_to_bytes(*input >> 32);
+		div_test_t* div_tests_start = div_tests.data() + start_offset;
+		const div_test_t* const div_tests_end = div_tests.data() + div_tests.size();
 
-		size_t* output = input;
+		// store the bitstring across four registers, where high and low lanes store the same 16 bytes
+		uint64_t upper_bits = *input & upper_bits_mask;
+		uint256_t mask_upper = util::expand_bits_to_bytes(upper_bits >> 32);
+		uint256_t candidate_bytes_45 = _mm256_permute4x64_epi64(mask_upper, 0b01'00'01'00); // 1, 0, 1, 0
+		uint256_t candidate_bytes_67 = _mm256_permute4x64_epi64(mask_upper, 0b11'10'11'10); // 3, 2, 3, 2
 
-		div_test::div_test_t* div_tests_start = div_tests.data() + start_offset;
-		const auto* const div_tests_end = div_tests.data() + div_tests.size();
+		uint64_t* output = input;
 
 		for (; input < candidates_end; ++input)
 		{
-			const size_t number = *input;
-
-			// always write
-			*output = number;
-
-			// Convert each half of the number to a 32-byte bitmask
+			const uint64_t number = *input;
+			*output = number; // always write
 
 			if constexpr (!on_fast_path)
 			{
@@ -555,41 +567,71 @@ namespace mbp::div_test
 				if ((number & upper_bits_mask) != upper_bits)
 				{
 					upper_bits = number & upper_bits_mask;
-					mask_upper = util::expand_bits_to_bytes(number >> 32);
+					mask_upper = util::expand_bits_to_bytes(upper_bits >> 32);
+					candidate_bytes_45 = _mm256_permute4x64_epi64(mask_upper, 0b01'00'01'00); // 1, 0, 1, 0
+					candidate_bytes_67 = _mm256_permute4x64_epi64(mask_upper, 0b11'10'11'10); // 3, 2, 3, 2
 				}
 			}
 
 			const uint256_t mask_lower = util::expand_bits_to_bytes(number & uint32_t(-1));
-
-			// Load 32+32 remainders into two 32-byte registers
-			uint256_t ymm0 = _mm256_loadu_si256((uint256_t*)&div_tests_start->remainders[0]);
-			uint256_t ymm1 = _mm256_loadu_si256((uint256_t*)&div_tests_start->remainders[32]);
+			const uint256_t candidate_bytes_01 = _mm256_permute4x64_epi64(mask_lower, 0b01'00'01'00); // 1, 0, 1, 0
+			const uint256_t candidate_bytes_23 = _mm256_permute4x64_epi64(mask_lower, 0b11'10'11'10); // 3, 2, 3, 2
 
 			size_t is_candidate = 1;
 
-			for (auto* div_test_ptr = div_tests_start; div_test_ptr < div_tests_end; ++div_test_ptr)
+			// load 2x 64 remainders one iteration ahead
+			const auto* permuted_ptr = permuted_div_tests.data();
+			uint256_t rems_0 = _mm256_loadu_si256((uint256_t*)(permuted_ptr->data() + (32 * 0)));
+			uint256_t rems_1 = _mm256_loadu_si256((uint256_t*)(permuted_ptr->data() + (32 * 1)));
+			uint256_t rems_2 = _mm256_loadu_si256((uint256_t*)(permuted_ptr->data() + (32 * 2)));
+			uint256_t rems_3 = _mm256_loadu_si256((uint256_t*)(permuted_ptr->data() + (32 * 3)));
+
+			for (div_test_t* div_test_ptr = div_tests_start; div_test_ptr < div_tests_end; )
 			{
-				div_test_t& div_test = *div_test_ptr;
+				div_test_t& div_test_0 = *(div_test_ptr + 0);
+				div_test_t& div_test_1 = *(div_test_ptr + 1);
 
-				// Use the byte-sized bits of the bitstring to select remainders
-				const uint256_t rems_lower = _mm256_and_si256(mask_lower, ymm0);
-				const uint256_t rems_upper = _mm256_and_si256(mask_upper, ymm1);
+				// mask 64 digits against 2 div tests
+				uint256_t selected_rems_0 = _mm256_and_si256(rems_0, candidate_bytes_01);
+				uint256_t selected_rems_1 = _mm256_and_si256(rems_1, candidate_bytes_23);
+				uint256_t selected_rems_2 = _mm256_and_si256(rems_2, candidate_bytes_45);
+				uint256_t selected_rems_3 = _mm256_and_si256(rems_3, candidate_bytes_67);
 
-				// Load the next remainders, one iteration ahead
-				ymm0 = _mm256_loadu_si256((uint256_t*)(&div_test.remainders[0] + sizeof(div_test_t)));
-				ymm1 = _mm256_loadu_si256((uint256_t*)(&div_test.remainders[32] + sizeof(div_test_t)));
+				// load 2x 64 remainders one iteration ahead
+				permuted_ptr += 2;
+				div_test_ptr += 2;
+				rems_0 = _mm256_loadu_si256((uint256_t*)(permuted_ptr->data() + (32 * 0)));
+				rems_1 = _mm256_loadu_si256((uint256_t*)(permuted_ptr->data() + (32 * 1)));
+				rems_2 = _mm256_loadu_si256((uint256_t*)(permuted_ptr->data() + (32 * 2)));
+				rems_3 = _mm256_loadu_si256((uint256_t*)(permuted_ptr->data() + (32 * 3)));
 
-				// Calculate the horizontal sum of remainders. We have two vectors to h-sum,
-				// but they can't be immediately added together without 8-bit overflow. We also
-				// don't want to pay for two full h-sums. Solve this with a custom hadd: perform
-				// the first hadd step on each vector, which extends their values from 8-bit to
-				// 16-bit integers, then safely add the vectors together and continue the hadd.
-				// This takes N+2 steps in total, instead of 2N.
-				const size_t rem = util::vcl_hadd2_x(rems_upper, rems_lower);
+				// horizontally add sets of 8 consecutive remainders
+				selected_rems_0 = _mm256_sad_epu8(selected_rems_0, _mm256_setzero_si256());
+				selected_rems_1 = _mm256_sad_epu8(selected_rems_1, _mm256_setzero_si256());
+				selected_rems_2 = _mm256_sad_epu8(selected_rems_2, _mm256_setzero_si256());
+				selected_rems_3 = _mm256_sad_epu8(selected_rems_3, _mm256_setzero_si256());
 
-				if (has_small_prime_factor(rem, div_test.prime_idx))
+				// vertically add sets of 16 remainders
+				uint256_t sum = _mm256_add_epi64(
+					_mm256_add_epi64(selected_rems_0, selected_rems_1),
+					_mm256_add_epi64(selected_rems_2, selected_rems_3));
+
+				// final horizontal add
+				sum = _mm256_add_epi64(sum, _mm256_srli_si256(sum, 8));
+
+				const uint64_t sum_0 = sum.m256i_u64[0];
+				if (has_small_prime_factor(sum_0, div_test_0.prime_idx))
 				{
-					div_test.hits++;
+					div_test_0.hits++;
+					is_candidate = 0;
+					break;
+				}
+
+				const uint128_t xmm_sum = _mm256_extracti128_si256(sum, 1);
+				const uint64_t sum_1 = xmm_sum.m128i_u64[0];
+				if (has_small_prime_factor(sum_1, div_test_1.prime_idx))
+				{
+					div_test_1.hits++;
 					is_candidate = 0;
 					break;
 				}
@@ -602,12 +644,36 @@ namespace mbp::div_test
 		return output;
 	}
 
-	template size_t* branching_div_tests<true>(size_t*, const size_t* const, const size_t);
-	template size_t* branching_div_tests<false>(size_t*, const size_t* const, const size_t);
+	template uint64_t* full_div_tests::branching_div_tests<true>(uint64_t*, const uint64_t* const, const size_t);
+	template uint64_t* full_div_tests::branching_div_tests<false>(uint64_t*, const uint64_t* const, const size_t);
 
 
 
-	void update_div_test_order()
+	void full_div_tests::permute_div_tests()
+	{
+		// (re)build a list of div tests, where pairs of div tests are permuted and stored across four registers
+		auto* permuted_dt = permuted_div_tests.data();
+		for (auto it = div_tests.cbegin() + n_of_branchless_tests; it < div_tests.cend(); it += 2, permuted_dt += 2)
+		{
+			// _mm256_loadu2_m128i() takes its args in (high, low) order
+			const uint256_t rems_0 = _mm256_loadu2_m128i((uint128_t*)&(it + 1)->remainders[16 * 0],
+														 (uint128_t*)&(it + 0)->remainders[16 * 0]);
+			const uint256_t rems_1 = _mm256_loadu2_m128i((uint128_t*)&(it + 1)->remainders[16 * 1],
+														 (uint128_t*)&(it + 0)->remainders[16 * 1]);
+			const uint256_t rems_2 = _mm256_loadu2_m128i((uint128_t*)&(it + 1)->remainders[16 * 2],
+														 (uint128_t*)&(it + 0)->remainders[16 * 2]);
+			const uint256_t rems_3 = _mm256_loadu2_m128i((uint128_t*)&(it + 1)->remainders[16 * 3],
+														 (uint128_t*)&(it + 0)->remainders[16 * 3]);
+			_mm256_storeu_si256((uint256_t*)(permuted_dt->data() + (32 * 0)), rems_0);
+			_mm256_storeu_si256((uint256_t*)(permuted_dt->data() + (32 * 1)), rems_1);
+			_mm256_storeu_si256((uint256_t*)(permuted_dt->data() + (32 * 2)), rems_2);
+			_mm256_storeu_si256((uint256_t*)(permuted_dt->data() + (32 * 3)), rems_3);
+		}
+	}
+
+
+
+	void full_div_tests::update_div_test_order()
 	{
 		using namespace div_test;
 
@@ -625,9 +691,12 @@ namespace mbp::div_test
 		// Divide hit counts by 2 to create a weighted moving average
 		for (auto& div_test : div_tests)
 			div_test.hits >>= 1u;
+
+		// update the permuted list
+		permute_div_tests();
 	}
 
-	void print_div_tests()
+	void full_div_tests::print_div_tests()
 	{
 	#if analyze_div_tests
 		using namespace div_test;
@@ -672,7 +741,7 @@ namespace mbp::div_test
 	#endif
 	}
 
-	void run_div_test_analysis(const size_t number)
+	void full_div_tests::run_div_test_analysis(const uint64_t number)
 	{
 	#if analyze_div_tests
 		using namespace div_test;

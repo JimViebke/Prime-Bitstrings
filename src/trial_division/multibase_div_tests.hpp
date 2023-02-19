@@ -16,20 +16,34 @@ Therefore, for base b, place value n, and a small prime p, we calculate and stor
 
 namespace mbp::div_test
 {
+	using div_tests_t = std::vector<div_test::div_test_t>;
 
-	template<bool on_fast_path>
-	size_t* branchless_div_tests(size_t* const candidates_begin,
-								 size_t* const candidates_end,
-								 const size_t n_of_tests);
+	class full_div_tests
+	{
+	public:
+		full_div_tests();
 
-	template<bool on_fast_path>
-	size_t* branching_div_tests(size_t* input,
-								const size_t* const candidates_end,
-								const size_t start_offset);
+		template<bool on_fast_path>
+		uint64_t* branchless_div_tests(uint64_t* const candidates_begin,
+									   uint64_t* const candidates_end,
+									   const size_t n_of_tests);
 
-	void update_div_test_order();
-	void print_div_tests();
-	void run_div_test_analysis(const size_t number);
+		template<bool on_fast_path>
+		uint64_t* branching_div_tests(uint64_t* input,
+									  const uint64_t* const candidates_end,
+									  const size_t start_offset);
+
+		void update_div_test_order();
+		void print_div_tests();
+		void run_div_test_analysis(const size_t number);
+
+	private:
+		void permute_div_tests();
+
+		div_tests_t div_tests;
+
+		std::vector<std::array<remainder_t, 64>> permuted_div_tests;
+	};
 
 	namespace detail
 	{

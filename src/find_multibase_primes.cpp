@@ -541,11 +541,11 @@ namespace mbp
 
 			if (next_div_test_reorder <= number)
 			{
-				div_test::update_div_test_order();
+				full_div_tests.update_div_test_order();
 				next_div_test_reorder += div_test::reorder_interval;
 
 			#if analyze_div_tests
-				div_test::print_div_tests();
+				full_div_tests.print_div_tests();
 				//run_div_test_analysis(number);
 			#endif
 			}
@@ -558,7 +558,7 @@ namespace mbp
 	#if analyze_div_tests
 		  // Run one final step before exiting
 		  // run_div_test_analysis();
-		div_test::print_div_tests();
+		full_div_tests.print_div_tests();
 	#endif
 
 		std::cout << "Finished. " << util::current_time_in_ms() - start << " ms elapsed\n";
@@ -660,10 +660,10 @@ namespace mbp
 
 
 		// Check for small prime factors across all bases
-		candidates_end = div_test::branchless_div_tests<on_fast_path>(candidates, candidates_end, div_test::n_of_branchless_tests);
+		candidates_end = full_div_tests.branchless_div_tests<on_fast_path>(candidates, candidates_end, div_test::n_of_branchless_tests);
 		count_passes(bldt += (candidates_end - candidates));
 
-		candidates_end = div_test::branching_div_tests<on_fast_path>(candidates, candidates_end, div_test::n_of_branchless_tests);
+		candidates_end = full_div_tests.branching_div_tests<on_fast_path>(candidates, candidates_end, div_test::n_of_branchless_tests);
 		count_passes(bidt += (candidates_end - candidates));
 
 
@@ -720,5 +720,5 @@ namespace mbp
 	}
 }
 
-template void mbp::find_multibase_primes::main_loop<true>(const size_t);
-template void mbp::find_multibase_primes::main_loop<false>(const size_t);
+template void mbp::find_multibase_primes::main_loop<true>(const uint64_t);
+template void mbp::find_multibase_primes::main_loop<false>(const uint64_t);
