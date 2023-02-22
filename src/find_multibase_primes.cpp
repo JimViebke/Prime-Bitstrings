@@ -445,25 +445,25 @@ namespace mbp
 		// Less than 256 elements left. Generate instructions for 0-4 final copies.
 		constexpr size_t leftover_elements = sieve.size() % 256;
 
-		if constexpr (leftover_elements >= 64ull * 0)
+		if constexpr (leftover_elements > 64ull * 0)
 		{
 			merge_one_block<pass>(out, out - sieve.data(), number, in,
 								  lookup_1_ptr, lookup_2_ptr, lookup_3_ptr, lookup_4_ptr, lookup_5_ptr, lookup_6_ptr, lookup_7_ptr,
 								  sieve_popcount);
 		}
-		if constexpr (leftover_elements >= 64ull * 1)
+		if constexpr (leftover_elements > 64ull * 1)
 		{
 			merge_one_block<pass>(out, out - sieve.data(), number, in,
 								  lookup_1_ptr, lookup_2_ptr, lookup_3_ptr, lookup_4_ptr, lookup_5_ptr, lookup_6_ptr, lookup_7_ptr,
 								  sieve_popcount);
 		}
-		if constexpr (leftover_elements >= 64ull * 2)
+		if constexpr (leftover_elements > 64ull * 2)
 		{
 			merge_one_block<pass>(out, out - sieve.data(), number, in,
 								  lookup_1_ptr, lookup_2_ptr, lookup_3_ptr, lookup_4_ptr, lookup_5_ptr, lookup_6_ptr, lookup_7_ptr,
 								  sieve_popcount);
 		}
-		if constexpr (leftover_elements >= 64ull * 3)
+		if constexpr (leftover_elements > 64ull * 3)
 		{
 			merge_one_block<pass>(out, out - sieve.data(), number, in,
 								  lookup_1_ptr, lookup_2_ptr, lookup_3_ptr, lookup_4_ptr, lookup_5_ptr, lookup_6_ptr, lookup_7_ptr,
