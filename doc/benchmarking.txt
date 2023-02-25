@@ -157,3 +157,4 @@ Calculate change: 1 - (  /  )
  === change benchmark from p11 + 150 billion to p11 + 500 billion ===
 40011 ms : (no changes)
 39155 ms : Perform two tests in parallel in branching div tests (~2% faster)
+39043 ms : Demote less frequently used cache lines in merge_bitmasks (<1% faster)

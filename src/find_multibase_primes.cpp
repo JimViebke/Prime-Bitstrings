@@ -382,6 +382,16 @@ namespace mbp
 					_mm_prefetch((char*)lookup_5_ptr + offset + prefetch_offset, _MM_HINT_T0);
 					_mm_prefetch((char*)lookup_6_ptr + offset + prefetch_offset, _MM_HINT_T0);
 					_mm_prefetch((char*)lookup_7_ptr + offset + prefetch_offset, _MM_HINT_T0);
+
+					// Demote input and output cache lines. Both will be reused, but some mask data will be reused sooner.
+					// In pass 2, input and output pointers are the same, so [in] only needs to be demoted in pass 1.
+
+					if constexpr (pass == 1)
+					{
+						_mm_cldemote(in + offset - 64);
+					}
+
+					_mm_cldemote(out + offset - 64);
 				}
 
 				const uint256_t m1 = _mm256_and_si256(data_0, data_1);
