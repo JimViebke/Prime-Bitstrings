@@ -8,8 +8,7 @@ namespace mbp::prime_sieve
 
 	void set_up_sieve_offsets_cache(const size_t start);
 
-	void partial_sieve(const uint64_t number,
-					   sieve_container& sieve,
+	void partial_sieve(sieve_container& sieve,
 					   const size_t sieve_popcount);
 
 	uint64_t* gather_sieve_results(uint64_t* candidates,

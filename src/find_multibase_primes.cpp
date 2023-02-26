@@ -617,8 +617,7 @@ namespace mbp
 		// Sieve until one of our density thresholds is reached
 		for (size_t i = 0; i < prime_sieve::steps; ++i)
 		{
-			const uint64_t sieve_start = number + (i * sieve_container::size() * 2);
-			prime_sieve::partial_sieve(sieve_start, (*sieves)[i], sieve_popcounts[i]);
+			prime_sieve::partial_sieve((*sieves)[i], sieve_popcounts[i]);
 			count_passes(ps15 += (*sieves)[i].count_bits());
 		}
 

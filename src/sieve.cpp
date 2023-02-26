@@ -31,7 +31,7 @@ namespace mbp::prime_sieve
 		// Start with the first prime not in the static sieve.
 		for (size_t i = static_sieve_primes.size() + 1; i < small_primes_lookup.size(); ++i)
 		{
-			size_t p = small_primes_lookup[i];
+			const size_t p = small_primes_lookup[i];
 
 			// We sieve by strides of 15*p, so align p to an (odd) multiple of 15*p
 			const size_t p15 = p * 15;
@@ -69,45 +69,39 @@ namespace mbp::prime_sieve
 		}
 	}
 
-	void update_sieve_offsets_cache(const uint64_t start,
-									const sieve_prime_t* prime_ptr,
+	// precalculate stride - (sieve_size % stride)
+	constexpr static std::array<sieve_offset_t, small_primes_lookup.size()> modulo_precomp = []() consteval {
+		std::array<sieve_offset_t, small_primes_lookup.size()> arr{};
+
+		for (size_t i = static_sieve_primes.size() + 1; i < small_primes_lookup.size(); ++i)
+		{
+			const size_t prime = small_primes_lookup[i];
+			size_t stride = prime * 15;
+			if (prime <= largest_vector_sieve_prime) stride *= 8;
+			arr[i] = sieve_offset_t(stride - (sieve_container::size() % stride));
+		}
+
+		return arr;
+	}();
+
+	void update_sieve_offsets_cache(const sieve_prime_t* prime_ptr,
 									sieve_offset_t* offset_ptr)
 	{
+		const auto* mp_ptr = modulo_precomp.data() + (prime_ptr - small_primes_lookup.data());
+
 		for (size_t prime = *prime_ptr;
 			 prime <= largest_sieve_prime;
-			 prime = *++prime_ptr, ++offset_ptr)
+			 prime = *++prime_ptr, ++offset_ptr, ++mp_ptr)
 		{
-			// We sieve by strides of 8*15*p, so align p to an (odd) multiple of 8*15*p
-			const size_t p15 = prime * 15;
+			// We sieve by strides of 8*15*p for vectorized sieving, and 15*p otherwise.
+			// Calculate the offset of the next odd multiple of the stride size.
 
-			// Find out how far it is to the next multiple of p15.
-			const size_t rem = (start % p15);
-			size_t n = p15 - rem;
+			const size_t stride = prime * 15 * ((prime <= largest_vector_sieve_prime) ? 8 : 1);
 
-			// Start is always odd. Therefore:
-			// - If n is odd, it is pointing to the next even multiple of p15. Increase by p15.
-			// - If n is even, it is pointing to the next odd multiple of p15. Do nothing.
-			if (n % 2 == 1)
-				n += p15;
+			size_t n = *offset_ptr;
 
-			// Handle an edge case where start % prime == 0
-			if (rem == 0)
-				n = 0;
-
-			// We now have the distance to the next odd multiple of p.
-			// Divide by 2 to get the *index* of the next odd multiple of p.
-			n /= 2;
-
-			if (prime <= largest_vector_sieve_prime)
-			{
-				// We sieve by strides of 8*15*p, starting with a bit offset of 0.
-				// Advance by 15*p until we have this alignment.
-				while (n % 8 != 0)
-					n += p15;
-
-				// If we've ended up at the second multiple of 8*15*p, step back to the first.
-				n = util::min(n, n - 8ull * p15);
-			}
+			n += *mp_ptr;
+			n = util::min(n, n - stride);
 
 			*offset_ptr = sieve_offset_t(n);
 		}
@@ -119,7 +113,7 @@ namespace mbp::prime_sieve
 		{
 			const uint64_t prime = small_primes_lookup[i];
 			const uint64_t p15 = 15ull * prime;
-			const uint64_t offset = sieve_offsets_cache[i];
+			const size_t offset = sieve_offsets_cache[i];
 
 			// 1. start + (2 * offset) should be evenly divisible by 15*p
 			if ((start + (2 * offset)) % p15 != 0)
@@ -477,8 +471,7 @@ namespace mbp::prime_sieve
 		return j;
 	}
 
-	void partial_sieve(const uint64_t number,
-					   sieve_container& sieve,
+	void partial_sieve(sieve_container& sieve,
 					   const size_t sieve_popcount)
 	{
 		// Sieve primes by strides of 15*p:
@@ -496,10 +489,10 @@ namespace mbp::prime_sieve
 		// calculate sieve density
 		double density = double(sieve_popcount) / sieve_container::size();
 
-		// don't do any sieving if our bit pattern filters + static sieve already cleared enough
+		// don't do any sieving if our bitmasks + static sieve already cleared enough
 		if (density < vector_density_threshold)
 		{
-			update_sieve_offsets_cache(number + 2 * sieve_container::size(), prime_ptr, offset_cache_ptr);
+			update_sieve_offsets_cache(prime_ptr, offset_cache_ptr);
 			return;
 		}
 
@@ -532,8 +525,7 @@ namespace mbp::prime_sieve
 			if (density < scalar_density_threshold)
 			{
 				// If we stop sieving early, we still need to update our offsets cache
-				update_sieve_offsets_cache(number + 2 * sieve_container::size(),
-										   prime_ptr, offset_cache_ptr);
+				update_sieve_offsets_cache(prime_ptr, offset_cache_ptr);
 				break;
 			}
 
