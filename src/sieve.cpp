@@ -33,6 +33,22 @@ namespace mbp::prime_sieve
 		{
 			const size_t p = small_primes_lookup[i];
 
+			if (p >= 17 && p <= largest_aligned_vector_sieve_prime) // handle seperately
+			{
+				size_t n = p - (start % p); // get distance to the next multiple of p
+
+				if (n % 2 == 1) // conditionally step from an even to an odd multiple
+					n += p;
+
+				if (n == 2ull * p) // handle edge cases where start % prime == 0
+					n = 0;
+
+				n /= 2; // convert distance to index
+
+				sieve_offsets_cache[i] = sieve_offset_t(n);
+				continue;
+			}
+
 			// We sieve by strides of 15*p, so align p to an (odd) multiple of 15*p
 			const size_t p15 = p * 15;
 
@@ -76,6 +92,13 @@ namespace mbp::prime_sieve
 		for (size_t i = static_sieve_primes.size() + 1; i < small_primes_lookup.size(); ++i)
 		{
 			const size_t prime = small_primes_lookup[i];
+
+			if (prime >= 17 && prime <= largest_aligned_vector_sieve_prime) // handle seperately
+			{
+				arr[i] = sieve_offset_t(prime - (sieve_container::size() % prime));
+				continue;
+			}
+
 			size_t stride = prime * 15;
 			if (prime <= largest_vector_sieve_prime) stride *= 8;
 			arr[i] = sieve_offset_t(stride - (sieve_container::size() % stride));
@@ -89,17 +112,21 @@ namespace mbp::prime_sieve
 	{
 		const auto* mp_ptr = modulo_precomp.data() + (prime_ptr - small_primes_lookup.data());
 
+		// Calculate the offset of the next odd multiple of the stride size.
 		for (size_t prime = *prime_ptr;
 			 prime <= largest_sieve_prime;
 			 prime = *++prime_ptr, ++offset_ptr, ++mp_ptr)
 		{
-			// We sieve by strides of 8*15*p for vectorized sieving, and 15*p otherwise.
-			// Calculate the offset of the next odd multiple of the stride size.
+			size_t stride = prime;
 
-			const size_t stride = prime * 15 * ((prime <= largest_vector_sieve_prime) ? 8 : 1);
+			// *15 if the prime is used for unaligned vector sieving or scalar sieving
+			stride *= (prime > largest_aligned_vector_sieve_prime) ? 15 : 1;
+
+			// *8 if the prime is used for unaligned vector sieving
+			stride *= (prime > largest_aligned_vector_sieve_prime &&
+					   prime <= largest_vector_sieve_prime) ? 8 : 1;
 
 			size_t n = *offset_ptr;
-
 			n += *mp_ptr;
 			n = util::min(n, n - stride);
 
@@ -112,8 +139,26 @@ namespace mbp::prime_sieve
 		for (size_t i = static_sieve_primes.size() + 1; small_primes_lookup[i] <= largest_sieve_prime; ++i)
 		{
 			const uint64_t prime = small_primes_lookup[i];
-			const uint64_t p15 = 15ull * prime;
 			const size_t offset = sieve_offsets_cache[i];
+
+			if (prime >= 17 && prime <= largest_aligned_vector_sieve_prime) // handle seperately
+			{
+				if (offset >= prime)
+				{
+					std::cout << "offset == " << offset << ", should be less than prime (" << prime << "), start = " << start << '\n';
+					std::cin.ignore();
+				}
+
+				if ((start + (2 * offset)) % prime != 0)
+				{
+					std::cout << "(start + (2 * offset)) % prime == " << (start + (2 * offset)) % prime << ", should be 0 (offset == " << offset << "), start = " << start << '\n';
+					std::cin.ignore();
+				}
+
+				continue;
+			}
+
+			const uint64_t p15 = 15ull * prime;
 
 			// 1. start + (2 * offset) should be evenly divisible by 15*p
 			if ((start + (2 * offset)) % p15 != 0)
@@ -151,6 +196,24 @@ namespace mbp::prime_sieve
 		std::array<bit_array<256>, 8> masks{};
 
 		for (size_t bit_offset = 0; bit_offset < 8; ++bit_offset)
+		{
+			masks[bit_offset].set_all();
+
+			for (size_t i = bit_offset; i < 256; i += p)
+			{
+				masks[bit_offset].clear_bit(i);
+			}
+		}
+
+		return masks;
+	}
+
+	template<size_t p>
+	consteval std::array<bit_array<256>, p> generate_aligned_sieve_masks()
+	{
+		std::array<bit_array<256>, p> masks{};
+
+		for (size_t bit_offset = 0; bit_offset < p; ++bit_offset)
 		{
 			masks[bit_offset].set_all();
 
@@ -276,6 +339,114 @@ namespace mbp::prime_sieve
 			clear_next_eight<p, m2>(ptr_to_1p);
 		}
 	}
+
+	template<size_t p, size_t chunk = 0>
+	__forceinline void generate_aligned_vector_writes(
+		uint256_t* const ptr, const auto& masks,
+		const uint256_t& mask_0, const uint256_t& mask_1, const uint256_t& mask_2, const uint256_t& mask_3,
+		const uint256_t& mask_4, const uint256_t& mask_5, const uint256_t& mask_6, const uint256_t& mask_7,
+		const uint256_t& mask_8, const uint256_t& mask_9, const uint256_t& mask_10, const uint256_t& mask_11,
+		const uint256_t& mask_12, const uint256_t& mask_13)
+	{
+		constexpr size_t bit_offset = (p - ((chunk * 256) % p)) % p; // cleaner way to do this?
+
+		uint256_t mask{};
+
+		if constexpr (bit_offset == 0) mask = mask_0;
+		else if constexpr (bit_offset == 1) mask = mask_1;
+		else if constexpr (bit_offset == 2) mask = mask_2;
+		else if constexpr (bit_offset == 3) mask = mask_3;
+		else if constexpr (bit_offset == 4) mask = mask_4;
+		else if constexpr (bit_offset == 5) mask = mask_5;
+		else if constexpr (bit_offset == 6) mask = mask_6;
+		else if constexpr (bit_offset == 7) mask = mask_7;
+		else if constexpr (bit_offset == 8) mask = mask_8;
+		else if constexpr (bit_offset == 9) mask = mask_9;
+		else if constexpr (bit_offset == 10) mask = mask_10;
+		else if constexpr (bit_offset == 11) mask = mask_11;
+		else if constexpr (bit_offset == 12) mask = mask_12;
+		else if constexpr (bit_offset == 13) mask = mask_13;
+		else mask = *(uint256_t*)masks[bit_offset].data();
+
+		*ptr = _mm256_and_si256(mask, *ptr);
+
+		if constexpr (chunk + 1 < p)
+			generate_aligned_vector_writes<p, chunk + 1>(
+				ptr + 1, masks,
+				mask_0, mask_1, mask_2, mask_3, mask_4,
+				mask_5, mask_6, mask_7, mask_8, mask_9,
+				mask_10, mask_11, mask_12, mask_13);
+	}
+
+	template<size_t p>
+	__forceinline void aligned_vectorized_sieve_pass(sieve_container& sieve,
+													 const sieve_prime_t*& prime_ptr,
+													 sieve_offset_t*& offset_cache_ptr)
+	{
+		constexpr static std::array masks = generate_aligned_sieve_masks<p>();
+
+		size_t j = *offset_cache_ptr;
+		uint256_t* ptr = (uint256_t*)sieve.data();
+
+		// align j with a bit offset of 0
+		while (j != 0)
+		{
+			*ptr = _mm256_and_si256(*(uint256_t*)masks[j].data(), *ptr);
+
+			j += p - (256 % p);
+			j = util::min(j, j - p);
+			++ptr;
+		}
+
+		// MSVC will use 14 of 16 YMM registers for constants without stack spilling
+		const uint256_t mask_0 = _mm256_loadu_si256((uint256_t*)masks[0].data());
+		const uint256_t mask_1 = _mm256_loadu_si256((uint256_t*)masks[1].data());
+		const uint256_t mask_2 = _mm256_loadu_si256((uint256_t*)masks[2].data());
+		const uint256_t mask_3 = _mm256_loadu_si256((uint256_t*)masks[3].data());
+		const uint256_t mask_4 = _mm256_loadu_si256((uint256_t*)masks[4].data());
+		const uint256_t mask_5 = _mm256_loadu_si256((uint256_t*)masks[5].data());
+		const uint256_t mask_6 = _mm256_loadu_si256((uint256_t*)masks[6].data());
+		const uint256_t mask_7 = _mm256_loadu_si256((uint256_t*)masks[7].data());
+		const uint256_t mask_8 = _mm256_loadu_si256((uint256_t*)masks[8].data());
+		const uint256_t mask_9 = _mm256_loadu_si256((uint256_t*)masks[9].data());
+		const uint256_t mask_10 = _mm256_loadu_si256((uint256_t*)masks[10].data());
+		const uint256_t mask_11 = _mm256_loadu_si256((uint256_t*)masks[11].data());
+		const uint256_t mask_12 = _mm256_loadu_si256((uint256_t*)masks[12].data());
+		const uint256_t mask_13 = _mm256_loadu_si256((uint256_t*)masks[13].data());
+
+		// iterate until we reach the last p-1 chunks
+		constexpr size_t n_chunks = sieve_container::size() / 256ull;
+		const uint256_t* const aligned_end = ((uint256_t*)sieve.data()) + n_chunks;
+		const uint256_t* const extra_aligned_end = aligned_end - (p - 1);
+
+		do
+		{
+			generate_aligned_vector_writes<p>(ptr, masks,
+											  mask_0, mask_1, mask_2, mask_3, mask_4,
+											  mask_5, mask_6, mask_7, mask_8, mask_9,
+											  mask_10, mask_11, mask_12, mask_13);
+			ptr += p; // advance by p*32 bytes
+		} while (ptr < extra_aligned_end);
+
+		while (ptr < aligned_end)
+		{
+			*ptr = _mm256_and_si256(*(uint256_t*)masks[j].data(), *ptr);
+
+			j += p - (256 % p);
+			j = util::min(j, j - p);
+			++ptr;
+		}
+
+		j += p - ((sieve_container::size() % 256) % p);
+		j = util::min(j, j - p);
+
+		*offset_cache_ptr = sieve_offset_t(j);
+
+		++prime_ptr;
+		++offset_cache_ptr;
+	}
+
+
 
 	// m_offset = the number of multiples of p past the sieve pointer
 	template<size_t p, size_t m_offset = 1>
@@ -497,15 +668,16 @@ namespace mbp::prime_sieve
 		}
 
 		static_assert(small_primes_lookup[static_sieve_primes.size() + 1] == 17);
-		vectorized_sieve_pass<17>(sieve, prime_ptr, offset_cache_ptr);
-		vectorized_sieve_pass<19>(sieve, prime_ptr, offset_cache_ptr);
-		vectorized_sieve_pass<23>(sieve, prime_ptr, offset_cache_ptr);
-		vectorized_sieve_pass<29>(sieve, prime_ptr, offset_cache_ptr);
-		vectorized_sieve_pass<31>(sieve, prime_ptr, offset_cache_ptr);
-		vectorized_sieve_pass<37>(sieve, prime_ptr, offset_cache_ptr);
-		vectorized_sieve_pass<41>(sieve, prime_ptr, offset_cache_ptr);
-		vectorized_sieve_pass<43>(sieve, prime_ptr, offset_cache_ptr);
-		vectorized_sieve_pass<47>(sieve, prime_ptr, offset_cache_ptr);
+		aligned_vectorized_sieve_pass<17>(sieve, prime_ptr, offset_cache_ptr);
+		aligned_vectorized_sieve_pass<19>(sieve, prime_ptr, offset_cache_ptr);
+		aligned_vectorized_sieve_pass<23>(sieve, prime_ptr, offset_cache_ptr);
+		aligned_vectorized_sieve_pass<29>(sieve, prime_ptr, offset_cache_ptr);
+		aligned_vectorized_sieve_pass<31>(sieve, prime_ptr, offset_cache_ptr);
+		aligned_vectorized_sieve_pass<37>(sieve, prime_ptr, offset_cache_ptr);
+		aligned_vectorized_sieve_pass<41>(sieve, prime_ptr, offset_cache_ptr);
+		aligned_vectorized_sieve_pass<43>(sieve, prime_ptr, offset_cache_ptr);
+		aligned_vectorized_sieve_pass<47>(sieve, prime_ptr, offset_cache_ptr);
+		static_assert(largest_aligned_vector_sieve_prime == 47);
 		vectorized_sieve_pass<53>(sieve, prime_ptr, offset_cache_ptr);
 		vectorized_sieve_pass<59>(sieve, prime_ptr, offset_cache_ptr);
 		vectorized_sieve_pass<61>(sieve, prime_ptr, offset_cache_ptr);

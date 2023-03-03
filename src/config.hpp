@@ -39,6 +39,7 @@ namespace mbp
 		constexpr size_t static_sieve_size = 2 * 8 * product_of_static_sieve_primes;
 
 		constexpr size_t steps = 16; // default 16
+		constexpr size_t largest_aligned_vector_sieve_prime = 47; // default 47
 		constexpr size_t largest_vector_sieve_prime = 79; // default 79
 		constexpr size_t largest_sieve_prime = 263; // default 263
 
