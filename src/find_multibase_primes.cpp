@@ -41,21 +41,6 @@ namespace mbp
 		return outer_even_pc - outer_odd_pc + 23; // +23 to normalize -23,24 to 0,47
 	}
 
-	template<size_t base, size_t prime>
-	__forceinline size_t get_lookup_idx_for(const uint64_t number)
-	{
-		using namespace detail;
-		using namespace div_test;
-		using namespace div_test::detail;
-
-		constexpr size_t max_sum_of_rems = get_sum_of_rems<prime, in_base<base>>(outer_48_bits_mask);
-
-		const size_t sum = get_sum_of_rems<prime, in_base<base>>(number & outer_48_bits_mask);
-
-		__assume(sum <= max_sum_of_rems);
-		return sum % prime;
-	}
-
 	// out_ptr is used to set ss_ptr in pass 1, and sieve_data in pass 2
 	template<size_t pass>
 	__forceinline void set_lookup_ptrs(const uint8_t* out_ptr,
