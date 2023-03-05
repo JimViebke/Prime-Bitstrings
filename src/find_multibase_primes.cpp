@@ -506,10 +506,13 @@ namespace mbp
 
 			if constexpr (pass == last_pass)
 			{
-				sieve_popcount += pc.m256i_u64[0];
-				sieve_popcount += pc.m256i_u64[1];
-				sieve_popcount += pc.m256i_u64[2];
-				sieve_popcount += pc.m256i_u64[3];
+				alignas(sizeof(uint256_t)) uint64_t buf[4]{};
+				_mm256_storeu_si256((uint256_t*)buf, pc);
+
+				sieve_popcount += buf[0];
+				sieve_popcount += buf[1];
+				sieve_popcount += buf[2];
+				sieve_popcount += buf[3];
 			}
 
 			// if we are not at aligned_end, we are at a rollover
