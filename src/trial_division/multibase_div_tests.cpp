@@ -30,7 +30,7 @@ namespace mbp::div_test
 					// Skip candidates removed by the static sieve
 					if (base == 2 && p <= prime_sieve::static_sieve_primes.back()) continue;
 
-					// Implemented with bit pattern filter
+					// Implemented with bit masks
 					if (base == 3 && p == 5) continue;
 					if (base == 3 && p == 7) continue;
 					if (base == 3 && p == 13) continue;
@@ -43,18 +43,17 @@ namespace mbp::div_test
 					if (base == 9 && p == 13) continue;
 					if (base == 10 && p == 13) continue;
 					if (base == 13 && p == 17) continue;
+					// pass 3
+					if (base == 3 && p == 11) continue;
+					if (base == 4 && p == 11) continue;
+					if (base == 5 && p == 11) continue;
+					if (base == 9 && p == 11) continue;
 
 					// Always suppress hardcoded div tests
 
 					// second set with 4 remainders
 					if (base == 12 && p == 29) continue;
 					if (base == 6 && p == 37) continue;
-
-					// 5 remainders
-					if (base == 3 && p == 11) continue;
-					if (base == 4 && p == 11) continue;
-					if (base == 5 && p == 11) continue;
-					if (base == 9 && p == 11) continue;
 
 					// 16 remainders
 					if (base == 3 && p == 17) continue;

@@ -115,11 +115,13 @@ namespace mbp
 			lookup_6_ptr = (*b8m13_lookup)[b8_sum % 13].data() + byte_offset;
 			lookup_7_ptr = (*b13m17_lookup)[b13_sum % 17].data() + byte_offset;
 		}
+		else // all passes except for pass 1
+		{
+			in_ptr = out_ptr; // wherever we're writing to in the sieve is also the location we have to read from
+		}
 
 		if constexpr (pass == 2)
 		{
-			in_ptr = out_ptr; // wherever we're writing to in the sieve is also the location we have to read from
-
 			{
 				constexpr uint64_t bitmask = bitmask_for<3, 13>::val;
 				static_assert(bitmask == bitmask_for<4, 7>::val);
@@ -197,9 +199,54 @@ namespace mbp
 				lookup_7_ptr = (*b10m13_lookup)[b10_sum % 13].data() + byte_offset;
 			}
 		}
+
+		if constexpr (pass == 3)
+		{
+			constexpr uint64_t bitmask = bitmask_for<3, 11>::val;
+			static_assert(bitmask == bitmask_for<4, 11>::val);
+			static_assert(bitmask == bitmask_for<5, 11>::val);
+			static_assert(bitmask == bitmask_for<9, 11>::val);
+			static_assert(period_of<bitmask>::val == 5);
+
+			const size_t pc_0 = pop_count(next_number & ((bitmask << 0) & outer_48_bits_mask));
+			size_t b3_sum = pc_0;
+			size_t b4_sum = pc_0;
+			size_t b5_sum = pc_0;
+			size_t b9_sum = pc_0;
+			const size_t pc_1 = pop_count(next_number & ((bitmask << 1) & outer_48_bits_mask));
+			b3_sum += pc_1 * pow_mod<3, 1, 11>::rem;
+			b4_sum += pc_1 * pow_mod<4, 1, 11>::rem;
+			b5_sum += pc_1 * pow_mod<5, 1, 11>::rem;
+			b9_sum += pc_1 * pow_mod<9, 1, 11>::rem;
+			const size_t pc_2 = pop_count(next_number & ((bitmask << 2) & outer_48_bits_mask));
+			b3_sum += pc_2 * pow_mod<3, 2, 11>::rem;
+			b4_sum += pc_2 * pow_mod<4, 2, 11>::rem;
+			b5_sum += pc_2 * pow_mod<5, 2, 11>::rem;
+			b9_sum += pc_2 * pow_mod<9, 2, 11>::rem;
+			const size_t pc_3 = pop_count(next_number & ((bitmask << 3) & outer_48_bits_mask));
+			b3_sum += pc_3 * pow_mod<3, 3, 11>::rem;
+			b4_sum += pc_3 * pow_mod<4, 3, 11>::rem;
+			b5_sum += pc_3 * pow_mod<5, 3, 11>::rem;
+			b9_sum += pc_3 * pow_mod<9, 3, 11>::rem;
+			const size_t pc_4 = pop_count(next_number & ((bitmask << 4) & outer_48_bits_mask));
+			b3_sum += pc_4 * pow_mod<3, 4, 11>::rem;
+			b4_sum += pc_4 * pow_mod<4, 4, 11>::rem;
+			b5_sum += pc_4 * pow_mod<5, 4, 11>::rem;
+			b9_sum += pc_4 * pow_mod<9, 4, 11>::rem;
+
+			__assume(b3_sum <= get_sum_of_rems<11, in_base<3>>(outer_48_bits_mask));
+			__assume(b4_sum <= get_sum_of_rems<11, in_base<4>>(outer_48_bits_mask));
+			__assume(b5_sum <= get_sum_of_rems<11, in_base<5>>(outer_48_bits_mask));
+			__assume(b9_sum <= get_sum_of_rems<11, in_base<9>>(outer_48_bits_mask));
+
+			lookup_1_ptr = (*b3m11_lookup)[b3_sum % 11].data() + byte_offset;
+			lookup_2_ptr = (*b4m11_lookup)[b4_sum % 11].data() + byte_offset;
+			lookup_3_ptr = (*b5m11_lookup)[b5_sum % 11].data() + byte_offset;
+			lookup_4_ptr = (*b9m11_lookup)[b9_sum % 11].data() + byte_offset;
+		}
 	}
 
-	constexpr size_t last_pass = 2;
+	constexpr size_t last_pass = 3;
 
 	template<size_t pass>
 	__forceinline void merge_one_block(uint8_t*& out,
@@ -218,22 +265,32 @@ namespace mbp
 		const size_t elements_to_rollover = (pow_2_16 - ((number & detail::bits_1_16_mask) >> 1)) % pow_2_16; // map 65,536 -> 0
 
 		uint64_t mask = *(uint64_t*)in;
-		const uint64_t bit_patterns_mask = (*(uint64_t*)lookup_1_ptr &
-											*(uint64_t*)lookup_2_ptr &
-											*(uint64_t*)lookup_3_ptr &
-											*(uint64_t*)lookup_4_ptr &
-											*(uint64_t*)lookup_5_ptr &
-											*(uint64_t*)lookup_6_ptr &
-											*(uint64_t*)lookup_7_ptr);
+		uint64_t bit_patterns_mask{};
+		if constexpr (pass < 3)
+			bit_patterns_mask = (*(uint64_t*)lookup_1_ptr &
+								 *(uint64_t*)lookup_2_ptr &
+								 *(uint64_t*)lookup_3_ptr &
+								 *(uint64_t*)lookup_4_ptr &
+								 *(uint64_t*)lookup_5_ptr &
+								 *(uint64_t*)lookup_6_ptr &
+								 *(uint64_t*)lookup_7_ptr);
+		else
+			bit_patterns_mask = (*(uint64_t*)lookup_1_ptr &
+								 *(uint64_t*)lookup_2_ptr &
+								 *(uint64_t*)lookup_3_ptr &
+								 *(uint64_t*)lookup_4_ptr);
 
 		in += sizeof(uint64_t);
 		lookup_1_ptr += sizeof(uint64_t);
 		lookup_2_ptr += sizeof(uint64_t);
 		lookup_3_ptr += sizeof(uint64_t);
 		lookup_4_ptr += sizeof(uint64_t);
-		lookup_5_ptr += sizeof(uint64_t);
-		lookup_6_ptr += sizeof(uint64_t);
-		lookup_7_ptr += sizeof(uint64_t);
+		if constexpr (pass < 3)
+		{
+			lookup_5_ptr += sizeof(uint64_t);
+			lookup_6_ptr += sizeof(uint64_t);
+			lookup_7_ptr += sizeof(uint64_t);
+		}
 
 		if (elements_to_rollover >= 64) // copy another block using lookup data
 		{
@@ -247,13 +304,20 @@ namespace mbp
 			set_lookup_ptrs<pass>(out, 0, number + (elements_to_rollover * 2), dummy_ptr,
 								  lookup_1_ptr, lookup_2_ptr, lookup_3_ptr, lookup_4_ptr, lookup_5_ptr, lookup_6_ptr, lookup_7_ptr);
 
-			const uint64_t new_mask = (*(uint64_t*)lookup_1_ptr &
-									   *(uint64_t*)lookup_2_ptr &
-									   *(uint64_t*)lookup_3_ptr &
-									   *(uint64_t*)lookup_4_ptr &
-									   *(uint64_t*)lookup_5_ptr &
-									   *(uint64_t*)lookup_6_ptr &
-									   *(uint64_t*)lookup_7_ptr) << elements_to_rollover;
+			uint64_t new_mask{};
+			if constexpr (pass < 3)
+				new_mask = (*(uint64_t*)lookup_1_ptr &
+							*(uint64_t*)lookup_2_ptr &
+							*(uint64_t*)lookup_3_ptr &
+							*(uint64_t*)lookup_4_ptr &
+							*(uint64_t*)lookup_5_ptr &
+							*(uint64_t*)lookup_6_ptr &
+							*(uint64_t*)lookup_7_ptr) << elements_to_rollover;
+			else
+				new_mask = (*(uint64_t*)lookup_1_ptr &
+							*(uint64_t*)lookup_2_ptr &
+							*(uint64_t*)lookup_3_ptr &
+							*(uint64_t*)lookup_4_ptr) << elements_to_rollover;
 
 			const uint64_t select_from_old = (1ull << elements_to_rollover) - 1; // up to and including rollover
 			const uint64_t select_from_new = ~select_from_old;
@@ -286,20 +350,18 @@ namespace mbp
 		constexpr static uint256_t static_nybble_mask{ .m256i_u64{
 			0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F } };
 
-		size_t sieve_popcount = 0;
-
-		const uint8_t* const aligned_end = sieve.data() + ((sieve.size() / 256) * sizeof(uint256_t));
-		uint8_t* out = sieve.data();
-
 		// while out != aligned_end:
-		// - iterate by 4 blocks until we hit aligned_end, or a rollover of bits 1-16, whichever happens first
+		// - iterate by 32 bytes until we hit aligned_end, or a rollover of bits 1-16, whichever happens first
 		// - if we broke before aligned_end, we hit a rollover
-		//   - handle the next 4 blocks seperately, then continue
+		//   - handle the next 32 bytes separately, then loop
 		// handle cleanup
 
-		const uint8_t* in{};
-		// pointers into our large bitmask lookups
-		const uint8_t* lookup_1_ptr{};
+		size_t sieve_popcount = 0;
+
+		uint8_t* out = sieve.data();
+
+		const uint8_t* in{}; // either the static sieve (pass 1) or the sieve (every other pass)
+		const uint8_t* lookup_1_ptr{}; // pointers into our large bitmask lookups
 		const uint8_t* lookup_2_ptr{};
 		const uint8_t* lookup_3_ptr{};
 		const uint8_t* lookup_4_ptr{};
@@ -316,16 +378,22 @@ namespace mbp
 							  lookup_6_ptr,
 							  lookup_7_ptr);
 
+
+
+		constexpr size_t bytes_per_step = sizeof(uint256_t);
+
+		const uint8_t* const aligned_end = out + ((sieve_container::size() / 256) * bytes_per_step);
+
 		for (; out != aligned_end; )
 		{
 			// The hot loop handles 256 elements (256 bits) per iteration.
 			// How many times can we do this before reaching the lookups' ends?
 			// Calculate this up front so the hot loop can run using a simpler condition.
 
+			constexpr size_t elements_per_step = bytes_per_step * 8;
+
 			const size_t elements_to_rollover = pow_2_16 - ((number & detail::bits_1_16_mask) >> 1);
 
-			constexpr size_t bytes_per_step = sizeof(uint256_t);
-			constexpr size_t elements_per_step = bytes_per_step * 8;
 
 			const size_t n_steps = std::min(elements_to_rollover / elements_per_step,
 											(aligned_end - out) / bytes_per_step);
@@ -351,9 +419,15 @@ namespace mbp
 				const uint256_t data_2 = _mm256_loadu_si256((uint256_t*)(lookup_2_ptr + offset));
 				const uint256_t data_3 = _mm256_loadu_si256((uint256_t*)(lookup_3_ptr + offset));
 				const uint256_t data_4 = _mm256_loadu_si256((uint256_t*)(lookup_4_ptr + offset));
-				const uint256_t data_5 = _mm256_loadu_si256((uint256_t*)(lookup_5_ptr + offset));
-				const uint256_t data_6 = _mm256_loadu_si256((uint256_t*)(lookup_6_ptr + offset));
-				const uint256_t data_7 = _mm256_loadu_si256((uint256_t*)(lookup_7_ptr + offset));
+				uint256_t data_5{};
+				uint256_t data_6{};
+				uint256_t data_7{};
+				if constexpr (pass < 3)
+				{
+					data_5 = _mm256_loadu_si256((uint256_t*)(lookup_5_ptr + offset));
+					data_6 = _mm256_loadu_si256((uint256_t*)(lookup_6_ptr + offset));
+					data_7 = _mm256_loadu_si256((uint256_t*)(lookup_7_ptr + offset));
+				}
 
 				if (offset % (2 * bytes_per_step) == 0) // every other iteration
 				{
@@ -364,12 +438,15 @@ namespace mbp
 					_mm_prefetch((char*)lookup_2_ptr + offset + prefetch_offset, _MM_HINT_T0);
 					_mm_prefetch((char*)lookup_3_ptr + offset + prefetch_offset, _MM_HINT_T0);
 					_mm_prefetch((char*)lookup_4_ptr + offset + prefetch_offset, _MM_HINT_T0);
-					_mm_prefetch((char*)lookup_5_ptr + offset + prefetch_offset, _MM_HINT_T0);
-					_mm_prefetch((char*)lookup_6_ptr + offset + prefetch_offset, _MM_HINT_T0);
-					_mm_prefetch((char*)lookup_7_ptr + offset + prefetch_offset, _MM_HINT_T0);
+					if constexpr (pass < 3)
+					{
+						_mm_prefetch((char*)lookup_5_ptr + offset + prefetch_offset, _MM_HINT_T0);
+						_mm_prefetch((char*)lookup_6_ptr + offset + prefetch_offset, _MM_HINT_T0);
+						_mm_prefetch((char*)lookup_7_ptr + offset + prefetch_offset, _MM_HINT_T0);
+					}
 
 					// Demote input and output cache lines. Both will be reused, but some mask data will be reused sooner.
-					// In pass 2, input and output pointers are the same, so [in] only needs to be demoted in pass 1.
+					// In passes >1, input and output pointers are the same, so [in] only needs to be demoted in pass 1.
 
 					if constexpr (pass == 1)
 					{
@@ -379,13 +456,21 @@ namespace mbp
 					_mm_cldemote(out + offset - 64);
 				}
 
+				uint256_t merged_data{};
 				const uint256_t m1 = _mm256_and_si256(data_0, data_1);
 				const uint256_t m2 = _mm256_and_si256(data_2, data_3);
-				const uint256_t m3 = _mm256_and_si256(data_4, data_5);
-				const uint256_t m4 = _mm256_and_si256(data_6, data_7);
-
-				uint256_t merged_data = _mm256_and_si256(_mm256_and_si256(m1, m2),
-														 _mm256_and_si256(m3, m4));
+				if constexpr (pass < 3)
+				{
+					const uint256_t m3 = _mm256_and_si256(data_4, data_5);
+					const uint256_t m4 = _mm256_and_si256(data_6, data_7);
+					merged_data = _mm256_and_si256(_mm256_and_si256(m1, m2),
+												   _mm256_and_si256(m3, m4));
+				}
+				else
+				{
+					merged_data = _mm256_and_si256(_mm256_and_si256(m1, m2),
+												   data_4);
+				}
 
 				_mm256_storeu_si256((uint256_t*)(out + offset), merged_data);
 
@@ -402,7 +487,7 @@ namespace mbp
 					// 64-bit pcs -> running total
 					pc = _mm256_add_epi64(pc, pc_256);
 				}
-			}
+			} // end hot copy/merge loop
 
 			out += n_steps * bytes_per_step;
 			in += n_steps * bytes_per_step;
@@ -410,9 +495,12 @@ namespace mbp
 			lookup_2_ptr += n_steps * bytes_per_step;
 			lookup_3_ptr += n_steps * bytes_per_step;
 			lookup_4_ptr += n_steps * bytes_per_step;
-			lookup_5_ptr += n_steps * bytes_per_step;
-			lookup_6_ptr += n_steps * bytes_per_step;
-			lookup_7_ptr += n_steps * bytes_per_step;
+			if constexpr (pass < 3)
+			{
+				lookup_5_ptr += n_steps * bytes_per_step;
+				lookup_6_ptr += n_steps * bytes_per_step;
+				lookup_7_ptr += n_steps * bytes_per_step;
+			}
 
 			number += n_steps * elements_per_step * 2; // * 2 because the sieve only contains odd numbers
 
@@ -489,8 +577,8 @@ namespace mbp
 		gmp_rand.seed(mpir_ui{ 0xdeadbeef });
 
 		count_passes(std::cout << "(counting passes)\n");
-		count_passes(a = ps15 = b = c = d = e = f = g = bldt = 0);
-		count_passes(bidt = b2 = b3 = b4 = b5 = passes = pc_hash = 0);
+		count_passes(a = ps15 = b = c = d = e = f = bldt = bidt = 0);
+		count_passes(b2 = b3 = b4 = b5 = passes = pc_hash = 0);
 	}
 
 	void mbp::find_multibase_primes::run()
@@ -564,12 +652,11 @@ namespace mbp
 						"  bit pattern filters: ", a, (bm_size / 2));
 		log_pass_counts("Passed sieve:          ", ps15, a);
 		log_pass_counts("Passed 4-rem tests, p2:", b, ps15);
-		log_pass_counts("Passed 5-rem tests:    ", c, b);
-		log_pass_counts("Passed 10-rem tests:   ", d, c);
-		log_pass_counts("Passed 8-rem tests:    ", e, d);
-		log_pass_counts("Passed 12-rem tests:   ", f, e);
-		log_pass_counts("Passed 16-rem tests:   ", g, f);
-		log_pass_counts("P. branchless divtests:", bldt, g);
+		log_pass_counts("Passed 10-rem tests:   ", c, b);
+		log_pass_counts("Passed 8-rem tests:    ", d, c);
+		log_pass_counts("Passed 12-rem tests:   ", e, d);
+		log_pass_counts("Passed 16-rem tests:   ", f, e);
+		log_pass_counts("P. branchless divtests:", bldt, f);
 		log_pass_counts("P. branching divtests: ", bidt, bldt);
 		log_pass_counts("Passed b2 BPSW test:   ", b2, bidt);
 		log_pass_counts("Passed b3 prime test:  ", b3, b2);
@@ -595,7 +682,12 @@ namespace mbp
 		for (size_t i = 0; i < prime_sieve::steps; ++i)
 		{
 			const uint64_t sieve_start = number + (i * sieve_container::size() * 2);
-			sieve_popcounts[i] = merge_bitmasks<2>(sieve_start, (*sieves)[i]);
+			merge_bitmasks<2>(sieve_start, (*sieves)[i]);
+		}
+		for (size_t i = 0; i < prime_sieve::steps; ++i)
+		{
+			const uint64_t sieve_start = number + (i * sieve_container::size() * 2);
+			sieve_popcounts[i] = merge_bitmasks<3>(sieve_start, (*sieves)[i]);
 			count_passes(a += sieve_popcounts[i]);
 		}
 
@@ -619,25 +711,21 @@ namespace mbp
 		candidates_end = two_div_tests_with_four_rems<12, 29, 6, 37, on_fast_path>(candidates, candidates_end);
 		count_passes(b += (candidates_end - candidates));
 
-		// bases 3, 4, 5, and 9 mod 11 (5 remainders)
-		candidates_end = div_tests_with_five_rems<on_fast_path>(candidates, candidates_end);
-		count_passes(c += (candidates_end - candidates));
-
 		// bases 6, 7, and 8 mod 11 (10 remainders)
 		candidates_end = div_tests_with_10_rems<on_fast_path>(candidates, candidates_end);
-		count_passes(d += (candidates_end - candidates));
+		count_passes(c += (candidates_end - candidates));
 
 		// bases 8 and 9 mod 17 (8 remainders)
 		candidates_end = div_tests_with_8_rems<on_fast_path>(candidates, candidates_end);
-		count_passes(e += (candidates_end - candidates));
+		count_passes(d += (candidates_end - candidates));
 
 		// bases 6, 7, and 11 mod 13 (12 remainders)
 		candidates_end = div_tests_with_12_rems<on_fast_path>(candidates, candidates_end);
-		count_passes(f += (candidates_end - candidates));
+		count_passes(e += (candidates_end - candidates));
 
 		// bases 3, 5, 6, 7, 10, 11 and 12 mod 17 (16 remainders)
 		candidates_end = div_tests_with_16_rems<on_fast_path>(candidates, candidates_end);
-		count_passes(g += (candidates_end - candidates));
+		count_passes(f += (candidates_end - candidates));
 
 		// bases 8 and 12 mod 19 (6 remainders)
 		//candidates_end = two_div_tests_with_six_rems<on_fast_path>(candidates, candidates_end);
