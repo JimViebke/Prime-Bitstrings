@@ -41,7 +41,7 @@ namespace mbp
 		return outer_even_pc - outer_odd_pc + 23; // +23 to normalize -23,24 to 0,47
 	}
 
-	// out_ptr is used to set ss_ptr in pass 1, and sieve_data in pass 2
+	// out_ptr is used to set in_ptr
 	template<size_t pass>
 	__forceinline void set_lookup_ptrs(const uint8_t* out_ptr,
 									   const size_t sieve_offset,
@@ -370,74 +370,7 @@ namespace mbp
 		const uint8_t* lookup_7_ptr{};
 
 		set_lookup_ptrs<pass>(out, 0, number, in,
-							  lookup_1_ptr,
-							  lookup_2_ptr,
-							  lookup_3_ptr,
-							  lookup_4_ptr,
-							  lookup_5_ptr,
-							  lookup_6_ptr,
-							  lookup_7_ptr);
-
-		// static_assert(sieve_container::size() % (8 * 16) == 0);
-
-		//// The size of the sieve gives 128-bit (16-byte) alignment.
-		//// Perform 0-1 leading steps of 16 bytes to align the hot loop to 32 bytes.
-		//if ((number & 0b11111111'1) == 0b10000000'1)
-		//{
-		//	uint128_t data_0;
-		//	if constexpr (pass == 1)
-		//		data_0 = _mm_loadu_si128((uint128_t*)in);
-		//	else
-		//		data_0 = _mm_loadu_si128((uint128_t*)out);
-
-		//	const uint128_t data_1 = _mm_loadu_si128((uint128_t*)lookup_1_ptr);
-		//	const uint128_t data_2 = _mm_loadu_si128((uint128_t*)lookup_2_ptr);
-		//	const uint128_t data_3 = _mm_loadu_si128((uint128_t*)lookup_3_ptr);
-		//	const uint128_t data_4 = _mm_loadu_si128((uint128_t*)lookup_4_ptr);
-		//	const uint128_t data_5 = _mm_loadu_si128((uint128_t*)lookup_5_ptr);
-		//	const uint128_t data_6 = _mm_loadu_si128((uint128_t*)lookup_6_ptr);
-		//	const uint128_t data_7 = _mm_loadu_si128((uint128_t*)lookup_7_ptr);
-
-		//	const uint128_t m1 = _mm_and_si128(data_0, data_1);
-		//	const uint128_t m2 = _mm_and_si128(data_2, data_3);
-		//	const uint128_t m3 = _mm_and_si128(data_4, data_5);
-		//	const uint128_t m4 = _mm_and_si128(data_6, data_7);
-
-		//	const uint128_t merged_data = _mm_and_si128(_mm_and_si128(m1, m2),
-		//												_mm_and_si128(m3, m4));
-
-		//	_mm_storeu_si128((uint128_t*)out, merged_data);
-
-		//	sieve_popcount += pop_count(merged_data.m128i_u64[0]);
-		//	sieve_popcount += pop_count(merged_data.m128i_u64[1]);
-
-		//	out += sizeof(uint128_t);
-		//	number += sizeof(uint128_t) * 8 * 2; // * 2 because the sieve only contains odd numbers
-
-		//	if ((number & detail::bits_1_16_mask) == 0) // reset the lookup ptrs if we just rolled over
-		//	{
-		//		set_lookup_ptrs<pass>(out, sizeof(uint128_t), number, in,
-		//							  lookup_1_ptr,
-		//							  lookup_2_ptr,
-		//							  lookup_3_ptr,
-		//							  lookup_4_ptr,
-		//							  lookup_5_ptr,
-		//							  lookup_6_ptr,
-		//							  lookup_7_ptr);
-		//	}
-		//	else
-		//	{
-		//		in += sizeof(uint128_t);
-		//		lookup_1_ptr += sizeof(uint128_t);
-		//		lookup_2_ptr += sizeof(uint128_t);
-		//		lookup_3_ptr += sizeof(uint128_t);
-		//		lookup_4_ptr += sizeof(uint128_t);
-		//		lookup_5_ptr += sizeof(uint128_t);
-		//		lookup_6_ptr += sizeof(uint128_t);
-		//		lookup_7_ptr += sizeof(uint128_t);
-		//	}
-		//}
-
+							  lookup_1_ptr, lookup_2_ptr, lookup_3_ptr, lookup_4_ptr, lookup_5_ptr, lookup_6_ptr, lookup_7_ptr);
 
 		constexpr size_t bytes_per_step = sizeof(uint256_t);
 
@@ -452,23 +385,6 @@ namespace mbp
 			constexpr size_t elements_per_step = bytes_per_step * 8;
 
 			const size_t elements_to_rollover = pow_2_16 - ((number & detail::bits_1_16_mask) >> 1);
-
-			//{
-			//	const uint64_t bits_1_16 = (number & detail::bits_1_16_mask) >> 1;
-			//	const size_t byte_offset = bits_1_16 / 8;
-			//	std::cout << "Entering hot loop, byte_offset = " << byte_offset << '\n';
-			//	std::cout << "\t% 32 = " << byte_offset % 32 << '\n';
-			//	std::cout << "       in ptr % 32 == " << size_t(in) % 32 << '\n';
-			//	std::cout << " lookup_1_ptr % 32 == " << size_t(lookup_1_ptr) % 32 << '\n';
-			//	std::cout << " lookup_2_ptr % 32 == " << size_t(lookup_2_ptr) % 32 << '\n';
-			//	std::cout << " lookup_3_ptr % 32 == " << size_t(lookup_3_ptr) % 32 << '\n';
-			//	std::cout << " lookup_4_ptr % 32 == " << size_t(lookup_4_ptr) % 32 << '\n';
-			//	std::cout << " lookup_5_ptr % 32 == " << size_t(lookup_5_ptr) % 32 << '\n';
-			//	std::cout << " lookup_6_ptr % 32 == " << size_t(lookup_6_ptr) % 32 << '\n';
-			//	std::cout << " lookup_7_ptr % 32 == " << size_t(lookup_7_ptr) % 32 << '\n';
-			//	std::cout << "      out ptr % 32 == " << size_t(out) % 32;
-			//	std::cin.ignore();
-			//}
 
 			const size_t n_steps = std::min(elements_to_rollover / elements_per_step,
 											(aligned_end - out) / bytes_per_step);
@@ -548,7 +464,6 @@ namespace mbp
 				}
 
 				_mm256_storeu_si256((uint256_t*)(out + offset), merged_data);
-				// _mm256_storeu2_m128i((uint128_t*)(out + offset + 16), (uint128_t*)(out + offset), merged_data);
 
 				if constexpr (pass == last_pass)
 				{
@@ -601,31 +516,11 @@ namespace mbp
 										  lookup_1_ptr, lookup_2_ptr, lookup_3_ptr, lookup_4_ptr, lookup_5_ptr, lookup_6_ptr, lookup_7_ptr,
 										  sieve_popcount);
 				}
-
-				//set_lookup_ptrs<pass>(out, out - sieve.data(), number, in,
-				//					  lookup_1_ptr,
-				//					  lookup_2_ptr,
-				//					  lookup_3_ptr,
-				//					  lookup_4_ptr,
-				//					  lookup_5_ptr,
-				//					  lookup_6_ptr,
-				//					  lookup_7_ptr);
-			}
-			else // advance ptrs
-			{
-				//in += n_steps * bytes_per_step;
-				//lookup_1_ptr += n_steps * bytes_per_step;
-				//lookup_2_ptr += n_steps * bytes_per_step;
-				//lookup_3_ptr += n_steps * bytes_per_step;
-				//lookup_4_ptr += n_steps * bytes_per_step;
-				//lookup_5_ptr += n_steps * bytes_per_step;
-				//lookup_6_ptr += n_steps * bytes_per_step;
-				//lookup_7_ptr += n_steps * bytes_per_step;
 			}
 		} // end main copy/merge loop
 
 		// Less than 256 elements left. Generate instructions for 0-4 final copies.
-		constexpr size_t leftover_elements = sieve.size() % 256;
+		constexpr size_t leftover_elements = sieve_container::size() % 256;
 
 		if constexpr (leftover_elements > 64ull * 0)
 		{
@@ -651,51 +546,6 @@ namespace mbp
 								  lookup_1_ptr, lookup_2_ptr, lookup_3_ptr, lookup_4_ptr, lookup_5_ptr, lookup_6_ptr, lookup_7_ptr,
 								  sieve_popcount);
 		}
-
-		// Perform 0-1 trailing steps of 16 bytes
-		//if (out != sieve.data() + (sieve_container::size() / 8))
-		//{
-		//	// The hot loop exited because out == aligned_end.
-		//	// Check if a rollover occured at the same time.
-		//	if ((number & detail::bits_1_16_mask) == 0)
-		//	{
-		//		set_lookup_ptrs<pass>(out, out - sieve.data(), number, in,
-		//							  lookup_1_ptr,
-		//							  lookup_2_ptr,
-		//							  lookup_3_ptr,
-		//							  lookup_4_ptr,
-		//							  lookup_5_ptr,
-		//							  lookup_6_ptr,
-		//							  lookup_7_ptr);
-		//	}
-
-		//	uint128_t data_0;
-		//	if constexpr (pass == 1)
-		//		data_0 = _mm_loadu_si128((uint128_t*)in);
-		//	else
-		//		data_0 = _mm_loadu_si128((uint128_t*)out);
-
-		//	const uint128_t data_1 = _mm_loadu_si128((uint128_t*)lookup_1_ptr);
-		//	const uint128_t data_2 = _mm_loadu_si128((uint128_t*)lookup_2_ptr);
-		//	const uint128_t data_3 = _mm_loadu_si128((uint128_t*)lookup_3_ptr);
-		//	const uint128_t data_4 = _mm_loadu_si128((uint128_t*)lookup_4_ptr);
-		//	const uint128_t data_5 = _mm_loadu_si128((uint128_t*)lookup_5_ptr);
-		//	const uint128_t data_6 = _mm_loadu_si128((uint128_t*)lookup_6_ptr);
-		//	const uint128_t data_7 = _mm_loadu_si128((uint128_t*)lookup_7_ptr);
-
-		//	const uint128_t m1 = _mm_and_si128(data_0, data_1);
-		//	const uint128_t m2 = _mm_and_si128(data_2, data_3);
-		//	const uint128_t m3 = _mm_and_si128(data_4, data_5);
-		//	const uint128_t m4 = _mm_and_si128(data_6, data_7);
-
-		//	const uint128_t merged_data = _mm_and_si128(_mm_and_si128(m1, m2),
-		//												_mm_and_si128(m3, m4));
-
-		//	_mm_storeu_si128((uint128_t*)out, merged_data);
-
-		//	sieve_popcount += pop_count(merged_data.m128i_u64[0]);
-		//	sieve_popcount += pop_count(merged_data.m128i_u64[1]);
-		//}
 
 		return sieve_popcount;
 	}
@@ -738,7 +588,6 @@ namespace mbp
 
 		// Align sieve on a multiple of 8, plus 1
 		while ((number & 0b1111) != 0b0001)
-			// while ((number & 0b11111111) != 0b00000001)
 			number -= (2 * prime_sieve::product_of_static_sieve_primes);
 
 		prime_sieve::set_up_sieve_offsets_cache(number);
