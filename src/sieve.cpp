@@ -33,7 +33,7 @@ namespace mbp::prime_sieve
 		{
 			const size_t p = small_primes_lookup[i];
 
-			if (p >= 17 && p <= largest_aligned_vector_sieve_prime) // handle seperately
+			if (p >= 17 && p <= largest_aligned_vector_sieve_prime) // handle separately
 			{
 				size_t n = p - (start % p); // get distance to the next multiple of p
 
@@ -93,7 +93,7 @@ namespace mbp::prime_sieve
 		{
 			const size_t prime = small_primes_lookup[i];
 
-			if (prime >= 17 && prime <= largest_aligned_vector_sieve_prime) // handle seperately
+			if (prime >= 17 && prime <= largest_aligned_vector_sieve_prime) // handle separately
 			{
 				arr[i] = sieve_offset_t(prime - (sieve_container::size() % prime));
 				continue;
@@ -141,7 +141,7 @@ namespace mbp::prime_sieve
 			const uint64_t prime = small_primes_lookup[i];
 			const size_t offset = sieve_offsets_cache[i];
 
-			if (prime >= 17 && prime <= largest_aligned_vector_sieve_prime) // handle seperately
+			if (prime >= 17 && prime <= largest_aligned_vector_sieve_prime) // handle separately
 			{
 				if (offset >= prime)
 				{
