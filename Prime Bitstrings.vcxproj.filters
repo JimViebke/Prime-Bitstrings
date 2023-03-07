@@ -39,6 +39,9 @@
     <ClCompile Include="src\sieve.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\merge_bitmasks.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\math\math.hpp">
@@ -275,7 +278,7 @@
     <ClInclude Include="src\sieve.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\bit_pattern_tests.hpp">
+    <ClInclude Include="src\merge_bitmasks.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\hardcoded_div_tests.hpp">
