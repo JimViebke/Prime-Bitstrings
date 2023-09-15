@@ -14,10 +14,10 @@ namespace mbp
 			uint256_t lookup{ .m256i_u8 = { 0 } };
 			for (size_t i = 0; i < 16; ++i)
 			{
-				if (i & 0b0001) lookup.m256i_u8[i] += pow_mod<base, place_value_start + 0, prime>::rem;
-				if (i & 0b0010) lookup.m256i_u8[i] += pow_mod<base, place_value_start + 1, prime>::rem;
-				if (i & 0b0100) lookup.m256i_u8[i] += pow_mod<base, place_value_start + 2, prime>::rem;
-				if (i & 0b1000) lookup.m256i_u8[i] += pow_mod<base, place_value_start + 3, prime>::rem;
+				if (i & 0b0001) lookup.m256i_u8[i] += div_test::pow_mod<base, place_value_start + 0, prime>::rem;
+				if (i & 0b0010) lookup.m256i_u8[i] += div_test::pow_mod<base, place_value_start + 1, prime>::rem;
+				if (i & 0b0100) lookup.m256i_u8[i] += div_test::pow_mod<base, place_value_start + 2, prime>::rem;
+				if (i & 0b1000) lookup.m256i_u8[i] += div_test::pow_mod<base, place_value_start + 3, prime>::rem;
 				lookup.m256i_u8[i + 16] = lookup.m256i_u8[i]; // duplicate into upper lane
 			}
 			return lookup;
@@ -29,9 +29,9 @@ namespace mbp
 			uint256_t lookup{ .m256i_u8 = { 0 } };
 			for (size_t i = 0; i < 8; ++i)
 			{
-				if (i & 0b001) lookup.m256i_u8[i] += pow_mod<base, 0, prime>::rem;
-				if (i & 0b010) lookup.m256i_u8[i] += pow_mod<base, 1, prime>::rem;
-				if (i & 0b100) lookup.m256i_u8[i] += pow_mod<base, 2, prime>::rem;
+				if (i & 0b001) lookup.m256i_u8[i] += div_test::pow_mod<base, 0, prime>::rem;
+				if (i & 0b010) lookup.m256i_u8[i] += div_test::pow_mod<base, 1, prime>::rem;
+				if (i & 0b100) lookup.m256i_u8[i] += div_test::pow_mod<base, 2, prime>::rem;
 				lookup.m256i_u8[i + 16] = lookup.m256i_u8[i]; // duplicate into upper lane
 			}
 			return lookup;

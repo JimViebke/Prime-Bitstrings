@@ -18,8 +18,8 @@ namespace mbp
 		template<bool on_fast_path>
 		void main_loop(const uint64_t number);
 
-		void full_primality_tests(const uint64_t* candidates_begin,
-								  const uint64_t* const candidates_end);
+		void full_primality_tests(uint64_t* candidates,
+								  const uint64_t* candidates_end);
 
 		div_test::full_div_tests full_div_tests{};
 

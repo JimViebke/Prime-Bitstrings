@@ -45,15 +45,15 @@ namespace mbp::div_test
 		std::vector<std::array<remainder_t, 64>> permuted_div_tests;
 	};
 
+	// calculate a^b mod m
+	template<size_t a, size_t b, size_t m>
+	struct pow_mod
+	{
+		static constexpr size_t rem = pk::powMod(a, b, m);
+	};
+
 	namespace detail
 	{
-		// calculate a^b mod m
-		template<size_t a, size_t b, size_t m>
-		struct pow_mod
-		{
-			static constexpr size_t rem = pk::powMod(a, b, m);
-		};
-
 		// bitmask for all base^n mod prime
 		template<size_t base, size_t prime>
 		struct bitmask_for
@@ -170,7 +170,7 @@ namespace mbp::div_test
 	__forceinline bool recursive_is_divisible_by(const size_t number)
 	{
 		size_t rem = detail::get_sum_of_rems<divisor, base_t>(number);
-		return has_small_prime_factor(rem, get_prime_index<divisor>::idx);
+		return has_small_prime_factor(rem, detail::get_prime_index<divisor>::idx);
 	}
 
 #pragma warning(pop)
