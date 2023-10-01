@@ -131,8 +131,6 @@ namespace mbp
 					 std::hex << pc_hash << std::dec << '\n');
 	}
 
-	size_t temp_pc = 0; // delete me
-
 	template<bool on_fast_path>
 	void mbp::find_multibase_primes::main_loop(const uint64_t number)
 	{
@@ -140,37 +138,22 @@ namespace mbp
 		uint64_t* candidates_end = candidates;
 
 		// Merge static sieve, popcount, gcd, and div test bitmasks
-		//for (size_t i = 0; i < prime_sieve::steps; ++i)
-		//{
-		//	const uint64_t sieve_start = number + (i * sieve_container::size() * 2);
-		//	merge_bitmasks<1>(sieve_start, (*sieves)[i]);
-		//}
-		//for (size_t i = 0; i < prime_sieve::steps; ++i)
-		//{
-		//	const uint64_t sieve_start = number + (i * sieve_container::size() * 2);
-		//	merge_bitmasks<2>(sieve_start, (*sieves)[i]);
-		//}
-		//for (size_t i = 0; i < prime_sieve::steps; ++i)
-		//{
-		//	const uint64_t sieve_start = number + (i * sieve_container::size() * 2);
-		//	sieve_popcounts[i] = merge_bitmasks<3>(sieve_start, (*sieves)[i]);
-		//	count_passes(a += sieve_popcounts[i]);
-		//}
-
-		//std::array<size_t, prime_sieve::steps> dummy_sieve_popcounts{};
-		merge_bitmasks_one_by_one(number, *sieves, sieve_popcounts);
-		count_passes(for (size_t i = 0; i < prime_sieve::steps; ++i)
-					 a += sieve_popcounts[i]);
-
-		//if (a != temp_pc)
-		//{
-		//	std::cout << "a != temp_pc: " << a << " != " << temp_pc << '\n';
-		//	std::cin.ignore();
-		//}
-		//else
-		//{
-		//	std::cout << "so far so good...\n";
-		//}
+		for (size_t i = 0; i < prime_sieve::steps; ++i)
+		{
+			const uint64_t sieve_start = number + (i * sieve_container::size() * 2);
+			merge_bitmasks<1>(sieve_start, (*sieves)[i]);
+		}
+		for (size_t i = 0; i < prime_sieve::steps; ++i)
+		{
+			const uint64_t sieve_start = number + (i * sieve_container::size() * 2);
+			merge_bitmasks<2>(sieve_start, (*sieves)[i]);
+		}
+		for (size_t i = 0; i < prime_sieve::steps; ++i)
+		{
+			const uint64_t sieve_start = number + (i * sieve_container::size() * 2);
+			sieve_popcounts[i] = merge_bitmasks<3>(sieve_start, (*sieves)[i]);
+			count_passes(a += sieve_popcounts[i]);
+		}
 
 		// Sieve until one of our density thresholds is reached
 		for (size_t i = 0; i < prime_sieve::steps; ++i)

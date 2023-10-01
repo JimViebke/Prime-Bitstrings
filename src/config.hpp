@@ -38,7 +38,7 @@ namespace mbp
 																		  1ull, std::multiplies());
 		constexpr size_t static_sieve_size = 2 * 8 * product_of_static_sieve_primes;
 
-		constexpr size_t steps = 4; // default 16
+		constexpr size_t steps = 16; // default 16
 		constexpr size_t largest_aligned_vector_sieve_prime = 47; // default 47
 		constexpr size_t largest_vector_sieve_prime = 79; // default 79
 		constexpr size_t largest_sieve_prime = 263; // default 263
@@ -73,7 +73,7 @@ namespace mbp
 
 
 
-#if 0 // accumulate and print pass counts
+#if 1 // accumulate and print pass counts
 #define count_passes(...) __VA_ARGS__
 #define log_pass_counts(str, count, count_before) { \
 	auto w = std::setw; \
