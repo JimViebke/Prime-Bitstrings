@@ -642,6 +642,174 @@ namespace mbp::prime_sieve
 		return j;
 	}
 
+	template<size_t stride, size_t m_offset>
+	__forceinline void generate_1_scalar_write(const size_t p, size_t& byte_offset, uint8_t* const p1_ptr)
+	{
+		constexpr size_t p_mod_8 = 1; // fixme
+
+		// Calculate the adjustment needed to get the basic byte_offset to the actual byte
+		constexpr size_t adjust = ((stride * 15) + m_offset - 1) / 8;
+
+		constexpr size_t element_offset = (p_mod_8 * 15 * stride) + (p_mod_8 * (m_offset - 1));
+		constexpr uint8_t mask = ~(1u << (element_offset % 8)) & 0xFF;
+
+		p1_ptr[byte_offset + adjust] &= mask;
+
+		const size_t step = p / 8; // calculated once up front
+
+		// replace this by calculating the difference between the current and next m_offsets
+		if constexpr (m_offset == 1) byte_offset += step;
+		if constexpr (m_offset == 2) byte_offset += step * 2;
+		if constexpr (m_offset == 4) byte_offset += step * 3;
+		if constexpr (m_offset == 7) byte_offset += step;
+		if constexpr (m_offset == 8) byte_offset += step * 3;
+		if constexpr (m_offset == 11) byte_offset += step * 2;
+		if constexpr (m_offset == 13) byte_offset += step;
+		if constexpr (m_offset == 14) byte_offset += step * 2;
+	}
+
+	// for now, assume p % 8 == 1
+	__forceinline void generate_64_scalar_writes(const size_t p, uint8_t* const p1_ptr)
+	{
+		constexpr size_t m_offsets[]{ 1, 2, 4, 7, 8, 11, 13, 14 };
+
+		size_t b = 0;
+
+		generate_1_scalar_write<0, m_offsets[0]>(p, b, p1_ptr);
+		generate_1_scalar_write<0, m_offsets[1]>(p, b, p1_ptr);
+		generate_1_scalar_write<0, m_offsets[2]>(p, b, p1_ptr);
+		generate_1_scalar_write<0, m_offsets[3]>(p, b, p1_ptr);
+		generate_1_scalar_write<0, m_offsets[4]>(p, b, p1_ptr);
+		generate_1_scalar_write<0, m_offsets[5]>(p, b, p1_ptr);
+		generate_1_scalar_write<0, m_offsets[6]>(p, b, p1_ptr);
+		generate_1_scalar_write<0, m_offsets[7]>(p, b, p1_ptr);
+
+		generate_1_scalar_write<1, m_offsets[0]>(p, b, p1_ptr);
+		generate_1_scalar_write<1, m_offsets[1]>(p, b, p1_ptr);
+		generate_1_scalar_write<1, m_offsets[2]>(p, b, p1_ptr);
+		generate_1_scalar_write<1, m_offsets[3]>(p, b, p1_ptr);
+		generate_1_scalar_write<1, m_offsets[4]>(p, b, p1_ptr);
+		generate_1_scalar_write<1, m_offsets[5]>(p, b, p1_ptr);
+		generate_1_scalar_write<1, m_offsets[6]>(p, b, p1_ptr);
+		generate_1_scalar_write<1, m_offsets[7]>(p, b, p1_ptr);
+
+		generate_1_scalar_write<2, m_offsets[0]>(p, b, p1_ptr);
+		generate_1_scalar_write<2, m_offsets[1]>(p, b, p1_ptr);
+		generate_1_scalar_write<2, m_offsets[2]>(p, b, p1_ptr);
+		generate_1_scalar_write<2, m_offsets[3]>(p, b, p1_ptr);
+		generate_1_scalar_write<2, m_offsets[4]>(p, b, p1_ptr);
+		generate_1_scalar_write<2, m_offsets[5]>(p, b, p1_ptr);
+		generate_1_scalar_write<2, m_offsets[6]>(p, b, p1_ptr);
+		generate_1_scalar_write<2, m_offsets[7]>(p, b, p1_ptr);
+
+		generate_1_scalar_write<3, m_offsets[0]>(p, b, p1_ptr);
+		generate_1_scalar_write<3, m_offsets[1]>(p, b, p1_ptr);
+		generate_1_scalar_write<3, m_offsets[2]>(p, b, p1_ptr);
+		generate_1_scalar_write<3, m_offsets[3]>(p, b, p1_ptr);
+		generate_1_scalar_write<3, m_offsets[4]>(p, b, p1_ptr);
+		generate_1_scalar_write<3, m_offsets[5]>(p, b, p1_ptr);
+		generate_1_scalar_write<3, m_offsets[6]>(p, b, p1_ptr);
+		generate_1_scalar_write<3, m_offsets[7]>(p, b, p1_ptr);
+
+		generate_1_scalar_write<4, m_offsets[0]>(p, b, p1_ptr);
+		generate_1_scalar_write<4, m_offsets[1]>(p, b, p1_ptr);
+		generate_1_scalar_write<4, m_offsets[2]>(p, b, p1_ptr);
+		generate_1_scalar_write<4, m_offsets[3]>(p, b, p1_ptr);
+		generate_1_scalar_write<4, m_offsets[4]>(p, b, p1_ptr);
+		generate_1_scalar_write<4, m_offsets[5]>(p, b, p1_ptr);
+		generate_1_scalar_write<4, m_offsets[6]>(p, b, p1_ptr);
+		generate_1_scalar_write<4, m_offsets[7]>(p, b, p1_ptr);
+
+		generate_1_scalar_write<5, m_offsets[0]>(p, b, p1_ptr);
+		generate_1_scalar_write<5, m_offsets[1]>(p, b, p1_ptr);
+		generate_1_scalar_write<5, m_offsets[2]>(p, b, p1_ptr);
+		generate_1_scalar_write<5, m_offsets[3]>(p, b, p1_ptr);
+		generate_1_scalar_write<5, m_offsets[4]>(p, b, p1_ptr);
+		generate_1_scalar_write<5, m_offsets[5]>(p, b, p1_ptr);
+		generate_1_scalar_write<5, m_offsets[6]>(p, b, p1_ptr);
+		generate_1_scalar_write<5, m_offsets[7]>(p, b, p1_ptr);
+
+		generate_1_scalar_write<6, m_offsets[0]>(p, b, p1_ptr);
+		generate_1_scalar_write<6, m_offsets[1]>(p, b, p1_ptr);
+		generate_1_scalar_write<6, m_offsets[2]>(p, b, p1_ptr);
+		generate_1_scalar_write<6, m_offsets[3]>(p, b, p1_ptr);
+		generate_1_scalar_write<6, m_offsets[4]>(p, b, p1_ptr);
+		generate_1_scalar_write<6, m_offsets[5]>(p, b, p1_ptr);
+		generate_1_scalar_write<6, m_offsets[6]>(p, b, p1_ptr);
+		generate_1_scalar_write<6, m_offsets[7]>(p, b, p1_ptr);
+
+		generate_1_scalar_write<7, m_offsets[0]>(p, b, p1_ptr);
+		generate_1_scalar_write<7, m_offsets[1]>(p, b, p1_ptr);
+		generate_1_scalar_write<7, m_offsets[2]>(p, b, p1_ptr);
+		generate_1_scalar_write<7, m_offsets[3]>(p, b, p1_ptr);
+		generate_1_scalar_write<7, m_offsets[4]>(p, b, p1_ptr);
+		generate_1_scalar_write<7, m_offsets[5]>(p, b, p1_ptr);
+		generate_1_scalar_write<7, m_offsets[6]>(p, b, p1_ptr);
+		generate_1_scalar_write<7, m_offsets[7]>(p, b, p1_ptr);
+	}
+
+	// for now, assume p % 8 == 1
+	void generate_scalar_writes_test_code(size_t p, size_t j, uint8_t* const sieve_data)
+	{
+		//const size_t offset_0 = (j + (1ull * p)) / 8;
+		//const size_t offset_1 = (j + (2ull * p)) / 8;
+		//const size_t offset_2 = (j + (4ull * p)) / 8;
+		//const size_t offset_3 = (j + (7ull * p)) / 8;
+		//const size_t offset_4 = (j + (8ull * p)) / 8;
+		//const size_t offset_5 = (j + (11ull * p)) / 8;
+		//const size_t offset_6 = (j + (13ull * p)) / 8;
+		//const size_t offset_7 = (j + (14ull * p)) / 8;
+
+		// prime % 8 yields which of four implementations we need (1, 3, 5, or 7)
+		constexpr size_t p_mod_8 = 1;
+
+		j; // unreferenced formal parameter
+		sieve_data; // unreferenced formal parameter
+
+		std::cout << '\n';
+
+		// generate	64 byte offsets and 64 bit offsets
+
+		std::cout << "Bit offsets for p == " << p << ":\n";
+		for (size_t i = 0; i < 8; ++i)
+		{
+			for (size_t off : { 1, 2, 4, 7, 8, 11, 13, 14 })
+			{
+				const size_t current = ((i * 15 * p) + ((off - 1) * p)) % 8;
+
+				std::cout << current << ' ';
+			}
+			std::cout << '\n';
+		}
+		std::cout << "\n\n\n";
+
+		std::cout << "Bit offsets for p == " << p << ", without using 'p':\n";
+		for (size_t i = 0; i < 8; ++i)
+		{
+			for (size_t off : { 1, 2, 4, 7, 8, 11, 13, 14 })
+			{
+				const size_t current = ((i * 15 * p_mod_8) + ((off - 1) * p_mod_8)) % 8;
+
+				std::cout << current << ' ';
+			}
+			std::cout << '\n';
+		}
+		std::cout << "\n\n\n";
+
+		std::cout << "Byte offsets for p == " << p << ":\n";
+		for (size_t i = 0; i < 8; ++i)
+		{
+			for (size_t off : { 1, 2, 4, 7, 8, 11, 13, 14 })
+			{
+				const size_t current = ((i * 15 * p) + ((off - 1) * p)) / 8;
+
+				std::cout << current << '\t';
+			}
+			std::cout << '\n';
+		}
+		std::cout << "\n\n\n";
+	}
+
 	void partial_sieve(sieve_container& sieve,
 					   const size_t sieve_popcount)
 	{
@@ -687,7 +855,7 @@ namespace mbp::prime_sieve
 		vectorized_sieve_pass<79>(sieve, prime_ptr, offset_cache_ptr);
 		static_assert(largest_vector_sieve_prime == 79);
 
-		constexpr double vectorized_sieving_removes = .3106; // 31.06%
+		constexpr double vectorized_sieving_removes = .3106; // 31.06% (may be out of date)
 		constexpr double scale = 1.0 - vectorized_sieving_removes;
 
 		density *= scale;
@@ -723,30 +891,42 @@ namespace mbp::prime_sieve
 				j = clear_8_of_15(p, j, sieve_data);
 			}
 
-			// generate eight byte masks in usage order, starting from (j + p) % 8 == 0
-			const uint8_t mask_a = ~(1ull << ((j + (1ull * p)) % 8));
-			const uint8_t mask_b = ~(1ull << ((j + (2ull * p)) % 8));
-			const uint8_t mask_c = ~(1ull << ((j + (4ull * p)) % 8));
-			const uint8_t mask_d = ~(1ull << ((j + (7ull * p)) % 8));
-			const uint8_t mask_e = ~(1ull << ((j + (8ull * p)) % 8));
-			const uint8_t mask_f = ~(1ull << ((j + (11ull * p)) % 8));
-			const uint8_t mask_g = ~(1ull << ((j + (13ull * p)) % 8));
-			const uint8_t mask_h = ~(1ull << ((j + (14ull * p)) % 8));
-
-			// Each iteration, j points to an (already marked) multiple of p*15.
-			// Clear eight multiples of p within each of eight strides of p*15.
-			// The first write in the first stride has a bit offset of 0.
-			do
+			if (false) // if (p % 8 == 1)
 			{
-				j = clear_8_of_15(p, j, sieve_data, mask_a, mask_b, mask_c, mask_d, mask_e, mask_f, mask_g, mask_h);
-				j = clear_8_of_15(p, j, sieve_data, mask_e, mask_a, mask_f, mask_h, mask_d, mask_b, mask_c, mask_g);
-				j = clear_8_of_15(p, j, sieve_data, mask_d, mask_e, mask_b, mask_g, mask_h, mask_a, mask_f, mask_c);
-				j = clear_8_of_15(p, j, sieve_data, mask_h, mask_d, mask_a, mask_c, mask_g, mask_e, mask_b, mask_f);
-				j = clear_8_of_15(p, j, sieve_data, mask_g, mask_h, mask_e, mask_f, mask_c, mask_d, mask_a, mask_b);
-				j = clear_8_of_15(p, j, sieve_data, mask_c, mask_g, mask_d, mask_b, mask_f, mask_h, mask_e, mask_a);
-				j = clear_8_of_15(p, j, sieve_data, mask_f, mask_c, mask_h, mask_a, mask_b, mask_g, mask_d, mask_e);
-				j = clear_8_of_15(p, j, sieve_data, mask_b, mask_f, mask_g, mask_e, mask_a, mask_c, mask_h, mask_d);
-			} while (j < extra_padded_end);
+				do
+				{
+					generate_64_scalar_writes(p, sieve_data + ((j + p) / 8));
+
+					j += 15ull * 8 * p;
+				} while (j < extra_padded_end);
+			}
+			else // p % 8 == 3, 5, or 7
+			{
+				// generate eight byte masks in usage order, starting from (j + p) % 8 == 0
+				const uint8_t mask_a = ~(1ull << ((j + (1ull * p)) % 8));
+				const uint8_t mask_b = ~(1ull << ((j + (2ull * p)) % 8));
+				const uint8_t mask_c = ~(1ull << ((j + (4ull * p)) % 8));
+				const uint8_t mask_d = ~(1ull << ((j + (7ull * p)) % 8));
+				const uint8_t mask_e = ~(1ull << ((j + (8ull * p)) % 8));
+				const uint8_t mask_f = ~(1ull << ((j + (11ull * p)) % 8));
+				const uint8_t mask_g = ~(1ull << ((j + (13ull * p)) % 8));
+				const uint8_t mask_h = ~(1ull << ((j + (14ull * p)) % 8));
+
+				// Each iteration, j points to an (already marked) multiple of p*15.
+				// Clear eight multiples of p within each of eight strides of p*15.
+				// The first write in the first stride has a bit offset of 0.
+				do
+				{
+					j = clear_8_of_15(p, j, sieve_data, mask_a, mask_b, mask_c, mask_d, mask_e, mask_f, mask_g, mask_h);
+					j = clear_8_of_15(p, j, sieve_data, mask_e, mask_a, mask_f, mask_h, mask_d, mask_b, mask_c, mask_g);
+					j = clear_8_of_15(p, j, sieve_data, mask_d, mask_e, mask_b, mask_g, mask_h, mask_a, mask_f, mask_c);
+					j = clear_8_of_15(p, j, sieve_data, mask_h, mask_d, mask_a, mask_c, mask_g, mask_e, mask_b, mask_f);
+					j = clear_8_of_15(p, j, sieve_data, mask_g, mask_h, mask_e, mask_f, mask_c, mask_d, mask_a, mask_b);
+					j = clear_8_of_15(p, j, sieve_data, mask_c, mask_g, mask_d, mask_b, mask_f, mask_h, mask_e, mask_a);
+					j = clear_8_of_15(p, j, sieve_data, mask_f, mask_c, mask_h, mask_a, mask_b, mask_g, mask_d, mask_e);
+					j = clear_8_of_15(p, j, sieve_data, mask_b, mask_f, mask_g, mask_e, mask_a, mask_c, mask_h, mask_d);
+				} while (j < extra_padded_end);
+			}
 
 			// cleanup loop
 			while (j < padded_end)
