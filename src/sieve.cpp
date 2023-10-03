@@ -955,7 +955,7 @@ namespace mbp::prime_sieve
 		// [popcount][chunks]
 		static std::array<std::array<uint64_t, n_sieve_chunks>, 8> sorted_chunks;
 		// [popcount][chunk indexes]
-		static std::array<std::array<chunk_count_t, n_sieve_chunks>, 8> chunk_indexes;
+		static std::array<std::array<chunk_idx_t, n_sieve_chunks>, 8> chunk_indexes;
 
 		template<size_t popcount>
 		__forceinline void extract_candidates(uint64_t& chunk,
@@ -989,186 +989,188 @@ namespace mbp::prime_sieve
 			}
 		}
 
-		__forceinline void sort_chunks_and_extract_bit_indexes_vectorized(uint64_t*& candidates, const uint64_t* sieve_data)
+		__forceinline void sort_chunks_and_extract_bit_indexes_vectorized(uint64_t*& candidates, const size_t n_nonzero_chunks)
 		{
 			using namespace detail;
 
 			constexpr static uint256_t static_identity = { .m256i_u32{ 0, 1, 2, 3, 4, 5, 6, 7 } };
-			constexpr static uint256_t static_pc_shuf_lookup{ .m256i_u8{
+			constexpr static uint256_t static_pc_shuf_lookup{.m256i_u8{
 				0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
-				0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4 } };
-			constexpr static uint256_t static_nybble_mask{ .m256i_u64{
+					0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4 } };
+			constexpr static uint256_t static_nybble_mask{.m256i_u64{
 				0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F } };
 
-			constexpr size_t n_chunks_rounded = n_sieve_chunks - (n_sieve_chunks % 4);
+			const uint64_t* const sieve_data = sorted_chunks[0].data();
 
-			alignas(32) uint32_t buffer[8]{};
+			const size_t n_chunks_rounded = n_nonzero_chunks - (n_nonzero_chunks % 4);
 
-			const uint256_t identity = _mm256_loadu_si256(&static_identity);
-			const uint256_t seven_register = _mm256_set1_epi32(7);
-			const uint256_t nybble_mask = _mm256_loadu_si256(&static_nybble_mask);
-			const uint256_t pc_shuf_lookup = _mm256_loadu_si256(&static_pc_shuf_lookup);
-			const uint256_t ymm_n_sieve_chunks = _mm256_set1_epi32(n_sieve_chunks);
-			uint256_t pc_counts{};
-
-			// run vector instructions one iteration ahead
+			if (n_chunks_rounded >= 4)
 			{
-				uint256_t four_chunks = _mm256_loadu_si256((const uint256_t*)sieve_data);
+				alignas(32) uint32_t buffer[8]{};
 
-				// sieve data -> nybbles
-				const uint256_t nybbles_lo = _mm256_and_si256(four_chunks, nybble_mask);
-				const uint256_t nybbles_hi = _mm256_and_si256(_mm256_srli_epi64(four_chunks, 4), nybble_mask);
-				// nybbles -> 8-bit pcs
-				uint256_t popcounts = _mm256_add_epi8(_mm256_shuffle_epi8(pc_shuf_lookup, nybbles_lo),
-													  _mm256_shuffle_epi8(pc_shuf_lookup, nybbles_hi));
-				// 8-bit pcs -> 64-bit pcs
-				popcounts = _mm256_sad_epu8(popcounts, _mm256_setzero_si256());
+				const uint256_t identity = _mm256_loadu_si256(&static_identity);
+				const uint256_t seven_register = _mm256_set1_epi32(7);
+				const uint256_t nybble_mask = _mm256_loadu_si256(&static_nybble_mask);
+				const uint256_t pc_shuf_lookup = _mm256_loadu_si256(&static_pc_shuf_lookup);
+				const uint256_t ymm_n_sieve_chunks = _mm256_set1_epi32(n_sieve_chunks);
+				uint256_t pc_counts{};
 
-				// cap 4 popcounts to 7
-				popcounts = _mm256_min_epu32(popcounts, seven_register); // using the 32-bit variant here is fine
-
-				// calculate each chunk's offset into the first dimension of the array (popcount * n_sieve_chunks);
-				uint256_t write_offsets = _mm256_mul_epu32(popcounts, ymm_n_sieve_chunks); // 32-bit multiply is okay here; half of the values are 0
-
-				// duplicate each popcount so we can use four 4x64-bit permutes to produce eight copies of each popcount
-				popcounts = _mm256_castps_si256(_mm256_moveldup_ps(_mm256_castsi256_ps(popcounts)));
-
-				// chunk 1
-				const uint256_t bcast_a = _mm256_permute4x64_epi64(popcounts, 0b00000000);
-				const uint256_t shuffled_a = _mm256_permutevar8x32_epi32(pc_counts, bcast_a); // extract the existing count
-				uint256_t mask = _mm256_cmpeq_epi32(bcast_a, identity); // generate a ones-mask at index [pc]
-				pc_counts = _mm256_sub_epi32(pc_counts, mask); // subtract (-1) to increment the existing count
-
-				// chunk 2
-				const uint256_t bcast_b = _mm256_permute4x64_epi64(popcounts, 0b01010101);
-				const uint256_t shuffled_b = _mm256_permutevar8x32_epi32(pc_counts, bcast_b);
-				mask = _mm256_cmpeq_epi32(bcast_b, identity);
-				uint256_t minor_offsets = _mm256_blend_epi32(shuffled_a, shuffled_b, 0b00001100);
-				pc_counts = _mm256_sub_epi32(pc_counts, mask);
-
-				// chunk 3
-				const uint256_t bcast_c = _mm256_permute4x64_epi64(popcounts, 0b10101010);
-				const uint256_t shuffled_c = _mm256_permutevar8x32_epi32(pc_counts, bcast_c);
-				mask = _mm256_cmpeq_epi32(bcast_c, identity);
-				minor_offsets = _mm256_blend_epi32(minor_offsets, shuffled_c, 0b00110000);
-				pc_counts = _mm256_sub_epi32(pc_counts, mask);
-
-				// chunk 4
-				const uint256_t bcast_d = _mm256_permute4x64_epi64(popcounts, 0b11111111);
-				const uint256_t shuffled_d = _mm256_permutevar8x32_epi32(pc_counts, bcast_d);
-				mask = _mm256_cmpeq_epi32(bcast_d, identity);
-				minor_offsets = _mm256_blend_epi32(minor_offsets, shuffled_d, 0b11000000);
-				pc_counts = _mm256_sub_epi32(pc_counts, mask);
-
-				// add the second dimension of offsets
-				write_offsets = _mm256_add_epi32(write_offsets, minor_offsets);
-
-				// store results on the stack
-				_mm256_storeu_si256((uint256_t*)buffer, write_offsets);
-			}
-
-			// load ahead
-			uint256_t four_chunks = _mm256_loadu_si256((const uint256_t*)(sieve_data + 4));
-
-			size_t i = 0;
-			for (; i < n_chunks_rounded - 4; i += 4)
-			{
 				// run vector instructions one iteration ahead
+				{
+					uint256_t four_chunks = _mm256_loadu_si256((const uint256_t*)sieve_data);
 
-				const uint256_t nybbles_lo = _mm256_and_si256(four_chunks, nybble_mask);
-				const uint256_t nybbles_hi = _mm256_and_si256(_mm256_srli_epi64(four_chunks, 4), nybble_mask);
-				uint256_t popcounts = _mm256_add_epi8(_mm256_shuffle_epi8(pc_shuf_lookup, nybbles_lo),
-													  _mm256_shuffle_epi8(pc_shuf_lookup, nybbles_hi));
-				popcounts = _mm256_sad_epu8(popcounts, _mm256_setzero_si256());
+					// sieve data -> nybbles
+					const uint256_t nybbles_lo = _mm256_and_si256(four_chunks, nybble_mask);
+					const uint256_t nybbles_hi = _mm256_and_si256(_mm256_srli_epi64(four_chunks, 4), nybble_mask);
+					// nybbles -> 8-bit pcs
+					uint256_t popcounts = _mm256_add_epi8(_mm256_shuffle_epi8(pc_shuf_lookup, nybbles_lo),
+														  _mm256_shuffle_epi8(pc_shuf_lookup, nybbles_hi));
+					// 8-bit pcs -> 64-bit pcs
+					popcounts = _mm256_sad_epu8(popcounts, _mm256_setzero_si256());
 
-				popcounts = _mm256_min_epu32(popcounts, seven_register);
+					// cap 4 popcounts to 7
+					popcounts = _mm256_min_epu32(popcounts, seven_register); // using the 32-bit variant here is fine
 
-				uint256_t write_offsets = _mm256_mul_epu32(popcounts, ymm_n_sieve_chunks);
+					// calculate each chunk's offset into the first dimension of the array (popcount * n_sieve_chunks);
+					uint256_t write_offsets = _mm256_mul_epu32(popcounts, ymm_n_sieve_chunks); // 32-bit multiply is okay here; half of the values are 0
 
-				popcounts = _mm256_castps_si256(_mm256_moveldup_ps(_mm256_castsi256_ps(popcounts)));
+					// duplicate each popcount so we can use four 4x64-bit permutes to produce eight copies of each popcount
+					popcounts = _mm256_castps_si256(_mm256_moveldup_ps(_mm256_castsi256_ps(popcounts)));
 
-				const uint256_t bcast_a = _mm256_permute4x64_epi64(popcounts, 0b00000000);
-				const uint256_t shuffled_a = _mm256_permutevar8x32_epi32(pc_counts, bcast_a);
-				uint256_t mask = _mm256_cmpeq_epi32(bcast_a, identity);
-				pc_counts = _mm256_sub_epi32(pc_counts, mask);
+					// chunk 1
+					const uint256_t bcast_a = _mm256_permute4x64_epi64(popcounts, 0b00000000);
+					const uint256_t shuffled_a = _mm256_permutevar8x32_epi32(pc_counts, bcast_a); // extract the existing count
+					uint256_t mask = _mm256_cmpeq_epi32(bcast_a, identity); // generate a ones-mask at index [pc]
+					pc_counts = _mm256_sub_epi32(pc_counts, mask); // subtract (-1) to increment the existing count
 
-				const uint256_t bcast_b = _mm256_permute4x64_epi64(popcounts, 0b01010101);
-				const uint256_t shuffled_b = _mm256_permutevar8x32_epi32(pc_counts, bcast_b);
-				mask = _mm256_cmpeq_epi32(bcast_b, identity);
-				uint256_t minor_offsets = _mm256_blend_epi32(shuffled_a, shuffled_b, 0b00001100);
-				pc_counts = _mm256_sub_epi32(pc_counts, mask);
+					// chunk 2
+					const uint256_t bcast_b = _mm256_permute4x64_epi64(popcounts, 0b01010101);
+					const uint256_t shuffled_b = _mm256_permutevar8x32_epi32(pc_counts, bcast_b);
+					mask = _mm256_cmpeq_epi32(bcast_b, identity);
+					uint256_t minor_offsets = _mm256_blend_epi32(shuffled_a, shuffled_b, 0b00001100);
+					pc_counts = _mm256_sub_epi32(pc_counts, mask);
 
-				const uint256_t bcast_c = _mm256_permute4x64_epi64(popcounts, 0b10101010);
-				const uint256_t shuffled_c = _mm256_permutevar8x32_epi32(pc_counts, bcast_c);
-				mask = _mm256_cmpeq_epi32(bcast_c, identity);
-				minor_offsets = _mm256_blend_epi32(minor_offsets, shuffled_c, 0b00110000);
-				pc_counts = _mm256_sub_epi32(pc_counts, mask);
+					// chunk 3
+					const uint256_t bcast_c = _mm256_permute4x64_epi64(popcounts, 0b10101010);
+					const uint256_t shuffled_c = _mm256_permutevar8x32_epi32(pc_counts, bcast_c);
+					mask = _mm256_cmpeq_epi32(bcast_c, identity);
+					minor_offsets = _mm256_blend_epi32(minor_offsets, shuffled_c, 0b00110000);
+					pc_counts = _mm256_sub_epi32(pc_counts, mask);
 
-				const uint256_t bcast_d = _mm256_permute4x64_epi64(popcounts, 0b11111111);
-				const uint256_t shuffled_d = _mm256_permutevar8x32_epi32(pc_counts, bcast_d);
-				mask = _mm256_cmpeq_epi32(bcast_d, identity);
-				minor_offsets = _mm256_blend_epi32(minor_offsets, shuffled_d, 0b11000000);
-				pc_counts = _mm256_sub_epi32(pc_counts, mask);
+					// chunk 4
+					const uint256_t bcast_d = _mm256_permute4x64_epi64(popcounts, 0b11111111);
+					const uint256_t shuffled_d = _mm256_permutevar8x32_epi32(pc_counts, bcast_d);
+					mask = _mm256_cmpeq_epi32(bcast_d, identity);
+					minor_offsets = _mm256_blend_epi32(minor_offsets, shuffled_d, 0b11000000);
+					pc_counts = _mm256_sub_epi32(pc_counts, mask);
 
-				write_offsets = _mm256_add_epi32(write_offsets, minor_offsets);
+					// add the second dimension of offsets
+					write_offsets = _mm256_add_epi32(write_offsets, minor_offsets);
+
+					// store results on the stack
+					_mm256_storeu_si256((uint256_t*)buffer, write_offsets);
+				}
+
+				// load ahead
+				uint256_t four_chunks = _mm256_loadu_si256((const uint256_t*)(sieve_data + 4));
+
+				size_t i = 0;
+				for (; i < n_chunks_rounded - 4; i += 4)
+				{
+					// run vector instructions one iteration ahead
+
+					const uint256_t nybbles_lo = _mm256_and_si256(four_chunks, nybble_mask);
+					const uint256_t nybbles_hi = _mm256_and_si256(_mm256_srli_epi64(four_chunks, 4), nybble_mask);
+					uint256_t popcounts = _mm256_add_epi8(_mm256_shuffle_epi8(pc_shuf_lookup, nybbles_lo),
+														  _mm256_shuffle_epi8(pc_shuf_lookup, nybbles_hi));
+					popcounts = _mm256_sad_epu8(popcounts, _mm256_setzero_si256());
+
+					popcounts = _mm256_min_epu32(popcounts, seven_register);
+
+					uint256_t write_offsets = _mm256_mul_epu32(popcounts, ymm_n_sieve_chunks);
+
+					popcounts = _mm256_castps_si256(_mm256_moveldup_ps(_mm256_castsi256_ps(popcounts)));
+
+					const uint256_t bcast_a = _mm256_permute4x64_epi64(popcounts, 0b00000000);
+					const uint256_t shuffled_a = _mm256_permutevar8x32_epi32(pc_counts, bcast_a);
+					uint256_t mask = _mm256_cmpeq_epi32(bcast_a, identity);
+					pc_counts = _mm256_sub_epi32(pc_counts, mask);
+
+					const uint256_t bcast_b = _mm256_permute4x64_epi64(popcounts, 0b01010101);
+					const uint256_t shuffled_b = _mm256_permutevar8x32_epi32(pc_counts, bcast_b);
+					mask = _mm256_cmpeq_epi32(bcast_b, identity);
+					uint256_t minor_offsets = _mm256_blend_epi32(shuffled_a, shuffled_b, 0b00001100);
+					pc_counts = _mm256_sub_epi32(pc_counts, mask);
+
+					const uint256_t bcast_c = _mm256_permute4x64_epi64(popcounts, 0b10101010);
+					const uint256_t shuffled_c = _mm256_permutevar8x32_epi32(pc_counts, bcast_c);
+					mask = _mm256_cmpeq_epi32(bcast_c, identity);
+					minor_offsets = _mm256_blend_epi32(minor_offsets, shuffled_c, 0b00110000);
+					pc_counts = _mm256_sub_epi32(pc_counts, mask);
+
+					const uint256_t bcast_d = _mm256_permute4x64_epi64(popcounts, 0b11111111);
+					const uint256_t shuffled_d = _mm256_permutevar8x32_epi32(pc_counts, bcast_d);
+					mask = _mm256_cmpeq_epi32(bcast_d, identity);
+					minor_offsets = _mm256_blend_epi32(minor_offsets, shuffled_d, 0b11000000);
+					pc_counts = _mm256_sub_epi32(pc_counts, mask);
+
+					write_offsets = _mm256_add_epi32(write_offsets, minor_offsets);
 
 
-				// load two iterations ahead
-				four_chunks = _mm256_loadu_si256((const uint256_t*)(sieve_data + i + 8));
+					// load two iterations ahead
+					four_chunks = _mm256_loadu_si256((const uint256_t*)(sieve_data + i + 8));
 
 
-				const uint32_t idx_0 = buffer[0];
-				sorted_chunks.data()->_Elems[idx_0] = sieve_data[i + 0];
-				chunk_indexes.data()->_Elems[idx_0] = chunk_count_t(i + 0);
+					const uint32_t idx_0 = buffer[0];
+					sorted_chunks.data()->_Elems[idx_0] = sieve_data[i + 0];
+					chunk_indexes.data()->_Elems[idx_0] = chunk_indexes[0][i + 0];
 
-				const uint32_t idx_1 = buffer[2];
-				sorted_chunks.data()->_Elems[idx_1] = sieve_data[i + 1];
-				chunk_indexes.data()->_Elems[idx_1] = chunk_count_t(i + 1);
+					const uint32_t idx_1 = buffer[2];
+					sorted_chunks.data()->_Elems[idx_1] = sieve_data[i + 1];
+					chunk_indexes.data()->_Elems[idx_1] = chunk_indexes[0][i + 1];
 
-				const uint32_t idx_2 = buffer[4];
-				sorted_chunks.data()->_Elems[idx_2] = sieve_data[i + 2];
-				chunk_indexes.data()->_Elems[idx_2] = chunk_count_t(i + 2);
+					const uint32_t idx_2 = buffer[4];
+					sorted_chunks.data()->_Elems[idx_2] = sieve_data[i + 2];
+					chunk_indexes.data()->_Elems[idx_2] = chunk_indexes[0][i + 2];
 
-				const uint32_t idx_3 = buffer[6];
-				sorted_chunks.data()->_Elems[idx_3] = sieve_data[i + 3];
-				chunk_indexes.data()->_Elems[idx_3] = chunk_count_t(i + 3);
-
-
-				// store above results on the stack for the next iteration
-				_mm256_storeu_si256((uint256_t*)buffer, write_offsets);
-			}
-
-			// cleanup step for the last unrolled iteration
-			{
-				const uint32_t idx_0 = buffer[0];
-				sorted_chunks.data()->_Elems[idx_0] = sieve_data[i + 0];
-				chunk_indexes.data()->_Elems[idx_0] = chunk_count_t(i + 0);
-
-				const uint32_t idx_1 = buffer[2];
-				sorted_chunks.data()->_Elems[idx_1] = sieve_data[i + 1];
-				chunk_indexes.data()->_Elems[idx_1] = chunk_count_t(i + 1);
-
-				const uint32_t idx_2 = buffer[4];
-				sorted_chunks.data()->_Elems[idx_2] = sieve_data[i + 2];
-				chunk_indexes.data()->_Elems[idx_2] = chunk_count_t(i + 2);
-
-				const uint32_t idx_3 = buffer[6];
-				sorted_chunks.data()->_Elems[idx_3] = sieve_data[i + 3];
-				chunk_indexes.data()->_Elems[idx_3] = chunk_count_t(i + 3);
-
-				i += 4;
-			}
+					const uint32_t idx_3 = buffer[6];
+					sorted_chunks.data()->_Elems[idx_3] = sieve_data[i + 3];
+					chunk_indexes.data()->_Elems[idx_3] = chunk_indexes[0][i + 3];
 
 
-			// save pc counts so far
-			_mm256_storeu_si256((uint256_t*)buffer, pc_counts);
-			for (size_t idx = 0; idx < 8; ++idx)
-			{
-				n_chunks_with_pc[idx] = chunk_count_t(buffer[idx]);
+					// store above results on the stack for the next iteration
+					_mm256_storeu_si256((uint256_t*)buffer, write_offsets);
+				}
+
+				// cleanup step for the last unrolled iteration
+				{
+					const uint32_t idx_0 = buffer[0];
+					sorted_chunks.data()->_Elems[idx_0] = sieve_data[i + 0];
+					chunk_indexes.data()->_Elems[idx_0] = chunk_indexes[0][i + 0];
+
+					const uint32_t idx_1 = buffer[2];
+					sorted_chunks.data()->_Elems[idx_1] = sieve_data[i + 1];
+					chunk_indexes.data()->_Elems[idx_1] = chunk_indexes[0][i + 1];
+
+					const uint32_t idx_2 = buffer[4];
+					sorted_chunks.data()->_Elems[idx_2] = sieve_data[i + 2];
+					chunk_indexes.data()->_Elems[idx_2] = chunk_indexes[0][i + 2];
+
+					const uint32_t idx_3 = buffer[6];
+					sorted_chunks.data()->_Elems[idx_3] = sieve_data[i + 3];
+					chunk_indexes.data()->_Elems[idx_3] = chunk_indexes[0][i + 3];
+				}
+
+				// save pc counts so far
+				_mm256_storeu_si256((uint256_t*)buffer, pc_counts);
+				for (size_t idx = 0; idx < 8; ++idx)
+				{
+					n_chunks_with_pc[idx] = chunk_count_t(buffer[idx]);
+				}
 			}
 
 			// handle 0-3 remaining elements
-			for (; i < n_sieve_chunks; ++i)
+			for (size_t i = n_chunks_rounded; i < n_nonzero_chunks; ++i)
 			{
 				const uint64_t chunk = sieve_data[i];
 
@@ -1178,7 +1180,7 @@ namespace mbp::prime_sieve
 				const chunk_count_t idx = n_chunks_with_pc[pc]++;
 
 				sorted_chunks[pc][idx] = chunk;
-				chunk_indexes[pc][idx] = chunk_idx_t(i + 0);
+				chunk_indexes[pc][idx] = chunk_indexes[0][i];
 			}
 
 			extract_candidates_with_popcount<1>(candidates);
@@ -1229,6 +1231,61 @@ namespace mbp::prime_sieve
 				*ptr = candidate;
 			}
 		}
+
+		__forceinline size_t pack_nonzero_sieve_chunks(const uint64_t* const sieve_data)
+		{
+			constexpr size_t trailing_chunks = (n_sieve_chunks % 4);
+			constexpr size_t n_sieve_chunks_rounded = n_sieve_chunks - trailing_chunks;
+
+			size_t out_idx = 0;
+
+			for (chunk_idx_t i = 0; i < n_sieve_chunks_rounded; i += 4)
+			{
+				uint64_t chunk = sieve_data[i];
+				sorted_chunks[0][out_idx] = chunk; // reuse the existing sorted_chunks array for now
+				chunk_indexes[0][out_idx] = i; // reuse the existing chunk_indexes array for now
+				out_idx += (chunk != 0);
+
+				chunk = sieve_data[i + 1];
+				sorted_chunks[0][out_idx] = chunk;
+				chunk_indexes[0][out_idx] = i + 1;
+				out_idx += (chunk != 0);
+
+				chunk = sieve_data[i + 2];
+				sorted_chunks[0][out_idx] = chunk;
+				chunk_indexes[0][out_idx] = i + 2;
+				out_idx += (chunk != 0);
+
+				chunk = sieve_data[i + 3];
+				sorted_chunks[0][out_idx] = chunk;
+				chunk_indexes[0][out_idx] = i + 3;
+				out_idx += (chunk != 0);
+			}
+
+			if constexpr (trailing_chunks >= 1)
+			{
+				const uint64_t chunk = sieve_data[n_sieve_chunks_rounded];
+				sorted_chunks[0][out_idx] = chunk;
+				chunk_indexes[0][out_idx] = n_sieve_chunks_rounded;
+				out_idx += (chunk != 0);
+			}
+			if constexpr (trailing_chunks >= 2)
+			{
+				const uint64_t chunk = sieve_data[n_sieve_chunks_rounded + 1];
+				sorted_chunks[0][out_idx] = chunk;
+				chunk_indexes[0][out_idx] = n_sieve_chunks_rounded + 1;
+				out_idx += (chunk != 0);
+			}
+			if constexpr (trailing_chunks == 3)
+			{
+				const uint64_t chunk = sieve_data[n_sieve_chunks_rounded + 2];
+				sorted_chunks[0][out_idx] = chunk;
+				chunk_indexes[0][out_idx] = n_sieve_chunks_rounded + 2;
+				out_idx += (chunk != 0);
+			}
+
+			return out_idx; // the final index is the number of non-zero chunks
+		}
 	}
 
 	// sort 64-bit chunks of the sieve by popcount, then use custom loops that perform the exact number of required reads
@@ -1242,10 +1299,13 @@ namespace mbp::prime_sieve
 		for (chunk_count_t& pc : n_chunks_with_pc)
 			pc = 0;
 
+		// pack non-zero sieve chunks before bitmap decoding
+		const size_t n_nonzero_chunks = pack_nonzero_sieve_chunks((const uint64_t* const)sieve.data());
+
 		uint64_t* const candidates_start = candidates;
 
 		// prepare arrays of 64-bit chunks, where the chunks in array n contain exactly n set bits (n candidates)
-		sort_chunks_and_extract_bit_indexes_vectorized(candidates, (const uint64_t*)sieve.data());
+		sort_chunks_and_extract_bit_indexes_vectorized(candidates, n_nonzero_chunks);
 
 		convert_indexes_to_bitstrings(candidates_start, candidates, number);
 
