@@ -16,7 +16,7 @@ namespace mbp
 	private:
 
 		template<bool on_fast_path>
-		__forceinline uint64_t* div_tests(uint64_t* candidates_end);
+		inline_toggle uint64_t* div_tests(uint64_t* candidates_end);
 
 		void full_primality_tests(const uint64_t* candidates,
 								  const uint64_t* const candidates_end);

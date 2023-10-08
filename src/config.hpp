@@ -87,5 +87,5 @@ namespace mbp
 #if 1
 #define inline_toggle __forceinline
 #else
-#define inline_toggle __declspec(noinline) static
+#define inline_toggle __declspec(noinline)
 #endif

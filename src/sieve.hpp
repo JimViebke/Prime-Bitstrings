@@ -520,8 +520,8 @@ namespace mbp::prime_sieve
 
 
 
-	inline_toggle void partial_sieve(sieve_container& sieve,
-									 const size_t sieve_popcount)
+	inline_toggle static void partial_sieve(sieve_container& sieve,
+											const size_t sieve_popcount)
 	{
 		// Sieve primes by strides of 15*p:
 		//
@@ -677,24 +677,6 @@ namespace mbp::prime_sieve
 
 
 
-
-
-
-
-
-
-
-
-	//void partial_sieve(sieve_container& sieve,
-	//				   const size_t sieve_popcount);
-
-	//uint64_t* gather_sieve_results(uint64_t* candidates,
-	//							   const sieve_container& sieve,
-	//							   const uint64_t number);
-
-
-
-
 	namespace detail
 	{
 		constexpr uint64_t n_sieve_chunks = (sieve_container::size() / 64) + (sieve_container::size() % 64 != 0);
@@ -741,7 +723,7 @@ namespace mbp::prime_sieve
 			}
 		}
 
-		inline_toggle void sort_chunks(const size_t n_nonzero_chunks)
+		inline_toggle static void sort_chunks(const size_t n_nonzero_chunks)
 		{
 			using namespace detail;
 
@@ -936,7 +918,7 @@ namespace mbp::prime_sieve
 			}
 		}
 
-		inline_toggle void extract_bit_indexes(uint64_t*& candidates)
+		inline_toggle static void extract_bit_indexes(uint64_t*& candidates)
 		{
 			extract_candidates_with_popcount<1>(candidates);
 			extract_candidates_with_popcount<2>(candidates);
@@ -973,9 +955,9 @@ namespace mbp::prime_sieve
 			} // end for (each chunk with 7 or more bits)
 		}
 
-		inline_toggle void convert_indexes_to_bitstrings(uint64_t* const candidates_start,
-														 const uint64_t* const candidates_end,
-														 const uint64_t number)
+		inline_toggle static void convert_indexes_to_bitstrings(uint64_t* const candidates_start,
+																const uint64_t* const candidates_end,
+																const uint64_t number)
 		{
 			// autovectorizes
 			for (uint64_t* ptr = candidates_start; ptr < candidates_end; ++ptr)
@@ -987,7 +969,7 @@ namespace mbp::prime_sieve
 			}
 		}
 
-		inline_toggle size_t pack_nonzero_sieve_chunks(const uint64_t* const sieve_data)
+		inline_toggle static size_t pack_nonzero_sieve_chunks(const uint64_t* const sieve_data)
 		{
 			constexpr size_t trailing_chunks = (n_sieve_chunks % 4);
 			constexpr size_t n_sieve_chunks_rounded = n_sieve_chunks - trailing_chunks;
@@ -1057,9 +1039,9 @@ namespace mbp::prime_sieve
 	}
 
 	// sort 64-bit chunks of the sieve by popcount, then use custom loops that perform the exact number of required reads
-	inline_toggle uint64_t* gather_sieve_results(uint64_t* candidates,
-												 const sieve_container& sieve,
-												 const uint64_t number)
+	inline_toggle static uint64_t* gather_sieve_results(uint64_t* candidates,
+														const sieve_container& sieve,
+														const uint64_t number)
 	{
 		using namespace detail;
 
