@@ -75,7 +75,7 @@ namespace mbp
 	}
 
 	template<bool on_fast_path>
-	tests_are_inlined size_t* div_tests_with_four_rems(size_t* input,
+	inline_toggle size_t* div_tests_with_four_rems(size_t* input,
 													   const size_t* const candidates_end)
 	{
 		using namespace div_test;
@@ -311,7 +311,7 @@ namespace mbp
 	}
 
 	template<size_t base_a, size_t prime_a, size_t base_b, size_t prime_b, bool on_fast_path>
-	tests_are_inlined size_t* two_div_tests_with_four_rems(size_t* input,
+	inline_toggle size_t* two_div_tests_with_four_rems(size_t* input,
 														   const size_t* const candidates_end)
 	{
 		using namespace div_test;
@@ -514,7 +514,7 @@ namespace mbp
 	}
 
 	template<bool on_fast_path>
-	tests_are_inlined size_t* four_div_tests_with_four_rems(size_t* input,
+	inline_toggle size_t* four_div_tests_with_four_rems(size_t* input,
 															const size_t* const candidates_end)
 	{
 		using namespace div_test;
@@ -783,7 +783,7 @@ namespace mbp
 	}
 
 	template<bool on_fast_path>
-	tests_are_inlined size_t* div_tests_with_three_rems(size_t* input,
+	inline_toggle size_t* div_tests_with_three_rems(size_t* input,
 														const size_t* const candidates_end)
 	{
 		using namespace div_test;
@@ -972,7 +972,7 @@ namespace mbp
 	}
 
 	template<bool on_fast_path>
-	tests_are_inlined uint64_t* div_tests_with_six_rems(uint64_t* input,
+	inline_toggle uint64_t* div_tests_with_six_rems(uint64_t* input,
 														const uint64_t* const candidates_end)
 	{
 		using namespace div_test;
@@ -1157,7 +1157,7 @@ namespace mbp
 	}
 
 	template<bool on_fast_path>
-	tests_are_inlined size_t* div_tests_with_five_rems(size_t* input,
+	inline_toggle size_t* div_tests_with_five_rems(size_t* input,
 													   const size_t* const candidates_end)
 	{
 		using namespace div_test;
@@ -1408,7 +1408,7 @@ namespace mbp
 	}
 
 	template<bool on_fast_path>
-	tests_are_inlined size_t* div_tests_with_10_rems(size_t* input,
+	inline_toggle size_t* div_tests_with_10_rems(size_t* input,
 													 const size_t* const candidates_end)
 	{
 		using namespace div_test;
@@ -1657,7 +1657,7 @@ namespace mbp
 	}
 
 	template<bool on_fast_path>
-	tests_are_inlined size_t* div_tests_with_12_rems(size_t* input,
+	inline_toggle size_t* div_tests_with_12_rems(size_t* input,
 													 const size_t* const candidates_end)
 	{
 		using namespace div_test;
@@ -1921,7 +1921,7 @@ namespace mbp
 	}
 
 	template<bool on_fast_path>
-	tests_are_inlined size_t* div_tests_with_16_rems(size_t* input,
+	inline_toggle size_t* div_tests_with_16_rems(size_t* input,
 													 const size_t* const candidates_end)
 	{
 		using namespace div_test;
@@ -2071,7 +2071,7 @@ namespace mbp
 	}
 
 	template<bool on_fast_path>
-	tests_are_inlined size_t* two_div_tests_with_four_rems(size_t* input,
+	inline_toggle size_t* two_div_tests_with_four_rems(size_t* input,
 														   const size_t* const candidates_end)
 	{
 		using namespace div_test;
@@ -2273,7 +2273,7 @@ namespace mbp
 	}
 
 	template<bool on_fast_path>
-	tests_are_inlined size_t* div_tests_with_8_rems(size_t* input,
+	inline_toggle size_t* div_tests_with_8_rems(size_t* input,
 													const size_t* const candidates_end)
 	{
 		using namespace div_test;
@@ -2475,7 +2475,7 @@ namespace mbp
 	}
 
 	template<bool on_fast_path>
-	tests_are_inlined size_t* div_tests_with_nine_rems(size_t* input,
+	inline_toggle size_t* div_tests_with_nine_rems(size_t* input,
 													   const size_t* const candidates_end)
 	{
 		using namespace div_test;
@@ -2819,7 +2819,7 @@ namespace mbp
 	}
 
 	template<bool on_fast_path>
-	tests_are_inlined size_t* two_div_tests_with_six_rems(size_t* input,
+	inline_toggle size_t* two_div_tests_with_six_rems(size_t* input,
 														  const size_t* const candidates_end)
 	{
 		using namespace div_test;
@@ -3010,7 +3010,7 @@ namespace mbp
 	}
 
 	template<bool on_fast_path>
-	tests_are_inlined uint64_t* two_div_tests_with_three_rems(uint64_t* input,
+	inline_toggle uint64_t* two_div_tests_with_three_rems(uint64_t* input,
 															  const uint64_t* const candidates_end)
 	{
 		using namespace div_test;

@@ -410,7 +410,7 @@ namespace mbp
 
 
 	template<size_t pass>
-	__forceinline size_t merge_bitmasks(uint64_t number, sieve_container& sieve)
+	inline_toggle size_t merge_bitmasks(uint64_t number, sieve_container& sieve)
 	{
 		constexpr static uint256_t static_pc_shuf_lookup{.m256i_u8{
 			0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,

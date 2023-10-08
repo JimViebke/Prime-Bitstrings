@@ -73,7 +73,7 @@ namespace mbp
 
 
 
-#if 1 // accumulate and print pass counts
+#if 0 // accumulate and print pass counts
 #define count_passes(...) __VA_ARGS__
 #define log_pass_counts(str, count, count_before) { \
 	auto w = std::setw; \
@@ -84,8 +84,8 @@ namespace mbp
 #define log_pass_counts(...)
 #endif
 
-#if 1 // toggle inlining on div tests
-#define tests_are_inlined __forceinline
+#if 1
+#define inline_toggle __forceinline
 #else
-#define tests_are_inlined __declspec(noinline)
+#define inline_toggle __declspec(noinline) static
 #endif

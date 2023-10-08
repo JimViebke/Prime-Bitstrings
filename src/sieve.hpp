@@ -1,5 +1,8 @@
 #pragma once
 
+#include <iostream>
+#include <iomanip>
+
 #include "math/math.hpp"
 #include "util/types.hpp"
 
@@ -35,7 +38,7 @@ namespace mbp::prime_sieve
 	}();
 
 	static void update_sieve_offsets_cache(const sieve_prime_t* prime_ptr,
-									sieve_offset_t* offset_ptr)
+										   sieve_offset_t* offset_ptr)
 	{
 		const auto* mp_ptr = modulo_precomp.data() + (prime_ptr - small_primes_lookup.data());
 
@@ -517,8 +520,8 @@ namespace mbp::prime_sieve
 
 
 
-	__forceinline void partial_sieve(sieve_container& sieve,
-										 const size_t sieve_popcount)
+	inline_toggle void partial_sieve(sieve_container& sieve,
+									 const size_t sieve_popcount)
 	{
 		// Sieve primes by strides of 15*p:
 		//
@@ -726,7 +729,7 @@ namespace mbp::prime_sieve
 		}
 
 		template<size_t popcount>
-		__forceinline void extract_candidates_with_popcount(uint64_t*& candidates)
+		inline_toggle void extract_candidates_with_popcount(uint64_t*& candidates)
 		{
 			for (size_t j = 0, n_chunks = n_chunks_with_pc[popcount]; j < n_chunks; ++j)
 			{
@@ -738,7 +741,7 @@ namespace mbp::prime_sieve
 			}
 		}
 
-		__forceinline void sort_chunks_and_extract_bit_indexes_vectorized(uint64_t*& candidates, const size_t n_nonzero_chunks)
+		inline_toggle void sort_chunks(const size_t n_nonzero_chunks)
 		{
 			using namespace detail;
 
@@ -931,7 +934,10 @@ namespace mbp::prime_sieve
 				sorted_chunks[pc][idx] = chunk;
 				chunk_indexes[pc][idx] = chunk_indexes[0][i];
 			}
+		}
 
+		inline_toggle void extract_bit_indexes(uint64_t*& candidates)
+		{
 			extract_candidates_with_popcount<1>(candidates);
 			extract_candidates_with_popcount<2>(candidates);
 			extract_candidates_with_popcount<3>(candidates);
@@ -967,7 +973,7 @@ namespace mbp::prime_sieve
 			} // end for (each chunk with 7 or more bits)
 		}
 
-		__forceinline void convert_indexes_to_bitstrings(uint64_t* const candidates_start,
+		inline_toggle void convert_indexes_to_bitstrings(uint64_t* const candidates_start,
 														 const uint64_t* const candidates_end,
 														 const uint64_t number)
 		{
@@ -981,7 +987,7 @@ namespace mbp::prime_sieve
 			}
 		}
 
-		__forceinline size_t pack_nonzero_sieve_chunks(const uint64_t* const sieve_data)
+		inline_toggle size_t pack_nonzero_sieve_chunks(const uint64_t* const sieve_data)
 		{
 			constexpr size_t trailing_chunks = (n_sieve_chunks % 4);
 			constexpr size_t n_sieve_chunks_rounded = n_sieve_chunks - trailing_chunks;
@@ -1051,7 +1057,7 @@ namespace mbp::prime_sieve
 	}
 
 	// sort 64-bit chunks of the sieve by popcount, then use custom loops that perform the exact number of required reads
-	__forceinline uint64_t* gather_sieve_results(uint64_t* candidates,
+	inline_toggle uint64_t* gather_sieve_results(uint64_t* candidates,
 												 const sieve_container& sieve,
 												 const uint64_t number)
 	{
@@ -1064,10 +1070,11 @@ namespace mbp::prime_sieve
 		// pack non-zero sieve chunks before bitmap decoding
 		const size_t n_nonzero_chunks = pack_nonzero_sieve_chunks((const uint64_t* const)sieve.data());
 
-		uint64_t* const candidates_start = candidates;
-
 		// prepare arrays of 64-bit chunks, where the chunks in array n contain exactly n set bits (n candidates)
-		sort_chunks_and_extract_bit_indexes_vectorized(candidates, n_nonzero_chunks);
+		sort_chunks(n_nonzero_chunks);
+
+		uint64_t* const candidates_start = candidates;
+		extract_bit_indexes(candidates);
 
 		convert_indexes_to_bitstrings(candidates_start, candidates, number);
 
