@@ -969,12 +969,30 @@ namespace mbp::prime_sieve
 			}
 		}
 
+		static const std::array<uint64_t, 16> permute_masks = [] {
+			std::array<uint64_t, 16> masks{};
+
+			for (size_t i = 0; i < 16; ++i)
+			{
+				const uint64_t byte_mask = _pdep_u64(~i, 0x0001000100010001) * 0xFFFF; // convert bits to bytes
+				const uint64_t permute_indexes = _pext_u64(0x0706050403020100, byte_mask);
+
+				masks[i] = permute_indexes;
+			}
+
+			return masks;
+		}();
+		static const std::array<uint8_t, 16> out_idx_advance = [] {
+			std::array<uint8_t, 16> lookup{};
+			for (size_t i = 0; i < 16; ++i)
+				lookup[i] = uint8_t(4 - pop_count(i));
+			return lookup;
+		}();
+
 		inline_toggle static size_t pack_nonzero_sieve_chunks(const uint64_t* const sieve_data)
 		{
 			constexpr size_t trailing_chunks = (n_sieve_chunks % 4);
 			constexpr size_t n_sieve_chunks_rounded = n_sieve_chunks - trailing_chunks;
-
-			const uint256_t all_ones = _mm256_set1_epi64x(uint64_t(-1));
 
 			uint128_t indexes = uint128_t{ .m128i_i16{0, 1, 2, 3} };
 			const uint128_t inc = uint128_t{ .m128i_i16{4, 4, 4, 4} };
@@ -987,13 +1005,10 @@ namespace mbp::prime_sieve
 			for (chunk_idx_t i = 0; i < n_sieve_chunks_rounded; i += 4)
 			{
 				uint256_t mask_256 = _mm256_cmpeq_epi64(data, _mm256_setzero_si256()); // find the zero chunks
-				mask_256 = _mm256_xor_si256(mask_256, all_ones); // invert to find the nonzero chunks
-				const auto bit_mask = _mm256_movemask_ps(_mm256_castsi256_ps(mask_256)); // 32-bit comparisons so the mask contains pairs of bits
+				const auto bit_mask = _mm256_movemask_pd(_mm256_castsi256_pd(mask_256));
 
 				// convert element mask to shuffle/permute mask
-				const uint64_t byte_mask = _pdep_u64(bit_mask, 0x0101010101010101) * 0xFF; // convert bits to bytes
-				const uint64_t permute_indexes = _pext_u64(0x0706050403020100, byte_mask);
-				const uint128_t permute_mask = _mm_cvtsi64_si128(permute_indexes);
+				const uint128_t permute_mask = _mm_cvtsi64_si128(permute_masks[bit_mask]);
 
 				// pack chunks
 				const uint256_t packed_data = _mm256_permutevar8x32_epi32(data, _mm256_cvtepu8_epi32(permute_mask));
@@ -1008,7 +1023,7 @@ namespace mbp::prime_sieve
 				_mm256_storeu_si256((uint256_t*)(&sorted_chunks[0][out_idx]), packed_data);
 				*(uint64_t*)(&chunk_indexes[0][out_idx]) = keep_indexes.m128i_u64[0];
 
-				out_idx += pop_count(bit_mask) >> 1; // advance based on the number of elements we stored (half of the number of mask bits)
+				out_idx += out_idx_advance[bit_mask]; // advance based on the number of elements we stored
 				indexes = _mm_add_epi16(indexes, inc);
 			}
 
