@@ -71,21 +71,68 @@ namespace mbp
 		// (condition should optimize out)
 		while (benchmark_mode ? number < bm_stop : true)
 		{
+			// Merge static sieve, popcount, gcd, and div test bitmasks
+			for (size_t i = 0; i < prime_sieve::steps; ++i)
+			{
+				const uint64_t sieve_start = number + (i * sieve_container::size() * 2);
+				merge_bitmasks<1>(sieve_start, (*sieves)[i]);
+			}
+			for (size_t i = 0; i < prime_sieve::steps; ++i)
+			{
+				const uint64_t sieve_start = number + (i * sieve_container::size() * 2);
+				merge_bitmasks<2>(sieve_start, (*sieves)[i]);
+			}
+			for (size_t i = 0; i < prime_sieve::steps; ++i)
+			{
+				const uint64_t sieve_start = number + (i * sieve_container::size() * 2);
+				sieve_popcounts[i] = merge_bitmasks<3>(sieve_start, (*sieves)[i]);
+				count_passes(a += sieve_popcounts[i]);
+			}
+
+			// Sieve until one of our density thresholds is reached
+			for (size_t i = 0; i < prime_sieve::steps; ++i)
+			{
+				prime_sieve::partial_sieve((*sieves)[i], sieve_popcounts[i]);
+				count_passes(ps15 += (*sieves)[i].count_bits());
+			}
+
+			uint64_t* const candidates = candidates_storage.data();
+			uint64_t* candidates_end = candidates;
+
+			// Convert 1-bit candidates to 64-bit candidates
+			for (size_t i = 0; i < prime_sieve::steps; ++i)
+			{
+				const uint64_t sieve_start = number + (i * sieve_container::size() * 2);
+				candidates_end = prime_sieve::gather_sieve_results(candidates_end, (*sieves)[i], sieve_start);
+			}
+
 			// The upper 32 bits of a 64 bit integer only change every 4 billion ints.
 			// Detect iterations where the upper bits can not change, and allow
 			// functions to optimize based on this.
 			if (util::upper_32_bits_match(number, number + loop_size))
 			{
-				main_loop<true>(number);
+				candidates_end = div_tests<true>(candidates_end);
 			}
 			else
 			{
-				main_loop<false>(number);
+				candidates_end = div_tests<false>(candidates_end);
 			}
 
+			// Collect prime candidates until we have filled our buffer, then do full primality tests starting with base 2
+			for (const auto* ptr = candidates; ptr != candidates_end; ++ptr)
+			{
+				pt_buffer[pt_buffer_size++] = *ptr;
+
+				if (pt_buffer_size == pt_buffer_capacity)
+				{
+					full_primality_tests(pt_buffer.data(), pt_buffer.data() + pt_buffer.size());
+					pt_buffer_size = 0;
+				}
+			}
+
+
+
 			number += loop_size;
-
-
 
 			if (next_div_test_reorder <= number)
 			{
@@ -132,42 +179,9 @@ namespace mbp
 	}
 
 	template<bool on_fast_path>
-	void mbp::find_multibase_primes::main_loop(const uint64_t number)
+	uint64_t* mbp::find_multibase_primes::div_tests(uint64_t* candidates_end)
 	{
 		uint64_t* const candidates = candidates_storage.data();
-		uint64_t* candidates_end = candidates;
-
-		// Merge static sieve, popcount, gcd, and div test bitmasks
-		for (size_t i = 0; i < prime_sieve::steps; ++i)
-		{
-			const uint64_t sieve_start = number + (i * sieve_container::size() * 2);
-			merge_bitmasks<1>(sieve_start, (*sieves)[i]);
-		}
-		for (size_t i = 0; i < prime_sieve::steps; ++i)
-		{
-			const uint64_t sieve_start = number + (i * sieve_container::size() * 2);
-			merge_bitmasks<2>(sieve_start, (*sieves)[i]);
-		}
-		for (size_t i = 0; i < prime_sieve::steps; ++i)
-		{
-			const uint64_t sieve_start = number + (i * sieve_container::size() * 2);
-			sieve_popcounts[i] = merge_bitmasks<3>(sieve_start, (*sieves)[i]);
-			count_passes(a += sieve_popcounts[i]);
-		}
-
-		// Sieve until one of our density thresholds is reached
-		for (size_t i = 0; i < prime_sieve::steps; ++i)
-		{
-			prime_sieve::partial_sieve((*sieves)[i], sieve_popcounts[i]);
-			count_passes(ps15 += (*sieves)[i].count_bits());
-		}
-
-		// Convert 1-bit candidates to 64-bit candidates
-		for (size_t i = 0; i < prime_sieve::steps; ++i)
-		{
-			const uint64_t sieve_start = number + (i * sieve_container::size() * 2);
-			candidates_end = prime_sieve::gather_sieve_results(candidates_end, (*sieves)[i], sieve_start);
-		}
 
 		// Perform some div tests separately when a specialized implementation is faster
 
@@ -214,18 +228,7 @@ namespace mbp
 
 
 
-		// Collect prime candidates until we have filled our buffer, then do full primality tests starting with base 2
-		for (const auto* ptr = candidates; ptr != candidates_end; ++ptr)
-		{
-			pt_buffer[pt_buffer_size++] = *ptr;
-
-			if (pt_buffer_size == pt_buffer_capacity)
-			{
-				full_primality_tests(pt_buffer.data(), pt_buffer.data() + pt_buffer.size());
-				pt_buffer_size = 0;
-			}
-		}
-
+		return candidates_end;
 	}
 
 
@@ -266,5 +269,5 @@ namespace mbp
 	}
 }
 
-template void mbp::find_multibase_primes::main_loop<true>(const uint64_t);
-template void mbp::find_multibase_primes::main_loop<false>(const uint64_t);
+template uint64_t* mbp::find_multibase_primes::div_tests<true>(uint64_t*);
+template uint64_t* mbp::find_multibase_primes::div_tests<false>(uint64_t*);
