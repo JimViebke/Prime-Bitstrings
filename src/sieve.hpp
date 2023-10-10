@@ -691,60 +691,87 @@ namespace mbp::prime_sieve
 		// [popcount][chunk indexes]
 		static std::array<std::array<chunk_idx_t, n_sieve_chunks>, 8> chunk_indexes;
 
-		template<size_t popcount>
-		__forceinline void extract_candidates(uint64_t& chunk,
-											  const uint64_t chunk_index,
-											  uint64_t*& candidates)
-		{
-			// read the next bit in the chunk
-			const size_t tzcnt = _tzcnt_u64(chunk);
+		static const std::array<uint64_t, 16> permute_masks = [] {
+			std::array<uint64_t, 16> masks{};
 
-			// reset the bit we just read
-			if constexpr (popcount > 1)
-				chunk = _blsr_u64(chunk);
-
-			// store the chunk's index plus the bit's index
-			*candidates++ = chunk_index + tzcnt;
-
-			if constexpr (popcount - 1 > 0)
-				extract_candidates<popcount - 1>(chunk, chunk_index, candidates);
-		}
-
-		template<size_t popcount>
-		inline_toggle void extract_candidates_with_popcount(uint64_t*& candidates)
-		{
-			const size_t n_chunks = n_chunks_with_pc[popcount];
-			size_t i = 0;
-
-			if constexpr (popcount <= 2)
+			for (size_t i = 0; i < 16; ++i)
 			{
-				const size_t n_chunks_rounded = n_chunks - (n_chunks % 4);
+				const uint64_t byte_mask = _pdep_u64(~i, 0x0001000100010001) * 0xFFFF; // convert bits to bytes
+				const uint64_t permute_indexes = _pext_u64(0x0706050403020100, byte_mask);
 
-				for (; i < n_chunks_rounded; i += 4)
-				{
-					uint64_t chunk = sorted_chunks[popcount][i];
-					uint64_t index = chunk_indexes[popcount][i] * 64ull;
-					extract_candidates<popcount>(chunk, index, candidates);
-					chunk = sorted_chunks[popcount][i + 1];
-					index = chunk_indexes[popcount][i + 1] * 64ull;
-					extract_candidates<popcount>(chunk, index, candidates);
-					chunk = sorted_chunks[popcount][i + 2];
-					index = chunk_indexes[popcount][i + 2] * 64ull;
-					extract_candidates<popcount>(chunk, index, candidates);
-					chunk = sorted_chunks[popcount][i + 3];
-					index = chunk_indexes[popcount][i + 3] * 64ull;
-					extract_candidates<popcount>(chunk, index, candidates);
-				}
+				masks[i] = permute_indexes;
 			}
 
-			for (; i < n_chunks; ++i)
-			{
-				uint64_t chunk = sorted_chunks[popcount][i];
-				uint64_t index = chunk_indexes[popcount][i] * 64ull;
+			return masks;
+		}();
+		static const std::array<uint8_t, 16> out_idx_advance = [] {
+			std::array<uint8_t, 16> lookup{};
+			for (size_t i = 0; i < 16; ++i)
+				lookup[i] = uint8_t(4 - pop_count(i));
+			return lookup;
+		}();
 
-				// generate instructions to extract exactly n candidates
-				extract_candidates<popcount>(chunk, index, candidates);
+		inline_toggle static size_t pack_nonzero_sieve_chunks(const uint64_t* const sieve_data)
+		{
+			constexpr size_t trailing_chunks = (n_sieve_chunks % 4);
+			constexpr size_t n_sieve_chunks_rounded = n_sieve_chunks - trailing_chunks;
+
+			uint128_t indexes = uint128_t{ .m128i_i16{0, 1, 2, 3} };
+			const uint128_t inc = uint128_t{ .m128i_i16{4, 4, 4, 4} };
+
+			size_t out_idx = 0;
+
+			// load one iteration ahead
+			uint256_t data = _mm256_load_si256((uint256_t*)(&sieve_data[0]));
+
+			for (chunk_idx_t i = 0; i < n_sieve_chunks_rounded; i += 4)
+			{
+				uint256_t mask_256 = _mm256_cmpeq_epi64(data, _mm256_setzero_si256()); // find the zero chunks
+				const auto bit_mask = _mm256_movemask_pd(_mm256_castsi256_pd(mask_256));
+
+				// convert element mask to shuffle/permute mask
+				const uint128_t permute_mask = _mm_cvtsi64_si128(permute_masks[bit_mask]);
+
+				// pack chunks
+				const uint256_t packed_data = _mm256_permutevar8x32_epi32(data, _mm256_cvtepu8_epi32(permute_mask));
+
+				// load one iteration ahead
+				data = _mm256_load_si256((uint256_t*)(&sieve_data[i + 4]));
+
+				// pack indexes
+				const uint128_t keep_indexes = _mm_shuffle_epi8(indexes, permute_mask);
+
+				// store packed chunks and indexes
+				_mm256_storeu_si256((uint256_t*)(&sorted_chunks[0][out_idx]), packed_data);
+				*(uint64_t*)(&chunk_indexes[0][out_idx]) = keep_indexes.m128i_u64[0];
+
+				out_idx += out_idx_advance[bit_mask]; // advance based on the number of elements we stored
+				indexes = _mm_add_epi16(indexes, inc);
 			}
+
+			if constexpr (trailing_chunks >= 1)
+			{
+				const uint64_t chunk = sieve_data[n_sieve_chunks_rounded];
+				sorted_chunks[0][out_idx] = chunk;
+				chunk_indexes[0][out_idx] = n_sieve_chunks_rounded;
+				out_idx += (chunk != 0);
+			}
+			if constexpr (trailing_chunks >= 2)
+			{
+				const uint64_t chunk = sieve_data[n_sieve_chunks_rounded + 1];
+				sorted_chunks[0][out_idx] = chunk;
+				chunk_indexes[0][out_idx] = n_sieve_chunks_rounded + 1;
+				out_idx += (chunk != 0);
+			}
+			if constexpr (trailing_chunks == 3)
+			{
+				const uint64_t chunk = sieve_data[n_sieve_chunks_rounded + 2];
+				sorted_chunks[0][out_idx] = chunk;
+				chunk_indexes[0][out_idx] = n_sieve_chunks_rounded + 2;
+				out_idx += (chunk != 0);
+			}
+
+			return out_idx; // the final index is the number of non-zero chunks
 		}
 
 		inline_toggle static void sort_chunks(const size_t n_nonzero_chunks)
@@ -942,6 +969,62 @@ namespace mbp::prime_sieve
 			}
 		}
 
+		template<size_t popcount>
+		__forceinline void extract_candidates(uint64_t& chunk,
+											  const uint64_t chunk_index,
+											  uint64_t*& candidates)
+		{
+			// read the next bit in the chunk
+			const size_t tzcnt = _tzcnt_u64(chunk);
+
+			// reset the bit we just read
+			if constexpr (popcount > 1)
+				chunk = _blsr_u64(chunk);
+
+			// store the chunk's index plus the bit's index
+			*candidates++ = chunk_index + tzcnt;
+
+			if constexpr (popcount - 1 > 0)
+				extract_candidates<popcount - 1>(chunk, chunk_index, candidates);
+		}
+
+		template<size_t popcount>
+		inline_toggle void extract_candidates_with_popcount(uint64_t*& candidates)
+		{
+			const size_t n_chunks = n_chunks_with_pc[popcount];
+			size_t i = 0;
+
+			if constexpr (popcount <= 2)
+			{
+				const size_t n_chunks_rounded = n_chunks - (n_chunks % 4);
+
+				for (; i < n_chunks_rounded; i += 4)
+				{
+					uint64_t chunk = sorted_chunks[popcount][i];
+					uint64_t index = chunk_indexes[popcount][i] * 64ull;
+					extract_candidates<popcount>(chunk, index, candidates);
+					chunk = sorted_chunks[popcount][i + 1];
+					index = chunk_indexes[popcount][i + 1] * 64ull;
+					extract_candidates<popcount>(chunk, index, candidates);
+					chunk = sorted_chunks[popcount][i + 2];
+					index = chunk_indexes[popcount][i + 2] * 64ull;
+					extract_candidates<popcount>(chunk, index, candidates);
+					chunk = sorted_chunks[popcount][i + 3];
+					index = chunk_indexes[popcount][i + 3] * 64ull;
+					extract_candidates<popcount>(chunk, index, candidates);
+				}
+			}
+
+			for (; i < n_chunks; ++i)
+			{
+				uint64_t chunk = sorted_chunks[popcount][i];
+				uint64_t index = chunk_indexes[popcount][i] * 64ull;
+
+				// generate instructions to extract exactly n candidates
+				extract_candidates<popcount>(chunk, index, candidates);
+			}
+		}
+
 		inline_toggle static void extract_bit_indexes(uint64_t*& candidates)
 		{
 			extract_candidates_with_popcount<1>(candidates);
@@ -991,89 +1074,6 @@ namespace mbp::prime_sieve
 				candidate += number;
 				*ptr = candidate;
 			}
-		}
-
-		static const std::array<uint64_t, 16> permute_masks = [] {
-			std::array<uint64_t, 16> masks{};
-
-			for (size_t i = 0; i < 16; ++i)
-			{
-				const uint64_t byte_mask = _pdep_u64(~i, 0x0001000100010001) * 0xFFFF; // convert bits to bytes
-				const uint64_t permute_indexes = _pext_u64(0x0706050403020100, byte_mask);
-
-				masks[i] = permute_indexes;
-			}
-
-			return masks;
-		}();
-		static const std::array<uint8_t, 16> out_idx_advance = [] {
-			std::array<uint8_t, 16> lookup{};
-			for (size_t i = 0; i < 16; ++i)
-				lookup[i] = uint8_t(4 - pop_count(i));
-			return lookup;
-		}();
-
-		inline_toggle static size_t pack_nonzero_sieve_chunks(const uint64_t* const sieve_data)
-		{
-			constexpr size_t trailing_chunks = (n_sieve_chunks % 4);
-			constexpr size_t n_sieve_chunks_rounded = n_sieve_chunks - trailing_chunks;
-
-			uint128_t indexes = uint128_t{ .m128i_i16{0, 1, 2, 3} };
-			const uint128_t inc = uint128_t{ .m128i_i16{4, 4, 4, 4} };
-
-			size_t out_idx = 0;
-
-			// load one iteration ahead
-			uint256_t data = _mm256_load_si256((uint256_t*)(&sieve_data[0]));
-
-			for (chunk_idx_t i = 0; i < n_sieve_chunks_rounded; i += 4)
-			{
-				uint256_t mask_256 = _mm256_cmpeq_epi64(data, _mm256_setzero_si256()); // find the zero chunks
-				const auto bit_mask = _mm256_movemask_pd(_mm256_castsi256_pd(mask_256));
-
-				// convert element mask to shuffle/permute mask
-				const uint128_t permute_mask = _mm_cvtsi64_si128(permute_masks[bit_mask]);
-
-				// pack chunks
-				const uint256_t packed_data = _mm256_permutevar8x32_epi32(data, _mm256_cvtepu8_epi32(permute_mask));
-
-				// load one iteration ahead
-				data = _mm256_load_si256((uint256_t*)(&sieve_data[i + 4]));
-
-				// pack indexes
-				const uint128_t keep_indexes = _mm_shuffle_epi8(indexes, permute_mask);
-
-				// store packed chunks and indexes
-				_mm256_storeu_si256((uint256_t*)(&sorted_chunks[0][out_idx]), packed_data);
-				*(uint64_t*)(&chunk_indexes[0][out_idx]) = keep_indexes.m128i_u64[0];
-
-				out_idx += out_idx_advance[bit_mask]; // advance based on the number of elements we stored
-				indexes = _mm_add_epi16(indexes, inc);
-			}
-
-			if constexpr (trailing_chunks >= 1)
-			{
-				const uint64_t chunk = sieve_data[n_sieve_chunks_rounded];
-				sorted_chunks[0][out_idx] = chunk;
-				chunk_indexes[0][out_idx] = n_sieve_chunks_rounded;
-				out_idx += (chunk != 0);
-			}
-			if constexpr (trailing_chunks >= 2)
-			{
-				const uint64_t chunk = sieve_data[n_sieve_chunks_rounded + 1];
-				sorted_chunks[0][out_idx] = chunk;
-				chunk_indexes[0][out_idx] = n_sieve_chunks_rounded + 1;
-				out_idx += (chunk != 0);
-			}
-			if constexpr (trailing_chunks == 3)
-			{
-				const uint64_t chunk = sieve_data[n_sieve_chunks_rounded + 2];
-				sorted_chunks[0][out_idx] = chunk;
-				chunk_indexes[0][out_idx] = n_sieve_chunks_rounded + 2;
-				out_idx += (chunk != 0);
-			}
-
-			return out_idx; // the final index is the number of non-zero chunks
 		}
 	}
 
