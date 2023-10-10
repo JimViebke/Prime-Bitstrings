@@ -713,10 +713,34 @@ namespace mbp::prime_sieve
 		template<size_t popcount>
 		inline_toggle void extract_candidates_with_popcount(uint64_t*& candidates)
 		{
-			for (size_t j = 0, n_chunks = n_chunks_with_pc[popcount]; j < n_chunks; ++j)
+			const size_t n_chunks = n_chunks_with_pc[popcount];
+			size_t i = 0;
+
+			if constexpr (popcount <= 2)
 			{
-				uint64_t chunk = sorted_chunks[popcount][j];
-				uint64_t index = chunk_indexes[popcount][j] * 64ull;
+				const size_t n_chunks_rounded = n_chunks - (n_chunks % 4);
+
+				for (; i < n_chunks_rounded; i += 4)
+				{
+					uint64_t chunk = sorted_chunks[popcount][i];
+					uint64_t index = chunk_indexes[popcount][i] * 64ull;
+					extract_candidates<popcount>(chunk, index, candidates);
+					chunk = sorted_chunks[popcount][i + 1];
+					index = chunk_indexes[popcount][i + 1] * 64ull;
+					extract_candidates<popcount>(chunk, index, candidates);
+					chunk = sorted_chunks[popcount][i + 2];
+					index = chunk_indexes[popcount][i + 2] * 64ull;
+					extract_candidates<popcount>(chunk, index, candidates);
+					chunk = sorted_chunks[popcount][i + 3];
+					index = chunk_indexes[popcount][i + 3] * 64ull;
+					extract_candidates<popcount>(chunk, index, candidates);
+				}
+			}
+
+			for (; i < n_chunks; ++i)
+			{
+				uint64_t chunk = sorted_chunks[popcount][i];
+				uint64_t index = chunk_indexes[popcount][i] * 64ull;
 
 				// generate instructions to extract exactly n candidates
 				extract_candidates<popcount>(chunk, index, candidates);
