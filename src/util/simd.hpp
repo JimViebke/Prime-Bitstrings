@@ -1,11 +1,5 @@
 #pragma once
 
-// Hacky way to hide the contents of zmmintrin.h
-// MSVC always includes it from immintrin.h
-#ifndef _ZMMINTRIN_H_INCLUDED
-#define _ZMMINTRIN_H_INCLUDED
-#endif
-
 #include <immintrin.h>
 
 namespace mbp

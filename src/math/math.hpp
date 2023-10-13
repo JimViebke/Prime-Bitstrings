@@ -4,12 +4,6 @@
 #include "mpirxx.h"
 #pragma warning(pop)
 
-// Hacky way to hide the contents of zmmintrin.h
-// MSVC always includes it from immintrin.h
-#ifndef _ZMMINTRIN_H_INCLUDED
-#define _ZMMINTRIN_H_INCLUDED
-#endif
-
 #include <bit>
 #include <immintrin.h>
 #include <stdint.h>
