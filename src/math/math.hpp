@@ -10,6 +10,7 @@
 #define _ZMMINTRIN_H_INCLUDED
 #endif
 
+#include <bit>
 #include <immintrin.h>
 #include <stdint.h>
 #include <vector>
