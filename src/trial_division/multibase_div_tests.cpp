@@ -341,19 +341,19 @@ namespace mbp::div_test
 
 		uint64_t* shrinking_end = candidates_end;
 
-		static constexpr uint256_t static_shuffle_mask_byte_0{ .m256i_u64{
-			0x0000000000000000, 0x0808080808080808, 0x0000000000000000, 0x0808080808080808 } };
-		static constexpr uint256_t static_shuffle_mask_byte_1{ .m256i_u64{
-			0x0101010101010101, 0x0909090909090909, 0x0101010101010101, 0x0909090909090909 } };
-		static constexpr uint256_t static_shuffle_mask_byte_2{ .m256i_u64{
-			0x0202020202020202, 0x0A0A0A0A0A0A0A0A, 0x0202020202020202, 0x0A0A0A0A0A0A0A0A } };
-		static constexpr uint256_t static_shuffle_mask_byte_3{ .m256i_u64{
-			0x0303030303030303, 0x0B0B0B0B0B0B0B0B, 0x0303030303030303, 0x0B0B0B0B0B0B0B0B } };
+		static constexpr uint64_t static_shuffle_mask_byte_0[4] = { 
+			0x0000000000000000, 0x0808080808080808, 0x0000000000000000, 0x0808080808080808 };
+		static constexpr uint64_t static_shuffle_mask_byte_1[4] = { 
+			0x0101010101010101, 0x0909090909090909, 0x0101010101010101, 0x0909090909090909 };
+		static constexpr uint64_t static_shuffle_mask_byte_2[4] = { 
+			0x0202020202020202, 0x0A0A0A0A0A0A0A0A, 0x0202020202020202, 0x0A0A0A0A0A0A0A0A };
+		static constexpr uint64_t static_shuffle_mask_byte_3[4] = { 
+			0x0303030303030303, 0x0B0B0B0B0B0B0B0B, 0x0303030303030303, 0x0B0B0B0B0B0B0B0B };
 
-		const uint256_t shuffle_mask_byte_0 = _mm256_load_si256(&static_shuffle_mask_byte_0);
-		const uint256_t shuffle_mask_byte_1 = _mm256_load_si256(&static_shuffle_mask_byte_1);
-		const uint256_t shuffle_mask_byte_2 = _mm256_load_si256(&static_shuffle_mask_byte_2);
-		const uint256_t shuffle_mask_byte_3 = _mm256_load_si256(&static_shuffle_mask_byte_3);
+		const uint256_t shuffle_mask_byte_0 = _mm256_load_si256((uint256_t*)static_shuffle_mask_byte_0);
+		const uint256_t shuffle_mask_byte_1 = _mm256_load_si256((uint256_t*)static_shuffle_mask_byte_1);
+		const uint256_t shuffle_mask_byte_2 = _mm256_load_si256((uint256_t*)static_shuffle_mask_byte_2);
+		const uint256_t shuffle_mask_byte_3 = _mm256_load_si256((uint256_t*)static_shuffle_mask_byte_3);
 		const uint256_t and_mask = _mm256_set1_epi64x(0x80'40'20'10'08'04'02'01);
 
 		for (size_t i = 0; i < n_of_tests; ++i)
@@ -618,7 +618,8 @@ namespace mbp::div_test
 				// final horizontal add
 				sum = _mm256_add_epi64(sum, _mm256_srli_si256(sum, 8));
 
-				const uint64_t sum_0 = sum.m256i_u64[0];
+				const uint64_t sum_0 = _mm256_extract_epi64(sum, 0);
+
 				if (has_small_prime_factor(sum_0, div_test_0.prime_idx))
 				{
 					div_test_0.hits++;
@@ -626,8 +627,7 @@ namespace mbp::div_test
 					break;
 				}
 
-				const uint128_t xmm_sum = _mm256_extracti128_si256(sum, 1);
-				const uint64_t sum_1 = xmm_sum.m128i_u64[0];
+				const uint64_t sum_1 = _mm256_extract_epi64(sum, 2); // extract from bottom of high lane
 				if (has_small_prime_factor(sum_1, div_test_1.prime_idx))
 				{
 					div_test_1.hits++;
@@ -740,9 +740,9 @@ namespace mbp::div_test
 	#endif
 	}
 
+#if analyze_div_tests
 	void full_div_tests::run_div_test_analysis(const uint64_t number)
 	{
-	#if analyze_div_tests
 		using namespace div_test;
 
 		const auto div_test_pred = [](const auto& a, const auto& b) {
@@ -790,8 +790,8 @@ namespace mbp::div_test
 
 		last_perf_time = perf_time;
 		last_n = number;
-	#else
-		number; // suppress "unused formal parameter" warning
-	#endif
 	}
+#else
+	void full_div_tests::run_div_test_analysis(__attribute__((unused)) const uint64_t number) {}
+#endif
 }

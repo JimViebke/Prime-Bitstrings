@@ -272,7 +272,9 @@ namespace mbp::prime_sieve
 
 
 	// for now, assume p % 8 == 1
-	void generate_scalar_writes_test_code(size_t p, size_t j, uint8_t* const sieve_data)
+	void generate_scalar_writes_test_code(size_t p,
+										  __attribute__((unused)) size_t j,
+										  __attribute__((unused)) uint8_t* const sieve_data)
 	{
 		//const size_t offset_0 = (j + (1ull * p)) / 8;
 		//const size_t offset_1 = (j + (2ull * p)) / 8;
@@ -285,9 +287,6 @@ namespace mbp::prime_sieve
 
 		// prime % 8 yields which of four implementations we need (1, 3, 5, or 7)
 		constexpr size_t p_mod_8 = 1;
-
-		j; // unreferenced formal parameter
-		sieve_data; // unreferenced formal parameter
 
 		std::cout << '\n';
 

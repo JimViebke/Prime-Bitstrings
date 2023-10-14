@@ -1,16 +1,14 @@
 #pragma once
 
-#pragma warning(push, 0)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Weverything"
+
 #include "mpir.h"
 #include "gmp-impl.h"
 #include "longlong.h"
-#pragma warning(pop, 0)
 
 #include "math.hpp"
 #include "../config.hpp"
-
-// This file is all MPIR or customized MPIR code - suppress all warnings
-#pragma warning(push, 0)
 
 namespace mbp::franken
 {
@@ -980,4 +978,4 @@ unsigned char __clz_tab[129] =
 };
 #endif
 
-#pragma warning(pop)
+#pragma clang diagnostic pop

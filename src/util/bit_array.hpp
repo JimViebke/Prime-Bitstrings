@@ -86,12 +86,12 @@ namespace mbp
 
 		__forceinline size_t count_bits() const
 		{
-			constexpr static uint256_t static_nybble_lookup{ .m256i_u8{
+			constexpr static std::array<uint8_t, 32> static_nybble_lookup{
 				0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
-				0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4 } };
+				0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4 };
 
 			const uint256_t nybble_mask = _mm256_set1_epi8(0b0000'1111);
-			const uint256_t nybble_pc_lookup = _mm256_loadu_si256(&static_nybble_lookup);
+			const uint256_t nybble_pc_lookup = _mm256_loadu_si256((uint256_t*)&static_nybble_lookup);
 
 			const uint256_t* const rounded_end = ((uint256_t*)_data.data()) + (n_elements / 256);
 
@@ -121,7 +121,7 @@ namespace mbp
 			// add high and low elements
 			ymm_pc = _mm256_add_epi64(ymm_pc, _mm256_srli_si256(ymm_pc, 8));
 			// extract
-			size_t pc = ymm_pc.m256i_u64[0];
+			size_t pc = _mm256_extract_epi64(ymm_pc, 0);
 
 			const uint64_t* in = (const uint64_t*)rounded_end;
 

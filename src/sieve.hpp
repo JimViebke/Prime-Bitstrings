@@ -716,8 +716,8 @@ namespace mbp::prime_sieve
 			constexpr size_t trailing_chunks = (n_sieve_chunks % 4);
 			constexpr size_t n_sieve_chunks_rounded = n_sieve_chunks - trailing_chunks;
 
-			uint128_t indexes = uint128_t{ .m128i_i16{0, 1, 2, 3} };
-			const uint128_t inc = uint128_t{ .m128i_i16{4, 4, 4, 4} };
+			uint128_t indexes = _mm_setr_epi16(0, 1, 2, 3, 0, 0, 0, 0);
+			const uint128_t inc = _mm_setr_epi16(4, 4, 4, 4, 0, 0, 0, 0);
 
 			size_t out_idx = 0;
 
@@ -743,7 +743,7 @@ namespace mbp::prime_sieve
 
 				// store packed chunks and indexes
 				_mm256_storeu_si256((uint256_t*)(&sorted_chunks[0][out_idx]), packed_data);
-				*(uint64_t*)(&chunk_indexes[0][out_idx]) = keep_indexes.m128i_u64[0];
+				*(uint64_t*)(&chunk_indexes[0][out_idx]) = _mm_extract_epi64(keep_indexes, 0);
 
 				out_idx += out_idx_advance[bit_mask]; // advance based on the number of elements we stored
 				indexes = _mm_add_epi16(indexes, inc);
@@ -778,12 +778,12 @@ namespace mbp::prime_sieve
 		{
 			using namespace detail;
 
-			constexpr static uint256_t static_identity = { .m256i_u32{ 0, 1, 2, 3, 4, 5, 6, 7 } };
-			constexpr static uint256_t static_pc_shuf_lookup{.m256i_u8{
+			constexpr static uint32_t static_identity[8] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+			constexpr static uint8_t static_pc_shuf_lookup[32] = {
 				0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
-					0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4 } };
-			constexpr static uint256_t static_nybble_mask{.m256i_u64{
-				0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F } };
+					0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4 };
+			constexpr static uint64_t static_nybble_mask[4] = {
+				0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F };
 
 			const uint64_t* const sieve_data = sorted_chunks[0].data();
 
@@ -793,10 +793,10 @@ namespace mbp::prime_sieve
 			{
 				alignas(32) uint32_t buffer[8]{};
 
-				const uint256_t identity = _mm256_loadu_si256(&static_identity);
+				const uint256_t identity = _mm256_loadu_si256((uint256_t*)static_identity);
 				const uint256_t seven_register = _mm256_set1_epi32(7);
-				const uint256_t nybble_mask = _mm256_loadu_si256(&static_nybble_mask);
-				const uint256_t pc_shuf_lookup = _mm256_loadu_si256(&static_pc_shuf_lookup);
+				const uint256_t nybble_mask = _mm256_loadu_si256((uint256_t*)static_nybble_mask);
+				const uint256_t pc_shuf_lookup = _mm256_loadu_si256((uint256_t*)static_pc_shuf_lookup);
 				const uint256_t ymm_n_sieve_chunks = _mm256_set1_epi32(n_sieve_chunks);
 				uint256_t pc_counts{};
 

@@ -26,13 +26,13 @@ namespace mbp
 			cleared += (1.0 - cleared) * (1.0 / small_primes_lookup[i]);
 		return 2 * size_t((1.0 - cleared) * sieve_container::size() * prime_sieve::steps);
 	}();
-	static alignas(64) std::array<uint64_t, candidates_capacity> candidates_storage;
+	static std::array<uint64_t, candidates_capacity> candidates_storage alignas(64);
 
 
 
 	// buffer candidates for full primality testing until we have 64
 	constexpr size_t pt_buffer_capacity = 64;
-	static alignas(64) std::array<uint64_t, pt_buffer_capacity> pt_buffer;
+	static std::array<uint64_t, pt_buffer_capacity> pt_buffer alignas(64);
 	static size_t pt_buffer_size = 0;
 
 

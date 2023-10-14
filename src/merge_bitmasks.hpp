@@ -142,7 +142,7 @@ namespace mbp
 			static_assert(bitmask == bitmask_for<5, 13>::val);
 			static_assert(bitmask == bitmask_for<8, 13>::val);
 			static_assert(bitmask == bitmask_for<13, 17>::val);
-			static_assert(period_of<bitmask>::val == 4);
+			static_assert(period_of<bitmask>() == 4);
 
 			const size_t pc_0 = pop_count(next_number & ((bitmask << 0) & outer_48_bits_mask));
 			size_t b3_sum = pc_0;
@@ -169,11 +169,11 @@ namespace mbp
 			b8_sum += pc_3 * pow_mod<8, 3, 13>::rem;
 			b13_sum += pc_3 * pow_mod<13, 3, 17>::rem;
 
-			__assume(b3_sum <= get_sum_of_rems<5, in_base<3>>(outer_48_bits_mask));
-			__assume(b4_sum <= get_sum_of_rems<17, in_base<4>>(outer_48_bits_mask));
-			__assume(b5_sum <= get_sum_of_rems<13, in_base<5>>(outer_48_bits_mask));
-			__assume(b8_sum <= get_sum_of_rems<13, in_base<8>>(outer_48_bits_mask));
-			__assume(b13_sum <= get_sum_of_rems<17, in_base<13>>(outer_48_bits_mask));
+			//__assume(b3_sum <= get_sum_of_rems<5, in_base<3>>(outer_48_bits_mask));
+			//__assume(b4_sum <= get_sum_of_rems<17, in_base<4>>(outer_48_bits_mask));
+			//__assume(b5_sum <= get_sum_of_rems<13, in_base<5>>(outer_48_bits_mask));
+			//__assume(b8_sum <= get_sum_of_rems<13, in_base<8>>(outer_48_bits_mask));
+			//__assume(b13_sum <= get_sum_of_rems<17, in_base<13>>(outer_48_bits_mask));
 
 			lookup_3_ptr = (*b3m5_lookup)[b3_sum % 5].data() + byte_offset;
 			lookup_4_ptr = (*b4m17_lookup)[b4_sum % 17].data() + byte_offset;
@@ -192,7 +192,7 @@ namespace mbp
 				constexpr uint64_t bitmask = bitmask_for<3, 13>::val;
 				static_assert(bitmask == bitmask_for<4, 7>::val);
 				static_assert(bitmask == bitmask_for<9, 13>::val);
-				static_assert(period_of<bitmask>::val == 3);
+				static_assert(period_of<bitmask>() == 3);
 
 				const size_t pc_0 = pop_count(next_number & ((bitmask << 0) & outer_48_bits_mask));
 				size_t b3_sum = pc_0;
@@ -207,9 +207,9 @@ namespace mbp
 				b4_sum += pc_2 * pow_mod<4, 2, 7>::rem;
 				b9_sum += pc_2 * pow_mod<9, 2, 13>::rem;
 
-				__assume(b3_sum <= get_sum_of_rems<13, in_base<3>>(outer_48_bits_mask));
-				__assume(b4_sum <= get_sum_of_rems<7, in_base<4>>(outer_48_bits_mask));
-				__assume(b9_sum <= get_sum_of_rems<13, in_base<9>>(outer_48_bits_mask));
+				// __assume(b3_sum <= get_sum_of_rems<13, in_base<3>>(outer_48_bits_mask));
+				// __assume(b4_sum <= get_sum_of_rems<7, in_base<4>>(outer_48_bits_mask));
+				// __assume(b9_sum <= get_sum_of_rems<13, in_base<9>>(outer_48_bits_mask));
 
 				lookup_1_ptr = (*b3m13_lookup)[b3_sum % 13].data() + byte_offset;
 				lookup_2_ptr = (*b4m7_lookup)[b4_sum % 7].data() + byte_offset;
@@ -221,7 +221,7 @@ namespace mbp
 				static_assert(bitmask == bitmask_for<4, 13>::val);
 				static_assert(bitmask == bitmask_for<5, 7>::val);
 				static_assert(bitmask == bitmask_for<10, 13>::val);
-				static_assert(period_of<bitmask>::val == 6);
+				static_assert(period_of<bitmask>() == 6);
 
 				const size_t pc_0 = pop_count(next_number & ((bitmask << 0) & outer_48_bits_mask));
 				size_t b3_sum = pc_0;
@@ -254,10 +254,10 @@ namespace mbp
 				b5_sum += pc_5 * pow_mod<5, 5, 7>::rem;
 				b10_sum += pc_5 * pow_mod<10, 5, 13>::rem;
 
-				__assume(b3_sum <= get_sum_of_rems<7, in_base<3>>(outer_48_bits_mask));
-				__assume(b4_sum <= get_sum_of_rems<13, in_base<4>>(outer_48_bits_mask));
-				__assume(b5_sum <= get_sum_of_rems<7, in_base<5>>(outer_48_bits_mask));
-				__assume(b10_sum <= get_sum_of_rems<13, in_base<10>>(outer_48_bits_mask));
+				// __assume(b3_sum <= get_sum_of_rems<7, in_base<3>>(outer_48_bits_mask));
+				// __assume(b4_sum <= get_sum_of_rems<13, in_base<4>>(outer_48_bits_mask));
+				// __assume(b5_sum <= get_sum_of_rems<7, in_base<5>>(outer_48_bits_mask));
+				// __assume(b10_sum <= get_sum_of_rems<13, in_base<10>>(outer_48_bits_mask));
 
 				lookup_4_ptr = (*b3m7_lookup)[b3_sum % 7].data() + byte_offset;
 				lookup_5_ptr = (*b4m13_lookup)[b4_sum % 13].data() + byte_offset;
@@ -272,7 +272,7 @@ namespace mbp
 			static_assert(bitmask == bitmask_for<4, 11>::val);
 			static_assert(bitmask == bitmask_for<5, 11>::val);
 			static_assert(bitmask == bitmask_for<9, 11>::val);
-			static_assert(period_of<bitmask>::val == 5);
+			static_assert(period_of<bitmask>() == 5);
 
 			const size_t pc_0 = pop_count(next_number & ((bitmask << 0) & outer_48_bits_mask));
 			size_t b3_sum = pc_0;
@@ -300,10 +300,10 @@ namespace mbp
 			b5_sum += pc_4 * pow_mod<5, 4, 11>::rem;
 			b9_sum += pc_4 * pow_mod<9, 4, 11>::rem;
 
-			__assume(b3_sum <= get_sum_of_rems<11, in_base<3>>(outer_48_bits_mask));
-			__assume(b4_sum <= get_sum_of_rems<11, in_base<4>>(outer_48_bits_mask));
-			__assume(b5_sum <= get_sum_of_rems<11, in_base<5>>(outer_48_bits_mask));
-			__assume(b9_sum <= get_sum_of_rems<11, in_base<9>>(outer_48_bits_mask));
+			// __assume(b3_sum <= get_sum_of_rems<11, in_base<3>>(outer_48_bits_mask));
+			// __assume(b4_sum <= get_sum_of_rems<11, in_base<4>>(outer_48_bits_mask));
+			// __assume(b5_sum <= get_sum_of_rems<11, in_base<5>>(outer_48_bits_mask));
+			// __assume(b9_sum <= get_sum_of_rems<11, in_base<9>>(outer_48_bits_mask));
 
 			lookup_1_ptr = (*b3m11_lookup)[b3_sum % 11].data() + byte_offset;
 			lookup_2_ptr = (*b4m11_lookup)[b4_sum % 11].data() + byte_offset;
@@ -412,12 +412,11 @@ namespace mbp
 	template<size_t pass>
 	inline_toggle size_t merge_bitmasks(uint64_t number, sieve_container& sieve)
 	{
-		constexpr static uint256_t static_pc_shuf_lookup{.m256i_u8{
+		constexpr static uint8_t static_pc_shuf_lookup[32] = {
 			0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
-				0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4 } };
-		constexpr static uint256_t static_nybble_mask{.m256i_u64{
-			0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F } };
-
+			0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4 };
+		constexpr static uint64_t static_nybble_mask[4] = {
+			0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F };
 		// while out != aligned_end:
 		// - iterate by 32 bytes until we hit aligned_end, or a rollover of bits 1-16, whichever happens first
 		// - if we broke before aligned_end, we hit a rollover
@@ -462,8 +461,8 @@ namespace mbp
 			uint256_t pc{};
 			if constexpr (pass == last_pass)
 			{
-				nybble_mask = _mm256_loadu_si256(&static_nybble_mask);
-				pc_shuf_lookup = _mm256_loadu_si256(&static_pc_shuf_lookup);
+				nybble_mask = _mm256_loadu_si256((uint256_t*)static_nybble_mask);
+				pc_shuf_lookup = _mm256_loadu_si256((uint256_t*)static_pc_shuf_lookup);
 			}
 
 			for (size_t offset = 0; offset < n_steps * bytes_per_step; offset += bytes_per_step)
@@ -507,12 +506,12 @@ namespace mbp
 					// Demote input and output cache lines. Both will be reused, but some mask data will be reused sooner.
 					// In passes >1, input and output pointers are the same, so [in] only needs to be demoted in pass 1.
 
-					if constexpr (pass == 1)
-					{
-						_mm_cldemote(in + offset - 64);
-					}
+					//if constexpr (pass == 1)
+					//{
+					//	_mm_cldemote(in + offset - 64);
+					//}
 
-					_mm_cldemote(out + offset - 64);
+					//_mm_cldemote(out + offset - 64);
 				}
 
 				uint256_t merged_data{};

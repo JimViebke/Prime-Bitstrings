@@ -27,10 +27,10 @@ namespace mbp::util
 			vector_sum = _mm256_add_epi64(vector_sum, inner_sum);
 		}
 
-		size_t sum = vector_sum.m256i_u64[0] +
-			vector_sum.m256i_u64[1] +
-			vector_sum.m256i_u64[2] +
-			vector_sum.m256i_u64[3];
+		size_t sum = _mm256_extract_epi64(vector_sum, 0) +
+			_mm256_extract_epi64(vector_sum, 1) +
+			_mm256_extract_epi64(vector_sum, 2) +
+			_mm256_extract_epi64(vector_sum, 3);
 
 		// sum last few elements
 		for (uint8_t* ptr = (uint8_t*)in; ptr < end; ++ptr)

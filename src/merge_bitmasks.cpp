@@ -156,7 +156,7 @@ namespace mbp
 			constexpr size_t prime = base_mod_prime[pass - 3][1];
 
 			const size_t sum_of_rems = get_sum_of_rems<prime, in_base<base>>(next_number & outer_48_bits_mask);
-			__assume(sum_of_rems <= get_sum_of_rems<prime, in_base<base>>(outer_48_bits_mask));
+			// __builtin_assume(sum_of_rems <= get_sum_of_rems<prime, in_base<base>>(outer_48_bits_mask));
 
 			bit_array<pow_2_16>* ptr{};
 			if constexpr (pass == 3) { ptr = b3m5_lookup->data(); }
@@ -232,11 +232,11 @@ namespace mbp
 	size_t merge_bitmask(uint64_t number, sieve_container& sieve, set_lookup_f set_lookup_f,
 						 const bool popcount_on_this_pass)
 	{
-		constexpr static uint256_t static_pc_shuf_lookup{.m256i_u8{
+		constexpr static uint8_t static_pc_shuf_lookup[32] = {
 			0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
-				0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4 } };
-		constexpr static uint256_t static_nybble_mask{.m256i_u64{
-			0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F } };
+				0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4 };
+		constexpr static uint64_t static_nybble_mask[4] = {
+			0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F };
 
 		size_t sieve_popcount = 0;
 
@@ -263,8 +263,8 @@ namespace mbp
 
 			if (popcount_on_this_pass)
 			{
-				uint256_t nybble_mask = _mm256_loadu_si256(&static_nybble_mask);
-				uint256_t pc_shuf_lookup = _mm256_loadu_si256(&static_pc_shuf_lookup);
+				uint256_t nybble_mask = _mm256_loadu_si256((uint256_t*)static_nybble_mask);
+				uint256_t pc_shuf_lookup = _mm256_loadu_si256((uint256_t*)static_pc_shuf_lookup);
 				uint256_t pc{};
 
 				for (size_t offset = 0; offset < n_steps * bytes_per_step; offset += bytes_per_step)

@@ -81,16 +81,13 @@ namespace mbp::div_test
 		};
 
 		template<size_t bitmask>
-		struct period_of
+		consteval size_t period_of()
 		{
-			static consteval size_t f()
-			{
-				for (size_t i = 1; i < 64; ++i)
-					if ((bitmask >> i) & 1)
-						return i;
-			}
-			static constexpr size_t val = f();
-		};
+			for (size_t i = 1; i < 64; ++i)
+				if ((bitmask >> i) & 1)
+					return i;
+			return -1; // should never happen
+		}
 
 		template<size_t prime>
 		struct get_prime_index
@@ -100,6 +97,7 @@ namespace mbp::div_test
 				for (size_t i = 0; i < 64; ++i)
 					if (small_primes_lookup[i] == prime)
 						return i;
+				return -1; // should never happen
 			}
 			static constexpr size_t idx = f();
 		};
@@ -154,7 +152,7 @@ namespace mbp::div_test
 			static_assert(base >= 3 && base <= up_to_base);
 			constexpr size_t bitmask = bitmask_for<base, divisor>::val;
 			size_t rem = 0;
-			get_sum_of_rems<divisor, base, bitmask, period_of<bitmask>::val - 1>(rem, number);
+			get_sum_of_rems<divisor, base, bitmask, period_of<bitmask>() - 1>(rem, number);
 			return rem;
 		}
 	}

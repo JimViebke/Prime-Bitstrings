@@ -9,66 +9,66 @@ namespace mbp
 	namespace detail
 	{
 		template<size_t base, size_t place_value_start, size_t prime>
-		consteval uint256_t build_shuffle_lookup_impl()
+		consteval std::array<uint8_t, 32> build_shuffle_lookup_impl()
 		{
-			uint256_t lookup{ .m256i_u8 = { 0 } };
+			std::array<uint8_t, 32> lookup{};
 			for (size_t i = 0; i < 16; ++i)
 			{
-				if (i & 0b0001) lookup.m256i_u8[i] += div_test::pow_mod<base, place_value_start + 0, prime>::rem;
-				if (i & 0b0010) lookup.m256i_u8[i] += div_test::pow_mod<base, place_value_start + 1, prime>::rem;
-				if (i & 0b0100) lookup.m256i_u8[i] += div_test::pow_mod<base, place_value_start + 2, prime>::rem;
-				if (i & 0b1000) lookup.m256i_u8[i] += div_test::pow_mod<base, place_value_start + 3, prime>::rem;
-				lookup.m256i_u8[i + 16] = lookup.m256i_u8[i]; // duplicate into upper lane
+				if (i & 0b0001) lookup[i] += div_test::pow_mod<base, place_value_start + 0, prime>::rem;
+				if (i & 0b0010) lookup[i] += div_test::pow_mod<base, place_value_start + 1, prime>::rem;
+				if (i & 0b0100) lookup[i] += div_test::pow_mod<base, place_value_start + 2, prime>::rem;
+				if (i & 0b1000) lookup[i] += div_test::pow_mod<base, place_value_start + 3, prime>::rem;
+				lookup[i + 16] = lookup[i]; // duplicate into upper lane
 			}
 			return lookup;
 		}
 
 		template<size_t base, size_t prime>
-		consteval uint256_t build_3rem_shuffle_lookup()
+		consteval std::array<uint8_t, 32> build_3rem_shuffle_lookup()
 		{
-			uint256_t lookup{ .m256i_u8 = { 0 } };
+			std::array<uint8_t, 32> lookup{};
 			for (size_t i = 0; i < 8; ++i)
 			{
-				if (i & 0b001) lookup.m256i_u8[i] += div_test::pow_mod<base, 0, prime>::rem;
-				if (i & 0b010) lookup.m256i_u8[i] += div_test::pow_mod<base, 1, prime>::rem;
-				if (i & 0b100) lookup.m256i_u8[i] += div_test::pow_mod<base, 2, prime>::rem;
-				lookup.m256i_u8[i + 16] = lookup.m256i_u8[i]; // duplicate into upper lane
+				if (i & 0b001) lookup[i] += div_test::pow_mod<base, 0, prime>::rem;
+				if (i & 0b010) lookup[i] += div_test::pow_mod<base, 1, prime>::rem;
+				if (i & 0b100) lookup[i] += div_test::pow_mod<base, 2, prime>::rem;
+				lookup[i + 16] = lookup[i]; // duplicate into upper lane
 			}
 			return lookup;
 		}
 
 		template<size_t base, size_t prime>
-		consteval uint256_t build_4rem_shuffle_lookup()
+		consteval std::array<uint8_t, 32> build_4rem_shuffle_lookup()
 		{
 			return build_shuffle_lookup_impl<base, 0, prime>();
 		}
 
 		template<size_t base, size_t prime>
-		consteval uint256_t build_5rem_shuffle_lookup()
+		consteval std::array<uint8_t, 32> build_5rem_shuffle_lookup()
 		{
 			return build_shuffle_lookup_impl<base, 1, prime>();
 		}
 
 		template<size_t base, size_t prime>
-		consteval uint256_t build_8rem_shuffle_lookup_lo_nybble()
+		consteval std::array<uint8_t, 32> build_8rem_shuffle_lookup_lo_nybble()
 		{
 			return build_shuffle_lookup_impl<base, 0, prime>();
 		}
 
 		template<size_t base, size_t prime>
-		consteval uint256_t build_8rem_shuffle_lookup_hi_nybble()
+		consteval std::array<uint8_t, 32> build_8rem_shuffle_lookup_hi_nybble()
 		{
 			return build_shuffle_lookup_impl<base, 4, prime>();
 		}
 
 		template<size_t base, size_t prime>
-		consteval uint256_t build_9rem_shuffle_lookup_lo_nybble()
+		consteval std::array<uint8_t, 32> build_9rem_shuffle_lookup_lo_nybble()
 		{
 			return build_shuffle_lookup_impl<base, 1, prime>();
 		}
 
 		template<size_t base, size_t prime>
-		consteval uint256_t build_9rem_shuffle_lookup_hi_nybble()
+		consteval std::array<uint8_t, 32> build_9rem_shuffle_lookup_hi_nybble()
 		{
 			return build_shuffle_lookup_impl<base, 5, prime>();
 		}
@@ -85,7 +85,7 @@ namespace mbp
 		constexpr size_t bitmask = bitmask_for<5, 13>::val;
 		static_assert(bitmask == bitmask_for<8, 13>::val &&
 					  bitmask == bitmask_for<4, 17>::val);
-		static_assert(period_of<bitmask>::val == 4);
+		static_assert(period_of<bitmask>() == 4);
 
 		size_t* output = input;
 
@@ -319,18 +319,18 @@ namespace mbp
 
 		constexpr size_t bitmask = bitmask_for<base_a, prime_a>::val;
 		static_assert(bitmask == bitmask_for<base_b, prime_b>::val);
-		static_assert(period_of<bitmask>::val == 4);
+		static_assert(period_of<bitmask>() == 4);
 
 		size_t* output = input;
 
 		if constexpr (on_fast_path)
 		{
-			constexpr static uint256_t static_nybble_lookup_a = mbp::detail::build_4rem_shuffle_lookup<base_a, prime_a>();
-			constexpr static uint256_t static_nybble_lookup_b = mbp::detail::build_4rem_shuffle_lookup<base_b, prime_b>();
+			constexpr static std::array<uint8_t, 32> static_nybble_lookup_a = mbp::detail::build_4rem_shuffle_lookup<base_a, prime_a>();
+			constexpr static std::array<uint8_t, 32> static_nybble_lookup_b = mbp::detail::build_4rem_shuffle_lookup<base_b, prime_b>();
 
 			const uint256_t nybble_mask = _mm256_set1_epi8(0b0000'1111);
-			const uint256_t nybble_lookup_a = _mm256_loadu_si256(&static_nybble_lookup_a);
-			const uint256_t nybble_lookup_b = _mm256_loadu_si256(&static_nybble_lookup_b);
+			const uint256_t nybble_lookup_a = _mm256_loadu_si256((uint256_t*)&static_nybble_lookup_a);
+			const uint256_t nybble_lookup_b = _mm256_loadu_si256((uint256_t*)&static_nybble_lookup_b);
 
 			const size_t* const candidates_end_rounded = candidates_end - (size_t(candidates_end - input) % 8);
 
@@ -525,7 +525,7 @@ namespace mbp
 		static_assert(bitmask == bitmask_for<8, 13>::val &&
 					  bitmask == bitmask_for<4, 17>::val &&
 					  bitmask == bitmask_for<13, 17>::val);
-		static_assert(period_of<bitmask>::val == 4);
+		static_assert(period_of<bitmask>() == 4);
 
 		size_t* output = input;
 
@@ -792,7 +792,7 @@ namespace mbp
 		// Intellisense may generate a number of false positives here
 		constexpr size_t bitmask = bitmask_for<3, 13>::val;
 		static_assert(bitmask == bitmask_for<9, 13>::val);
-		static_assert(period_of<bitmask>::val == 3);
+		static_assert(period_of<bitmask>() == 3);
 
 		size_t* output = input;
 
@@ -981,7 +981,7 @@ namespace mbp
 		// Intellisense may generate a number of false positives here
 		constexpr uint64_t bitmask = bitmask_for<4, 13>::val;
 		static_assert(bitmask == bitmask_for<10, 13>::val);
-		static_assert(period_of<bitmask>::val == 6);
+		static_assert(period_of<bitmask>() == 6);
 
 		const uint8_t* const indivisible_ptr = indivisible_by[get_prime_index<13>::idx].data();
 		uint64_t* output = input;
@@ -1168,7 +1168,7 @@ namespace mbp
 		static_assert(bitmask == bitmask_for<4, 11>::val);
 		static_assert(bitmask == bitmask_for<5, 11>::val);
 		static_assert(bitmask == bitmask_for<9, 11>::val);
-		static_assert(period_of<bitmask>::val == 5);
+		static_assert(period_of<bitmask>() == 5);
 
 		size_t* output = input;
 
@@ -1418,7 +1418,7 @@ namespace mbp
 		constexpr size_t bitmask = bitmask_for<6, 11>::val;
 		static_assert(bitmask == bitmask_for<7, 11>::val);
 		static_assert(bitmask == bitmask_for<8, 11>::val);
-		static_assert(period_of<bitmask>::val == 10);
+		static_assert(period_of<bitmask>() == 10);
 
 		size_t* output = input;
 
@@ -1426,12 +1426,12 @@ namespace mbp
 		{
 			constexpr size_t upper_bits_mask = size_t(-1) << 32;
 
-			constexpr static uint128_t static_b6_rems_lo = { .m128i_u8{ 1, 6, 3, 7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10 } };
-			constexpr static uint128_t static_b6_rems_hi = { .m128i_u8{ 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2, 1, 6 } };
-			constexpr static uint128_t static_b7_rems_lo = { .m128i_u8{ 1, 7, 5, 2, 3, 10, 4, 6, 9, 8, 1, 7, 5, 2, 3, 10 } };
-			constexpr static uint128_t static_b7_rems_hi = { .m128i_u8{ 4, 6, 9, 8, 1, 7, 5, 2, 3, 10, 4, 6, 9, 8, 1, 7 } };
-			constexpr static uint128_t static_b8_rems_lo = { .m128i_u8{ 1, 8, 9, 6, 4, 10, 3, 2, 5, 7, 1, 8, 9, 6, 4, 10 } };
-			constexpr static uint128_t static_b8_rems_hi = { .m128i_u8{ 3, 2, 5, 7, 1, 8, 9, 6, 4, 10, 3, 2, 5, 7, 1, 8 } };
+			constexpr static std::array<uint8_t, 16> static_b6_rems_lo = { 1, 6, 3, 7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10 };
+			constexpr static std::array<uint8_t, 16> static_b6_rems_hi = { 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2, 1, 6 };
+			constexpr static std::array<uint8_t, 16> static_b7_rems_lo = { 1, 7, 5, 2, 3, 10, 4, 6, 9, 8, 1, 7, 5, 2, 3, 10 };
+			constexpr static std::array<uint8_t, 16> static_b7_rems_hi = { 4, 6, 9, 8, 1, 7, 5, 2, 3, 10, 4, 6, 9, 8, 1, 7 };
+			constexpr static std::array<uint8_t, 16> static_b8_rems_lo = { 1, 8, 9, 6, 4, 10, 3, 2, 5, 7, 1, 8, 9, 6, 4, 10 };
+			constexpr static std::array<uint8_t, 16> static_b8_rems_hi = { 3, 2, 5, 7, 1, 8, 9, 6, 4, 10, 3, 2, 5, 7, 1, 8 };
 
 			const size_t upper_bits = (*input) & upper_bits_mask;
 			const size_t pc_0 = pop_count(upper_bits & (bitmask << 0));
@@ -1487,17 +1487,17 @@ namespace mbp
 			const uint256_t shuffle_mask_hi = _mm256_set_epi64x(0x0B0B0B0B0B0B0B0B, 0x0A0A0A0A0A0A0A0A, 0x0303030303030303, 0x0202020202020202);
 			const uint256_t and_mask = _mm256_set1_epi64x(0x80'40'20'10'08'04'02'01);
 
-			const uint128_t xmm_b6_rems_lo = _mm_loadu_si128(&static_b6_rems_lo);
+			const uint128_t xmm_b6_rems_lo = _mm_loadu_si128((uint128_t*)&static_b6_rems_lo);
 			const uint256_t b6_rems_lo = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_b6_rems_lo), xmm_b6_rems_lo, 1);
-			const uint128_t xmm_b6_rems_hi = _mm_loadu_si128(&static_b6_rems_hi);
+			const uint128_t xmm_b6_rems_hi = _mm_loadu_si128((uint128_t*)&static_b6_rems_hi);
 			const uint256_t b6_rems_hi = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_b6_rems_hi), xmm_b6_rems_hi, 1);
-			const uint128_t xmm_b7_rems_lo = _mm_loadu_si128(&static_b7_rems_lo);
+			const uint128_t xmm_b7_rems_lo = _mm_loadu_si128((uint128_t*)&static_b7_rems_lo);
 			const uint256_t b7_rems_lo = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_b7_rems_lo), xmm_b7_rems_lo, 1);
-			const uint128_t xmm_b7_rems_hi = _mm_loadu_si128(&static_b7_rems_hi);
+			const uint128_t xmm_b7_rems_hi = _mm_loadu_si128((uint128_t*)&static_b7_rems_hi);
 			const uint256_t b7_rems_hi = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_b7_rems_hi), xmm_b7_rems_hi, 1);
-			const uint128_t xmm_b8_rems_lo = _mm_loadu_si128(&static_b8_rems_lo);
+			const uint128_t xmm_b8_rems_lo = _mm_loadu_si128((uint128_t*)&static_b8_rems_lo);
 			const uint256_t b8_rems_lo = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_b8_rems_lo), xmm_b8_rems_lo, 1);
-			const uint128_t xmm_b8_rems_hi = _mm_loadu_si128(&static_b8_rems_hi);
+			const uint128_t xmm_b8_rems_hi = _mm_loadu_si128((uint128_t*)&static_b8_rems_hi);
 			const uint256_t b8_rems_hi = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_b8_rems_hi), xmm_b8_rems_hi, 1);
 
 			uint16_t sums[16]{};
@@ -1667,7 +1667,7 @@ namespace mbp
 		constexpr size_t bitmask = bitmask_for<6, 13>::val;
 		static_assert(bitmask == bitmask_for<7, 13>::val);
 		static_assert(bitmask == bitmask_for<11, 13>::val);
-		static_assert(period_of<bitmask>::val == 12);
+		static_assert(period_of<bitmask>() == 12);
 
 		size_t* output = input;
 
@@ -1675,12 +1675,12 @@ namespace mbp
 		{
 			constexpr size_t upper_bits_mask = size_t(-1) << 32;
 
-			constexpr static uint128_t static_b6_rems_lo = { .m128i_u8{ 1, 6, 10, 8, 9, 2, 12, 7, 3, 5, 4, 11, 1, 6, 10, 8 } };
-			constexpr static uint128_t static_b6_rems_hi = { .m128i_u8{ 9, 2, 12, 7, 3, 5, 4, 11, 1, 6, 10, 8, 9, 2, 12, 7 } };
-			constexpr static uint128_t static_b7_rems_lo = { .m128i_u8{ 1, 7, 10, 5, 9, 11, 12, 6, 3, 8, 4, 2, 1, 7, 10, 5 } };
-			constexpr static uint128_t static_b7_rems_hi = { .m128i_u8{ 9, 11, 12, 6, 3, 8, 4, 2, 1, 7, 10, 5, 9, 11, 12, 6 } };
-			constexpr static uint128_t static_b11_rems_lo = { .m128i_u8{ 1, 11, 4, 5, 3, 7, 12, 2, 9, 8, 10, 6, 1, 11, 4, 5 } };
-			constexpr static uint128_t static_b11_rems_hi = { .m128i_u8{ 3, 7, 12, 2, 9, 8, 10, 6, 1, 11, 4, 5, 3, 7, 12, 2 } };
+			constexpr static std::array<uint8_t, 16> static_b6_rems_lo = { 1, 6, 10, 8, 9, 2, 12, 7, 3, 5, 4, 11, 1, 6, 10, 8 };
+			constexpr static std::array<uint8_t, 16> static_b6_rems_hi = { 9, 2, 12, 7, 3, 5, 4, 11, 1, 6, 10, 8, 9, 2, 12, 7 };
+			constexpr static std::array<uint8_t, 16> static_b7_rems_lo = { 1, 7, 10, 5, 9, 11, 12, 6, 3, 8, 4, 2, 1, 7, 10, 5 };
+			constexpr static std::array<uint8_t, 16> static_b7_rems_hi = { 9, 11, 12, 6, 3, 8, 4, 2, 1, 7, 10, 5, 9, 11, 12, 6 };
+			constexpr static std::array<uint8_t, 16> static_b11_rems_lo = { 1, 11, 4, 5, 3, 7, 12, 2, 9, 8, 10, 6, 1, 11, 4, 5 };
+			constexpr static std::array<uint8_t, 16> static_b11_rems_hi = { 3, 7, 12, 2, 9, 8, 10, 6, 1, 11, 4, 5, 3, 7, 12, 2 };
 
 			const size_t upper_bits = (*input) & upper_bits_mask;
 			const size_t pc_0 = pop_count(upper_bits & (bitmask << 0));
@@ -1743,17 +1743,17 @@ namespace mbp
 			const uint256_t shuffle_mask_hi = _mm256_set_epi64x(0x0B0B0B0B0B0B0B0B, 0x0A0A0A0A0A0A0A0A, 0x0303030303030303, 0x0202020202020202);
 			const uint256_t and_mask = _mm256_set1_epi64x(0x80'40'20'10'08'04'02'01);
 
-			const uint128_t xmm_b6_rems_lo = _mm_loadu_si128(&static_b6_rems_lo);
+			const uint128_t xmm_b6_rems_lo = _mm_loadu_si128((uint128_t*)&static_b6_rems_lo);
 			const uint256_t b6_rems_lo = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_b6_rems_lo), xmm_b6_rems_lo, 1);
-			const uint128_t xmm_b6_rems_hi = _mm_loadu_si128(&static_b6_rems_hi);
+			const uint128_t xmm_b6_rems_hi = _mm_loadu_si128((uint128_t*)&static_b6_rems_hi);
 			const uint256_t b6_rems_hi = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_b6_rems_hi), xmm_b6_rems_hi, 1);
-			const uint128_t xmm_b7_rems_lo = _mm_loadu_si128(&static_b7_rems_lo);
+			const uint128_t xmm_b7_rems_lo = _mm_loadu_si128((uint128_t*)&static_b7_rems_lo);
 			const uint256_t b7_rems_lo = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_b7_rems_lo), xmm_b7_rems_lo, 1);
-			const uint128_t xmm_b7_rems_hi = _mm_loadu_si128(&static_b7_rems_hi);
+			const uint128_t xmm_b7_rems_hi = _mm_loadu_si128((uint128_t*)&static_b7_rems_hi);
 			const uint256_t b7_rems_hi = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_b7_rems_hi), xmm_b7_rems_hi, 1);
-			const uint128_t xmm_b11_rems_lo = _mm_loadu_si128(&static_b11_rems_lo);
+			const uint128_t xmm_b11_rems_lo = _mm_loadu_si128((uint128_t*)&static_b11_rems_lo);
 			const uint256_t b11_rems_lo = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_b11_rems_lo), xmm_b11_rems_lo, 1);
-			const uint128_t xmm_b11_rems_hi = _mm_loadu_si128(&static_b11_rems_hi);
+			const uint128_t xmm_b11_rems_hi = _mm_loadu_si128((uint128_t*)&static_b11_rems_hi);
 			const uint256_t b11_rems_hi = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_b11_rems_hi), xmm_b11_rems_hi, 1);
 
 			uint16_t sums[16]{};
@@ -1929,18 +1929,18 @@ namespace mbp
 
 		constexpr size_t upper_bits_mask = size_t(-1) << 32;
 
-		constexpr static uint256_t static_rems_01{ .m256i_u8{
+		constexpr static std::array<uint8_t, 32> static_rems_01{
 			1, 3, 9, 10, 13, 5, 15, 11, 16, 14, 8, 7, 4, 12, 2, 6,     // base 3 % 17
-			1, 5, 8, 6, 13, 14, 2, 10, 16, 12, 9, 11, 4, 3, 15, 7 } }; // base 5 % 17
-		constexpr static uint256_t static_rems_23{ .m256i_u8{
+			1, 5, 8, 6, 13, 14, 2, 10, 16, 12, 9, 11, 4, 3, 15, 7 }; // base 5 % 17
+		constexpr static std::array<uint8_t, 32> static_rems_23{
 			1, 6, 2, 12, 4, 7, 8, 14, 16, 11, 15, 5, 13, 10, 9, 3,     // base 6 % 17
-			1, 7, 15, 3, 4, 11, 9, 12, 16, 10, 2, 14, 13, 6, 8, 5 } }; // base 7 % 17
-		constexpr static uint256_t static_rems_45{ .m256i_u8{
+			1, 7, 15, 3, 4, 11, 9, 12, 16, 10, 2, 14, 13, 6, 8, 5 }; // base 7 % 17
+		constexpr static std::array<uint8_t, 32> static_rems_45{
 			1, 10, 15, 14, 4, 6, 9, 5, 16, 7, 2, 3, 13, 11, 8, 12,     // base 10 % 17
-			1, 11, 2, 5, 4, 10, 8, 3, 16, 6, 15, 12, 13, 7, 9, 14 } }; // base 11 % 17
-		constexpr static uint256_t static_rems_6x{ .m256i_u8{
+			1, 11, 2, 5, 4, 10, 8, 3, 16, 6, 15, 12, 13, 7, 9, 14 }; // base 11 % 17
+		constexpr static std::array<uint8_t, 32> static_rems_6x{
 			1, 12, 8, 11, 13, 3, 2, 7, 16, 5, 9, 6, 4, 14, 15, 10,     // base 12 % 17
-			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } }; // padding
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }; // padding
 
 		const uint8_t* const indivisible_by_17 = indivisible_by[get_prime_index<17>::idx].data();
 
@@ -1953,10 +1953,10 @@ namespace mbp
 		upper_bytes = _mm256_and_si256(upper_bytes, _mm256_set1_epi8(0x01)); // convert 0xFF -> 0x01
 		upper_bytes = _mm256_add_epi8(upper_bytes, _mm256_permute2x128_si256(upper_bytes, upper_bytes, 1));
 
-		const uint256_t rems_01 = _mm256_loadu_si256(&static_rems_01);
-		const uint256_t rems_23 = _mm256_loadu_si256(&static_rems_23);
-		const uint256_t rems_45 = _mm256_loadu_si256(&static_rems_45);
-		const uint256_t rems_6x = _mm256_loadu_si256(&static_rems_6x);
+		const uint256_t rems_01 = _mm256_loadu_si256((uint256_t*)&static_rems_01);
+		const uint256_t rems_23 = _mm256_loadu_si256((uint256_t*)&static_rems_23);
+		const uint256_t rems_45 = _mm256_loadu_si256((uint256_t*)&static_rems_45);
+		const uint256_t rems_6x = _mm256_loadu_si256((uint256_t*)&static_rems_6x);
 
 		const uint256_t shuffle_mask_lo = _mm256_set_epi64x(0x0101010101010101, 0x0000000000000000, 0x0101010101010101, 0x0000000000000000);
 		const uint256_t shuffle_mask_hi = _mm256_set_epi64x(0x0303030303030303, 0x0202020202020202, 0x0303030303030303, 0x0202020202020202);
@@ -2079,18 +2079,18 @@ namespace mbp
 
 		constexpr size_t bitmask = bitmask_for<12, 29>::val;
 		static_assert(bitmask == bitmask_for<6, 37>::val);
-		static_assert(period_of<bitmask>::val == 4);
+		static_assert(period_of<bitmask>() == 4);
 
 		size_t* output = input;
 
 		if constexpr (on_fast_path)
 		{
-			constexpr static uint256_t static_nybble_lookup_12m29 = mbp::detail::build_4rem_shuffle_lookup<12, 29>();
-			constexpr static uint256_t static_nybble_lookup_6m37 = mbp::detail::build_4rem_shuffle_lookup<6, 37>();
+			constexpr static std::array<uint8_t, 32> static_nybble_lookup_12m29 = mbp::detail::build_4rem_shuffle_lookup<12, 29>();
+			constexpr static std::array<uint8_t, 32> static_nybble_lookup_6m37 = mbp::detail::build_4rem_shuffle_lookup<6, 37>();
 
 			const uint256_t nybble_mask = _mm256_set1_epi8(0b0000'1111);
-			const uint256_t nybble_lookup_12m29 = _mm256_loadu_si256(&static_nybble_lookup_12m29);
-			const uint256_t nybble_lookup_6m37 = _mm256_loadu_si256(&static_nybble_lookup_6m37);
+			const uint256_t nybble_lookup_12m29 = _mm256_loadu_si256((uint256_t*)&static_nybble_lookup_12m29);
+			const uint256_t nybble_lookup_6m37 = _mm256_loadu_si256((uint256_t*)&static_nybble_lookup_6m37);
 
 			const size_t* const candidates_end_rounded = candidates_end - (size_t(candidates_end - input) % 8);
 
@@ -2281,22 +2281,22 @@ namespace mbp
 
 		constexpr size_t bitmask = bitmask_for<8, 17>::val;
 		static_assert(bitmask == bitmask_for<9, 17>::val);
-		static_assert(period_of<bitmask>::val == 8);
+		static_assert(period_of<bitmask>() == 8);
 
 		size_t* output = input;
 
 		if constexpr (on_fast_path)
 		{
-			constexpr static uint256_t static_nybble_lookup_8m17_lo = mbp::detail::build_8rem_shuffle_lookup_lo_nybble<8, 17>();
-			constexpr static uint256_t static_nybble_lookup_8m17_hi = mbp::detail::build_8rem_shuffle_lookup_hi_nybble<8, 17>();
-			constexpr static uint256_t static_nybble_lookup_9m17_lo = mbp::detail::build_8rem_shuffle_lookup_lo_nybble<9, 17>();
-			constexpr static uint256_t static_nybble_lookup_9m17_hi = mbp::detail::build_8rem_shuffle_lookup_hi_nybble<9, 17>();
+			constexpr static std::array<uint8_t, 32> static_nybble_lookup_8m17_lo = mbp::detail::build_8rem_shuffle_lookup_lo_nybble<8, 17>();
+			constexpr static std::array<uint8_t, 32> static_nybble_lookup_8m17_hi = mbp::detail::build_8rem_shuffle_lookup_hi_nybble<8, 17>();
+			constexpr static std::array<uint8_t, 32> static_nybble_lookup_9m17_lo = mbp::detail::build_8rem_shuffle_lookup_lo_nybble<9, 17>();
+			constexpr static std::array<uint8_t, 32> static_nybble_lookup_9m17_hi = mbp::detail::build_8rem_shuffle_lookup_hi_nybble<9, 17>();
 
 			const uint256_t nybble_mask = _mm256_set1_epi8(0b0000'1111);
-			const uint256_t nybble_lookup_8m17_lo = _mm256_loadu_si256(&static_nybble_lookup_8m17_lo);
-			const uint256_t nybble_lookup_8m17_hi = _mm256_loadu_si256(&static_nybble_lookup_8m17_hi);
-			const uint256_t nybble_lookup_9m17_lo = _mm256_loadu_si256(&static_nybble_lookup_9m17_lo);
-			const uint256_t nybble_lookup_9m17_hi = _mm256_loadu_si256(&static_nybble_lookup_9m17_hi);
+			const uint256_t nybble_lookup_8m17_lo = _mm256_loadu_si256((uint256_t*)&static_nybble_lookup_8m17_lo);
+			const uint256_t nybble_lookup_8m17_hi = _mm256_loadu_si256((uint256_t*)&static_nybble_lookup_8m17_hi);
+			const uint256_t nybble_lookup_9m17_lo = _mm256_loadu_si256((uint256_t*)&static_nybble_lookup_9m17_lo);
+			const uint256_t nybble_lookup_9m17_hi = _mm256_loadu_si256((uint256_t*)&static_nybble_lookup_9m17_hi);
 
 			const size_t* const candidates_end_rounded = candidates_end - (size_t(candidates_end - input) % 8);
 
@@ -2486,7 +2486,7 @@ namespace mbp
 		static_assert(bitmask == bitmask_for<5, 19>::val);
 		static_assert(bitmask == bitmask_for<6, 19>::val);
 		static_assert(bitmask == bitmask_for<9, 19>::val);
-		static_assert(period_of<bitmask>::val == 9);
+		static_assert(period_of<bitmask>() == 9);
 
 		// base 4 % 19: 9 remainders: 1   4  16   7   9  17  11   6   5
 		// base 5 % 19: 9 remainders: 1   5   6  11  17   9   7  16   4
@@ -2499,14 +2499,14 @@ namespace mbp
 
 		if constexpr (on_fast_path)
 		{
-			constexpr static uint256_t static_nybble_lookup_b4_lo = mbp::detail::build_9rem_shuffle_lookup_lo_nybble<4, 19>();
-			constexpr static uint256_t static_nybble_lookup_b4_hi = mbp::detail::build_9rem_shuffle_lookup_hi_nybble<4, 19>();
-			constexpr static uint256_t static_nybble_lookup_b5_lo = mbp::detail::build_9rem_shuffle_lookup_lo_nybble<5, 19>();
-			constexpr static uint256_t static_nybble_lookup_b5_hi = mbp::detail::build_9rem_shuffle_lookup_hi_nybble<5, 19>();
-			constexpr static uint256_t static_nybble_lookup_b6_lo = mbp::detail::build_9rem_shuffle_lookup_lo_nybble<6, 19>();
-			constexpr static uint256_t static_nybble_lookup_b6_hi = mbp::detail::build_9rem_shuffle_lookup_hi_nybble<6, 19>();
-			constexpr static uint256_t static_nybble_lookup_b9_lo = mbp::detail::build_9rem_shuffle_lookup_lo_nybble<9, 19>();
-			constexpr static uint256_t static_nybble_lookup_b9_hi = mbp::detail::build_9rem_shuffle_lookup_hi_nybble<9, 19>();
+			constexpr static std::array<uint8_t, 32> static_nybble_lookup_b4_lo = mbp::detail::build_9rem_shuffle_lookup_lo_nybble<4, 19>();
+			constexpr static std::array<uint8_t, 32> static_nybble_lookup_b4_hi = mbp::detail::build_9rem_shuffle_lookup_hi_nybble<4, 19>();
+			constexpr static std::array<uint8_t, 32> static_nybble_lookup_b5_lo = mbp::detail::build_9rem_shuffle_lookup_lo_nybble<5, 19>();
+			constexpr static std::array<uint8_t, 32> static_nybble_lookup_b5_hi = mbp::detail::build_9rem_shuffle_lookup_hi_nybble<5, 19>();
+			constexpr static std::array<uint8_t, 32> static_nybble_lookup_b6_lo = mbp::detail::build_9rem_shuffle_lookup_lo_nybble<6, 19>();
+			constexpr static std::array<uint8_t, 32> static_nybble_lookup_b6_hi = mbp::detail::build_9rem_shuffle_lookup_hi_nybble<6, 19>();
+			constexpr static std::array<uint8_t, 32> static_nybble_lookup_b9_lo = mbp::detail::build_9rem_shuffle_lookup_lo_nybble<9, 19>();
+			constexpr static std::array<uint8_t, 32> static_nybble_lookup_b9_hi = mbp::detail::build_9rem_shuffle_lookup_hi_nybble<9, 19>();
 
 			constexpr uint64_t upper_bits_mask = uint64_t(-1) << 32;
 
@@ -2576,14 +2576,14 @@ namespace mbp
 			{
 				const uint256_t nybble_mask = _mm256_set1_epi16(0b00001111'00000000);
 
-				const uint256_t nybble_lookup_b4_lo = _mm256_loadu_si256(&static_nybble_lookup_b4_lo);
-				const uint256_t nybble_lookup_b4_hi = _mm256_loadu_si256(&static_nybble_lookup_b4_hi);
-				const uint256_t nybble_lookup_b5_lo = _mm256_loadu_si256(&static_nybble_lookup_b5_lo);
-				const uint256_t nybble_lookup_b5_hi = _mm256_loadu_si256(&static_nybble_lookup_b5_hi);
-				const uint256_t nybble_lookup_b6_lo = _mm256_loadu_si256(&static_nybble_lookup_b6_lo);
-				const uint256_t nybble_lookup_b6_hi = _mm256_loadu_si256(&static_nybble_lookup_b6_hi);
-				const uint256_t nybble_lookup_b9_lo = _mm256_loadu_si256(&static_nybble_lookup_b9_lo);
-				const uint256_t nybble_lookup_b9_hi = _mm256_loadu_si256(&static_nybble_lookup_b9_hi);
+				const uint256_t nybble_lookup_b4_lo = _mm256_loadu_si256((uint256_t*)&static_nybble_lookup_b4_lo);
+				const uint256_t nybble_lookup_b4_hi = _mm256_loadu_si256((uint256_t*)&static_nybble_lookup_b4_hi);
+				const uint256_t nybble_lookup_b5_lo = _mm256_loadu_si256((uint256_t*)&static_nybble_lookup_b5_lo);
+				const uint256_t nybble_lookup_b5_hi = _mm256_loadu_si256((uint256_t*)&static_nybble_lookup_b5_hi);
+				const uint256_t nybble_lookup_b6_lo = _mm256_loadu_si256((uint256_t*)&static_nybble_lookup_b6_lo);
+				const uint256_t nybble_lookup_b6_hi = _mm256_loadu_si256((uint256_t*)&static_nybble_lookup_b6_hi);
+				const uint256_t nybble_lookup_b9_lo = _mm256_loadu_si256((uint256_t*)&static_nybble_lookup_b9_lo);
+				const uint256_t nybble_lookup_b9_hi = _mm256_loadu_si256((uint256_t*)&static_nybble_lookup_b9_hi);
 
 				uint64_t number = *(input + 0);
 				pdep_candidates[0] = _pdep_u64(number, pdep_mask);
@@ -2654,14 +2654,14 @@ namespace mbp
 			// explicitly (re)load constants
 			const uint256_t nybble_mask = _mm256_set1_epi16(0b00001111'00000000);
 
-			const uint256_t nybble_lookup_b4_lo = _mm256_loadu_si256(&static_nybble_lookup_b4_lo);
-			const uint256_t nybble_lookup_b4_hi = _mm256_loadu_si256(&static_nybble_lookup_b4_hi);
-			const uint256_t nybble_lookup_b5_lo = _mm256_loadu_si256(&static_nybble_lookup_b5_lo);
-			const uint256_t nybble_lookup_b5_hi = _mm256_loadu_si256(&static_nybble_lookup_b5_hi);
-			const uint256_t nybble_lookup_b6_lo = _mm256_loadu_si256(&static_nybble_lookup_b6_lo);
-			const uint256_t nybble_lookup_b6_hi = _mm256_loadu_si256(&static_nybble_lookup_b6_hi);
-			const uint256_t nybble_lookup_b9_lo = _mm256_loadu_si256(&static_nybble_lookup_b9_lo);
-			const uint256_t nybble_lookup_b9_hi = _mm256_loadu_si256(&static_nybble_lookup_b9_hi);
+			const uint256_t nybble_lookup_b4_lo = _mm256_loadu_si256((uint256_t*)&static_nybble_lookup_b4_lo);
+			const uint256_t nybble_lookup_b4_hi = _mm256_loadu_si256((uint256_t*)&static_nybble_lookup_b4_hi);
+			const uint256_t nybble_lookup_b5_lo = _mm256_loadu_si256((uint256_t*)&static_nybble_lookup_b5_lo);
+			const uint256_t nybble_lookup_b5_hi = _mm256_loadu_si256((uint256_t*)&static_nybble_lookup_b5_hi);
+			const uint256_t nybble_lookup_b6_lo = _mm256_loadu_si256((uint256_t*)&static_nybble_lookup_b6_lo);
+			const uint256_t nybble_lookup_b6_hi = _mm256_loadu_si256((uint256_t*)&static_nybble_lookup_b6_hi);
+			const uint256_t nybble_lookup_b9_lo = _mm256_loadu_si256((uint256_t*)&static_nybble_lookup_b9_lo);
+			const uint256_t nybble_lookup_b9_hi = _mm256_loadu_si256((uint256_t*)&static_nybble_lookup_b9_hi);
 
 			// load candidates for the next iteration
 			uint256_t candidates = _mm256_loadu_si256((uint256_t*)pdep_candidates);
@@ -2828,7 +2828,7 @@ namespace mbp
 		// Intellisense may generate a number of false positives here
 		constexpr size_t bitmask = bitmask_for<8, 19>::val;
 		static_assert(bitmask == bitmask_for<12, 19>::val);
-		static_assert(period_of<bitmask>::val == 6);
+		static_assert(period_of<bitmask>() == 6);
 
 		// base  8 % 19: 166,481,762 hits   6 remainders : 1   8   7  18  11  12
 		// base 12 % 19: 161,790,357 hits   6 remainders : 1  12  11  18   7   8
@@ -2865,18 +2865,18 @@ namespace mbp
 			const uint8_t* const indivisible_b8 = indivisible_by_19 + upper_sum_0;
 			const uint8_t* const indivisible_b12 = indivisible_by_19 + upper_sum_1;
 
-			constexpr static uint128_t static_b8_rems_lo = { .m128i_u8{ 1, 8, 7, 18, 11, 12, 1, 8, 7, 18, 11, 12, 1, 8, 7, 18 } };
-			constexpr static uint128_t static_b8_rems_hi = { .m128i_u8{ 11, 12, 1, 8, 7, 18, 11, 12, 1, 8, 7, 18, 11, 12, 1, 8 } };
-			constexpr static uint128_t static_b12_rems_lo = { .m128i_u8{ 1, 12, 11, 18, 7, 8, 1, 12, 11, 18, 7, 8, 1, 12, 11, 18 } };
-			constexpr static uint128_t static_b12_rems_hi = { .m128i_u8{ 7, 8, 1, 12, 11, 18, 7, 8, 1, 12, 11, 18, 7, 8, 1, 12 } };
+			constexpr static std::array<uint8_t, 16> static_b8_rems_lo = { 1, 8, 7, 18, 11, 12, 1, 8, 7, 18, 11, 12, 1, 8, 7, 18 };
+			constexpr static std::array<uint8_t, 16> static_b8_rems_hi = { 11, 12, 1, 8, 7, 18, 11, 12, 1, 8, 7, 18, 11, 12, 1, 8 };
+			constexpr static std::array<uint8_t, 16> static_b12_rems_lo = { 1, 12, 11, 18, 7, 8, 1, 12, 11, 18, 7, 8, 1, 12, 11, 18 };
+			constexpr static std::array<uint8_t, 16> static_b12_rems_hi = { 7, 8, 1, 12, 11, 18, 7, 8, 1, 12, 11, 18, 7, 8, 1, 12 };
 
-			const uint128_t xmm_b8_rems_lo = _mm_loadu_si128(&static_b8_rems_lo);
+			const uint128_t xmm_b8_rems_lo = _mm_loadu_si128((uint128_t*)&static_b8_rems_lo);
 			const uint256_t b8_rems_lo = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_b8_rems_lo), xmm_b8_rems_lo, 1);
-			const uint128_t xmm_b8_rems_hi = _mm_loadu_si128(&static_b8_rems_hi);
+			const uint128_t xmm_b8_rems_hi = _mm_loadu_si128((uint128_t*)&static_b8_rems_hi);
 			const uint256_t b8_rems_hi = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_b8_rems_hi), xmm_b8_rems_hi, 1);
-			const uint128_t xmm_b12_rems_lo = _mm_loadu_si128(&static_b12_rems_lo);
+			const uint128_t xmm_b12_rems_lo = _mm_loadu_si128((uint128_t*)&static_b12_rems_lo);
 			const uint256_t b12_rems_lo = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_b12_rems_lo), xmm_b12_rems_lo, 1);
-			const uint128_t xmm_b12_rems_hi = _mm_loadu_si128(&static_b12_rems_hi);
+			const uint128_t xmm_b12_rems_hi = _mm_loadu_si128((uint128_t*)&static_b12_rems_hi);
 			const uint256_t b12_rems_hi = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_b12_rems_hi), xmm_b12_rems_hi, 1);
 
 			const uint256_t shuffle_mask_lo = _mm256_set_epi64x(0x0909090909090909, 0x0808080808080808, 0x0101010101010101, 0x0000000000000000);
@@ -3019,7 +3019,7 @@ namespace mbp
 		// Intellisense may generate a number of false positives here
 		constexpr uint64_t bitmask = bitmask_for<7, 19>::val;
 		static_assert(bitmask == bitmask_for<11, 19>::val);
-		static_assert(period_of<bitmask>::val == 3);
+		static_assert(period_of<bitmask>() == 3);
 
 		// base  7 % 19: 3_remainders: 1   7  11
 		// base 11 % 19: 3_remainders: 1  11   7
