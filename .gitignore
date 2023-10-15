@@ -409,3 +409,5 @@ doc/Perf table.xlsx
 Compile Score/
 CompileScoreSettings.json
 doc/additional benchmark notes.txt
+*.profdata
+*.profraw
