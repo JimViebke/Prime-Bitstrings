@@ -382,7 +382,7 @@ namespace mbp::div_test
 				// load four candidates
 				uint256_t candidates = _mm256_loadu_si256((uint256_t*)input);
 
-				alignas(32) uint64_t sums[4]{};
+				alignas(32) volatile uint64_t sums[4]{};
 
 				// run vector instructions one iteration ahead
 				{
