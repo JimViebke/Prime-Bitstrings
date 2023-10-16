@@ -171,3 +171,4 @@ Calculate change: 1 - (  /  )
 35651 ms : Update to Windows 10, latest MSVC, and cpp-latest
 37781 ms : Port to Clang
 37647 ms : Use PGO
+37500 ms : Prevent auto-vectorization in extract_candidates_with_popcount

@@ -997,7 +997,7 @@ namespace mbp::prime_sieve
 			if constexpr (popcount <= 2)
 			{
 				const size_t n_chunks_rounded = n_chunks - (n_chunks % 4);
-
+			#pragma clang loop vectorize(disable)
 				for (; i < n_chunks_rounded; i += 4)
 				{
 					uint64_t chunk = sorted_chunks[popcount][i];
