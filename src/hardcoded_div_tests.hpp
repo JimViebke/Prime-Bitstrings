@@ -124,8 +124,8 @@ namespace mbp
 			const uint8_t* const indivisible_by_13_ptr_b8 = indivisible_by[get_prime_index<13>::idx].data() + b8m13_urem;
 			const uint8_t* const indivisible_by_17_ptr = indivisible_by[get_prime_index<17>::idx].data() + b4m17_urem;
 
-			alignas(32) uint16_t sums_ab[16]{};
-			alignas(32) uint16_t sums_cd[16]{};
+			alignas(32) volatile uint16_t sums_ab[16]{};
+			alignas(32) volatile uint16_t sums_cd[16]{};
 
 			// run vector instructions one iteration ahead
 			{
@@ -351,7 +351,7 @@ namespace mbp
 			const uint8_t* const indivisible_base_a = indivisible_by[get_prime_index<prime_a>::idx].data() + sum_a;
 			const uint8_t* const indivisible_base_b = indivisible_by[get_prime_index<prime_b>::idx].data() + sum_b;
 
-			alignas(32) uint16_t sums[16]{}; // 0426 1537 0426 1537
+			alignas(32) volatile uint16_t sums[16]{}; // 0426 1537 0426 1537
 
 			// run vector instructions one iteration ahead
 			{
@@ -571,8 +571,8 @@ namespace mbp
 			const uint8_t* const indivisible_by_17_ptr_b4 = indivisible_by[get_prime_index<17>::idx].data() + b4m17_urem;
 			const uint8_t* const indivisible_by_17_ptr_b13 = indivisible_by[get_prime_index<17>::idx].data() + b13m17_urem;
 
-			alignas(32) uint16_t sums_ab[16]{};
-			alignas(32) uint16_t sums_cd[16]{};
+			alignas(32) volatile uint16_t sums_ab[16]{};
+			alignas(32) volatile uint16_t sums_cd[16]{};
 
 			// run vector instructions one iteration ahead
 			{
@@ -823,8 +823,8 @@ namespace mbp
 
 			const uint64_t* const rounded_end = candidates_end - ((candidates_end - input) & 0b11);
 
-			alignas(32) uint64_t pdep_candidates[8]{};
-			alignas(32) uint32_t rems[8]{};
+			alignas(32) volatile uint64_t pdep_candidates[8]{};
+			alignas(32) volatile uint32_t rems[8]{};
 
 			// run pdep and vector instructions one iteration ahead
 			{
@@ -1036,7 +1036,7 @@ namespace mbp
 			const uint128_t xmm_b10_rems_hi = _mm_loadu_si128(&static_b10_rems_hi);
 			const uint256_t b10_rems_hi = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_b10_rems_hi), xmm_b10_rems_hi, 1);
 
-			alignas(32) uint32_t sums[8]{};
+			alignas(32) volatile uint32_t sums[8]{};
 
 			// run vector instructions one iteration ahead
 			{
@@ -1229,8 +1229,8 @@ namespace mbp
 
 			const uint64_t* const rounded_end = candidates_end - ((candidates_end - input) & 0b11);
 
-			alignas(32) uint64_t pdep_candidates[4]{};
-			alignas(32) uint16_t sums[16]{};
+			alignas(32) volatile uint64_t pdep_candidates[4]{};
+			alignas(32) volatile uint16_t sums[16]{};
 
 			// run pdep and vector instructions one iteration ahead
 			{
@@ -1500,7 +1500,7 @@ namespace mbp
 			const uint128_t xmm_b8_rems_hi = _mm_loadu_si128((uint128_t*)&static_b8_rems_hi);
 			const uint256_t b8_rems_hi = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_b8_rems_hi), xmm_b8_rems_hi, 1);
 
-			uint16_t sums[16]{};
+			alignas(32) volatile uint16_t sums[16]{};
 
 			// run vector instructions one iteration ahead
 			{
@@ -1756,7 +1756,7 @@ namespace mbp
 			const uint128_t xmm_b11_rems_hi = _mm_loadu_si128((uint128_t*)&static_b11_rems_hi);
 			const uint256_t b11_rems_hi = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_b11_rems_hi), xmm_b11_rems_hi, 1);
 
-			uint16_t sums[16]{};
+			alignas(32) volatile uint16_t sums[16]{};
 
 			// run vector instructions one iteration ahead
 			{
@@ -1962,7 +1962,7 @@ namespace mbp
 		const uint256_t shuffle_mask_hi = _mm256_set_epi64x(0x0303030303030303, 0x0202020202020202, 0x0303030303030303, 0x0202020202020202);
 		const uint256_t and_mask = _mm256_set1_epi64x(0x80'40'20'10'08'04'02'01);
 
-		uint64_t sums_0213465x[8]{};
+		alignas(32) volatile uint64_t sums_0213465x[8]{};
 
 		{
 			// this loads more than we need, but VBROADCASTI128 is the cheapest way to load to both lanes
@@ -2111,7 +2111,7 @@ namespace mbp
 			const uint8_t* const indivisible_12m29 = indivisible_by[get_prime_index<29>::idx].data() + b12m29_urem;
 			const uint8_t* const indivisible_6m37 = indivisible_by[get_prime_index<37>::idx].data() + b6m37_urem;
 
-			alignas(32) uint16_t sums[16]{}; // 0426 1537 0426 1537
+			alignas(32) volatile uint16_t sums[16]{}; // 0426 1537 0426 1537
 
 			// run vector instructions one iteration ahead
 			{
@@ -2329,7 +2329,7 @@ namespace mbp
 			const uint8_t* const indivisible_b8 = indivisible_by[get_prime_index<17>::idx].data() + b8m17_rem;
 			const uint8_t* const indivisible_b9 = indivisible_by[get_prime_index<17>::idx].data() + b9m17_rem;
 
-			uint64_t sums[16]{};
+			alignas(32) volatile uint64_t sums[16]{};
 
 			// run vector instructions one iteration ahead
 			{
@@ -2569,8 +2569,8 @@ namespace mbp
 
 			const uint64_t* const rounded_end = candidates_end - ((candidates_end - input) & 0b11);
 
-			alignas(32) uint64_t pdep_candidates[4]{};
-			alignas(32) uint16_t sums[16]{};
+			alignas(32) volatile uint64_t pdep_candidates[4]{};
+			alignas(32) volatile uint16_t sums[16]{};
 
 			// run pdep and vector instructions one iteration ahead
 			{
@@ -2883,7 +2883,7 @@ namespace mbp
 			const uint256_t shuffle_mask_hi = _mm256_set_epi64x(0x0B0B0B0B0B0B0B0B, 0x0A0A0A0A0A0A0A0A, 0x0303030303030303, 0x0202020202020202);
 			const uint256_t and_mask = _mm256_set1_epi64x(0x80'40'20'10'08'04'02'01);
 
-			alignas(32) uint32_t sums[8]{};
+			alignas(32) volatile uint32_t sums[8]{};
 
 			// run vector instructions one iteration ahead
 			{
@@ -3056,8 +3056,8 @@ namespace mbp
 
 			const uint64_t* const rounded_end = candidates_end - ((candidates_end - input) & 0b11);
 
-			alignas(32) uint64_t pdep_candidates[8]{};
-			alignas(32) uint32_t rems[8]{};
+			alignas(32) volatile uint64_t pdep_candidates[8]{};
+			alignas(32) volatile uint32_t rems[8]{};
 
 			// run pdep and vector instructions one iteration ahead
 			{

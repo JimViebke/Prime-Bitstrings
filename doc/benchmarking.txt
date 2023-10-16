@@ -173,3 +173,4 @@ Calculate change: 1 - (  /  )
 37647 ms : Use PGO
 37500 ms : Prevent auto-vectorization in extract_candidates_with_popcount
 37168 ms : Require spilling sums to stack in branchless_div_tests
+35753 ms : Require spilling sums to stack across hardcoded div tests
