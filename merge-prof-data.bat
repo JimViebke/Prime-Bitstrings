@@ -1,1 +1,0 @@
-llvm-profdata merge -output=default.profdata default.profraw
