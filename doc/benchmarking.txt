@@ -176,4 +176,4 @@ Calculate change: 1 - (  /  )
 35753 ms : Require spilling sums to stack across hardcoded div tests
 35402 ms : Use 32-bit sums in 4-rem div tests (main div_tests function not inlined)
 35448 ms :                                    (main div_tests function inlined)
-
+35181 ms : Use 32-bit sums in 10- and 12-rem div tests

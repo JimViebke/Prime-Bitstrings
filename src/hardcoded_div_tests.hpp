@@ -1500,7 +1500,7 @@ namespace mbp
 			const uint128_t xmm_b8_rems_hi = _mm_loadu_si128((uint128_t*)&static_b8_rems_hi);
 			const uint256_t b8_rems_hi = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_b8_rems_hi), xmm_b8_rems_hi, 1);
 
-			alignas(32) volatile uint16_t sums[16]{};
+			alignas(32) volatile uint32_t sums[8]{};
 
 			// run vector instructions one iteration ahead
 			{
@@ -1541,6 +1541,10 @@ namespace mbp
 				b678x_sums = _mm256_add_epi16(b678x_sums, _mm256_srli_si256(b678x_sums, 2));
 				// sums are now stored as [0, x, 1, x, 2, x, x, x][0, x, 1, x, 2, x, x, x]
 
+				// zero out garbage values so we can read results as u32s
+				b678x_sums = _mm256_blend_epi16(b678x_sums, _mm256_setzero_si256(), 0b11101010);
+				// sums are now stored as [0, 1, 2, x][0, 1, 2, x]
+
 				// store on the stack
 				_mm256_storeu_si256((uint256_t*)sums, b678x_sums);
 			}
@@ -1576,17 +1580,19 @@ namespace mbp
 				uint256_t b678x_sums = _mm256_packus_epi32(b67_sums, b8x_sums);
 				b678x_sums = _mm256_add_epi16(b678x_sums, _mm256_srli_si256(b678x_sums, 2));
 
+				b678x_sums = _mm256_blend_epi16(b678x_sums, _mm256_setzero_si256(), 0b11101010);
+
 				// Only advance the pointer if the number is still a candidate
 
 				const size_t inc_0 = indivisible_b6[sums[0]]
-					& indivisible_b7[sums[2]]
-					& indivisible_b8[sums[4]];
+					& indivisible_b7[sums[1]]
+					& indivisible_b8[sums[2]];
 				*output = *input++;
 				output = (uint64_t*)(((uint8_t*)output) + inc_0);
 
-				const size_t inc_1 = indivisible_b6[sums[0 + 8]]
-					& indivisible_b7[sums[2 + 8]]
-					& indivisible_b8[sums[4 + 8]];
+				const size_t inc_1 = indivisible_b6[sums[0 + 4]]
+					& indivisible_b7[sums[1 + 4]]
+					& indivisible_b8[sums[2 + 4]];
 				*output = *input++;
 				output = (uint64_t*)(((uint8_t*)output) + inc_1);
 
@@ -1756,7 +1762,7 @@ namespace mbp
 			const uint128_t xmm_b11_rems_hi = _mm_loadu_si128((uint128_t*)&static_b11_rems_hi);
 			const uint256_t b11_rems_hi = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_b11_rems_hi), xmm_b11_rems_hi, 1);
 
-			alignas(32) volatile uint16_t sums[16]{};
+			alignas(32) volatile uint32_t sums[8]{};
 
 			// run vector instructions one iteration ahead
 			{
@@ -1797,6 +1803,10 @@ namespace mbp
 				b6_7_11_x_sums = _mm256_add_epi16(b6_7_11_x_sums, _mm256_srli_si256(b6_7_11_x_sums, 2));
 				// sums are now stored as [0, x, 1, x, 2, x, x, x][0, x, 1, x, 2, x, x, x]
 
+				// zero out garbage values so we can read results as u32s
+				b6_7_11_x_sums = _mm256_blend_epi16(b6_7_11_x_sums, _mm256_setzero_si256(), 0b11101010);
+				// sums are now stored as [0, 1, 2, x][0, 1, 2, x]
+
 				// store on the stack
 				_mm256_storeu_si256((uint256_t*)sums, b6_7_11_x_sums);
 			}
@@ -1832,17 +1842,19 @@ namespace mbp
 				uint256_t b6_7_11_x_sums = _mm256_packus_epi32(b67_sums, b11x_sums);
 				b6_7_11_x_sums = _mm256_add_epi16(b6_7_11_x_sums, _mm256_srli_si256(b6_7_11_x_sums, 2));
 
+				b6_7_11_x_sums = _mm256_blend_epi16(b6_7_11_x_sums, _mm256_setzero_si256(), 0b11101010);
+
 				// Only advance the pointer if the number is still a candidate
 
 				const size_t inc_0 = indivisible_b6[sums[0]]
-					& indivisible_b7[sums[2]]
-					& indivisible_b11[sums[4]];
+					& indivisible_b7[sums[1]]
+					& indivisible_b11[sums[2]];
 				*output = *input++;
 				output = (uint64_t*)(((uint8_t*)output) + inc_0);
 
-				const size_t inc_1 = indivisible_b6[sums[0 + 8]]
-					& indivisible_b7[sums[2 + 8]]
-					& indivisible_b11[sums[4 + 8]];
+				const size_t inc_1 = indivisible_b6[sums[0 + 4]]
+					& indivisible_b7[sums[1 + 4]]
+					& indivisible_b11[sums[2 + 4]];
 				*output = *input++;
 				output = (uint64_t*)(((uint8_t*)output) + inc_1);
 
