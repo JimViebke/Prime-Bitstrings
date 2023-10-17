@@ -86,7 +86,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <OpenMPSupport>false</OpenMPSupport>
-      <AdditionalOptions>-Wfatal-errors -Werror -march=haswell -Qunused-arguments</AdditionalOptions>
+      <AdditionalOptions>-Wfatal-errors -Werror -march=haswell -Qunused-arguments -Wno-unused-function</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -111,7 +111,7 @@
       <AssemblerOutput>AssemblyAndSourceCode</AssemblerOutput>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
-      <AdditionalOptions>-Wfatal-errors -Werror -march=haswell -Qunused-arguments -fprofile-instr-use</AdditionalOptions>
+      <AdditionalOptions>-Wfatal-errors -Werror -march=haswell -Qunused-arguments -Wno-unused-function -fprofile-instr-use</AdditionalOptions>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <StringPooling>true</StringPooling>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -149,7 +149,7 @@
       <AssemblerOutput>AssemblyAndSourceCode</AssemblerOutput>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
-      <AdditionalOptions>-Wfatal-errors -Werror -march=haswell -Qunused-arguments -fprofile-instr-generate</AdditionalOptions>
+      <AdditionalOptions>-Wfatal-errors -Werror -march=haswell -Qunused-arguments -Wno-unused-function -fprofile-instr-generate</AdditionalOptions>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <StringPooling>true</StringPooling>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
