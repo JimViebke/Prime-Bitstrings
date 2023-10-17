@@ -351,7 +351,7 @@ namespace mbp
 			const uint8_t* const indivisible_base_a = indivisible_by[get_prime_index<prime_a>::idx].data() + sum_a;
 			const uint8_t* const indivisible_base_b = indivisible_by[get_prime_index<prime_b>::idx].data() + sum_b;
 
-			alignas(32) volatile uint16_t sums[16]{}; // 0426 1537 0426 1537
+			alignas(32) volatile uint32_t sums[16]{};
 
 			// run vector instructions one iteration ahead
 			{
@@ -384,10 +384,10 @@ namespace mbp
 
 				const uint256_t sums_0404_2626 = _mm256_packus_epi32(sums_0426_a, sums_0426_b);
 				const uint256_t sums_1515_3737 = _mm256_packus_epi32(sums_1537_a, sums_1537_b);
-				const uint256_t sums_0404_1515_2626_3737 = _mm256_packus_epi32(sums_0404_2626, sums_1515_3737);
 
 				// store results on the stack
-				_mm256_storeu_si256((uint256_t*)sums, sums_0404_1515_2626_3737);
+				_mm256_storeu_si256((uint256_t*)&sums[0], sums_0404_2626);
+				_mm256_storeu_si256((uint256_t*)&sums[8], sums_1515_3737);
 			}
 
 			// load two iterations ahead
@@ -422,7 +422,6 @@ namespace mbp
 
 				const uint256_t sums_0404_2626 = _mm256_packus_epi32(sums_0426_a, sums_0426_b);
 				const uint256_t sums_1515_3737 = _mm256_packus_epi32(sums_1537_a, sums_1537_b);
-				const uint256_t sums_0404_1515_2626_3737 = _mm256_packus_epi32(sums_0404_2626, sums_1515_3737);
 
 				*output = *input++; // always copy
 				const size_t inc_a =
@@ -432,14 +431,14 @@ namespace mbp
 
 				*output = *input++;
 				const size_t inc_b =
-					indivisible_base_a[sums[4]] &
-					indivisible_base_b[sums[4 + 2]];
+					indivisible_base_a[sums[8]] &
+					indivisible_base_b[sums[8 + 2]];
 				output = (uint64_t*)(((uint8_t*)output) + inc_b);
 
 				*output = *input++;
 				const size_t inc_c =
-					indivisible_base_a[sums[8]] &
-					indivisible_base_b[sums[8 + 2]];
+					indivisible_base_a[sums[4]] &
+					indivisible_base_b[sums[4 + 2]];
 				output = (uint64_t*)(((uint8_t*)output) + inc_c);
 
 				*output = *input++;
@@ -456,14 +455,14 @@ namespace mbp
 
 				*output = *input++;
 				const size_t inc_f =
-					indivisible_base_a[sums[5]] &
-					indivisible_base_b[sums[5 + 2]];
+					indivisible_base_a[sums[9]] &
+					indivisible_base_b[sums[9 + 2]];
 				output = (uint64_t*)(((uint8_t*)output) + inc_f);
 
 				*output = *input++;
 				const size_t inc_g =
-					indivisible_base_a[sums[9]] &
-					indivisible_base_b[sums[9 + 2]];
+					indivisible_base_a[sums[5]] &
+					indivisible_base_b[sums[5 + 2]];
 				output = (uint64_t*)(((uint8_t*)output) + inc_g);
 
 				*output = *input++;
@@ -473,7 +472,8 @@ namespace mbp
 				output = (uint64_t*)(((uint8_t*)output) + inc_h);
 
 				// store the above results for the next iteration
-				_mm256_storeu_si256((uint256_t*)sums, sums_0404_1515_2626_3737);
+				_mm256_storeu_si256((uint256_t*)&sums[0], sums_0404_2626);
+				_mm256_storeu_si256((uint256_t*)&sums[8], sums_1515_3737);
 			} // end for
 		} // end if on_fast_path
 

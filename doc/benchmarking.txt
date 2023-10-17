@@ -174,3 +174,6 @@ Calculate change: 1 - (  /  )
 37500 ms : Prevent auto-vectorization in extract_candidates_with_popcount
 37168 ms : Require spilling sums to stack in branchless_div_tests
 35753 ms : Require spilling sums to stack across hardcoded div tests
+35402 ms : Use 32-bit sums in 4-rem div tests (main div_tests function not inlined)
+35448 ms :                                    (main div_tests function inlined)
+
