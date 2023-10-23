@@ -31,18 +31,20 @@ namespace mbp::div_test
 					if (base == 2 && p <= prime_sieve::static_sieve_primes.back()) continue;
 
 					// Implemented with bit masks
+					// pass 1
 					if (base == 3 && p == 5) continue;
+					if (base == 4 && p == 17) continue;
+					if (base == 5 && p == 13) continue;
+					if (base == 8 && p == 13) continue;
+					if (base == 13 && p == 17) continue;
+					// pass 2
 					if (base == 3 && p == 7) continue;
 					if (base == 3 && p == 13) continue;
 					if (base == 4 && p == 7) continue;
 					if (base == 4 && p == 13) continue;
-					if (base == 4 && p == 17) continue;
 					if (base == 5 && p == 7) continue;
-					if (base == 5 && p == 13) continue;
-					if (base == 8 && p == 13) continue;
 					if (base == 9 && p == 13) continue;
 					if (base == 10 && p == 13) continue;
-					if (base == 13 && p == 17) continue;
 					// pass 3
 					if (base == 3 && p == 11) continue;
 					if (base == 4 && p == 11) continue;
@@ -50,10 +52,23 @@ namespace mbp::div_test
 					if (base == 9 && p == 11) continue;
 
 					// Always suppress hardcoded div tests
-
-					// second set with 4 remainders
+					// 4 remainders
 					if (base == 12 && p == 29) continue;
 					if (base == 6 && p == 37) continue;
+
+					// 10 remainders
+					if (base == 6 && p == 11) continue;
+					if (base == 7 && p == 11) continue;
+					if (base == 8 && p == 11) continue;
+
+					// 8 remainders
+					if (base == 8 && p == 17) continue;
+					if (base == 9 && p == 17) continue;
+
+					// 12 remainders
+					if (base == 6 && p == 13) continue;
+					if (base == 7 && p == 13) continue;
+					if (base == 11 && p == 13) continue;
 
 					// 16 remainders
 					if (base == 3 && p == 17) continue;
@@ -63,20 +78,6 @@ namespace mbp::div_test
 					if (base == 10 && p == 17) continue;
 					if (base == 11 && p == 17) continue;
 					if (base == 12 && p == 17) continue;
-
-					// 10 remainders
-					if (base == 6 && p == 11) continue;
-					if (base == 7 && p == 11) continue;
-					if (base == 8 && p == 11) continue;
-
-					// 12 remainders
-					if (base == 6 && p == 13) continue;
-					if (base == 7 && p == 13) continue;
-					if (base == 11 && p == 13) continue;
-
-					// 8 remainders
-					if (base == 8 && p == 17) continue;
-					if (base == 9 && p == 17) continue;
 
 					// second set with 6 remainders
 					//if (base == 8 && p == 19) continue;
