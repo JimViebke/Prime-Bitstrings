@@ -159,6 +159,7 @@ namespace mbp::prime_sieve
 		uint256_t* ptr = (uint256_t*)sieve.data();
 
 		// align j with a bit offset of 0
+	#pragma nounroll
 		while (j != 0)
 		{
 			*ptr = _mm256_and_si256(*(uint256_t*)masks[j].data(), *ptr);
@@ -198,6 +199,7 @@ namespace mbp::prime_sieve
 			ptr += p; // advance by p*32 bytes
 		} while (ptr < extra_aligned_end);
 
+	#pragma nounroll
 		while (ptr < aligned_end)
 		{
 			*ptr = _mm256_and_si256(*(uint256_t*)masks[j].data(), *ptr);
