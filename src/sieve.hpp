@@ -115,8 +115,7 @@ namespace mbp::prime_sieve
 		uint256_t* const ptr, const auto& masks,
 		const uint256_t& mask_0, const uint256_t& mask_1, const uint256_t& mask_2, const uint256_t& mask_3,
 		const uint256_t& mask_4, const uint256_t& mask_5, const uint256_t& mask_6, const uint256_t& mask_7,
-		const uint256_t& mask_8, const uint256_t& mask_9, const uint256_t& mask_10, const uint256_t& mask_11,
-		const uint256_t& mask_12, const uint256_t& mask_13)
+		const uint256_t& mask_8, const uint256_t& mask_9, const uint256_t& mask_10, const uint256_t& mask_11)
 	{
 		constexpr size_t bit_offset = (p - ((chunk * 256) % p)) % p; // cleaner way to do this?
 
@@ -134,8 +133,6 @@ namespace mbp::prime_sieve
 		else if constexpr (bit_offset == 9) mask = mask_9;
 		else if constexpr (bit_offset == 10) mask = mask_10;
 		else if constexpr (bit_offset == 11) mask = mask_11;
-		else if constexpr (bit_offset == 12) mask = mask_12;
-		else if constexpr (bit_offset == 13) mask = mask_13;
 		else mask = *(uint256_t*)masks[bit_offset].data();
 
 		*ptr = _mm256_and_si256(mask, *ptr);
@@ -143,9 +140,9 @@ namespace mbp::prime_sieve
 		if constexpr (chunk + 1 < p)
 			generate_aligned_vector_writes<p, chunk + 1>(
 				ptr + 1, masks,
-				mask_0, mask_1, mask_2, mask_3, mask_4,
-				mask_5, mask_6, mask_7, mask_8, mask_9,
-				mask_10, mask_11, mask_12, mask_13);
+				mask_0, mask_1, mask_2, mask_3,
+				mask_4, mask_5, mask_6, mask_7,
+				mask_8, mask_9, mask_10, mask_11);
 	}
 
 	template<size_t p>
@@ -169,7 +166,8 @@ namespace mbp::prime_sieve
 			++ptr;
 		}
 
-		// MSVC will use 14 of 16 YMM registers for constants without stack spilling
+		// Clang will use 12 of 16 YMM registers for constants
+		_mm256_zeroall();
 		const uint256_t mask_0 = _mm256_loadu_si256((uint256_t*)masks[0].data());
 		const uint256_t mask_1 = _mm256_loadu_si256((uint256_t*)masks[1].data());
 		const uint256_t mask_2 = _mm256_loadu_si256((uint256_t*)masks[2].data());
@@ -182,8 +180,6 @@ namespace mbp::prime_sieve
 		const uint256_t mask_9 = _mm256_loadu_si256((uint256_t*)masks[9].data());
 		const uint256_t mask_10 = _mm256_loadu_si256((uint256_t*)masks[10].data());
 		const uint256_t mask_11 = _mm256_loadu_si256((uint256_t*)masks[11].data());
-		const uint256_t mask_12 = _mm256_loadu_si256((uint256_t*)masks[12].data());
-		const uint256_t mask_13 = _mm256_loadu_si256((uint256_t*)masks[13].data());
 
 		// iterate until we reach the last p-1 chunks
 		constexpr size_t n_chunks = sieve_container::size() / 256ull;
@@ -193,9 +189,9 @@ namespace mbp::prime_sieve
 		do
 		{
 			generate_aligned_vector_writes<p>(ptr, masks,
-											  mask_0, mask_1, mask_2, mask_3, mask_4,
-											  mask_5, mask_6, mask_7, mask_8, mask_9,
-											  mask_10, mask_11, mask_12, mask_13);
+											  mask_0, mask_1, mask_2, mask_3, 
+											  mask_4, mask_5, mask_6, mask_7,
+											  mask_8, mask_9, mask_10, mask_11);
 			ptr += p; // advance by p*32 bytes
 		} while (ptr < extra_aligned_end);
 
