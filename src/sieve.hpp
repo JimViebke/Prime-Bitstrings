@@ -726,7 +726,7 @@ namespace mbp::prime_sieve
 			// load one iteration ahead
 			uint256_t data = _mm256_load_si256((uint256_t*)(&sieve_data[0]));
 
-			for (chunk_idx_t i = 0; i < n_sieve_chunks_rounded; i += 4)
+			for (size_t i = 0; i < n_sieve_chunks_rounded; i += 4)
 			{
 				uint256_t mask_256 = _mm256_cmpeq_epi64(data, _mm256_setzero_si256()); // find the zero chunks
 				const auto bit_mask = _mm256_movemask_pd(_mm256_castsi256_pd(mask_256));
