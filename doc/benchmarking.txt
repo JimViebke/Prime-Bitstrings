@@ -178,3 +178,4 @@ Calculate change: 1 - (  /  )
 	35181 ms : Use 32-bit sums in 10- and 12-rem div tests
 35181 ms : Port to and optimize for Clang (~1.3% faster)
 35013 ms : Prevent Clang from unrolling setup/cleanup loops in aligned vectorized sieving (<1% faster)
+34585 ms : Add bit masks for 10-rem div tests (~1.2% faster)

@@ -42,7 +42,7 @@ namespace mbp
 		gmp_rand.seed(mpir_ui{ 0xdeadbeef });
 
 		count_passes(std::cout << "(counting passes)\n");
-		count_passes(a = ps15 = b = c = d = e = f = bldt = bidt = 0);
+		count_passes(a = ps15 = b = c = d = e = bldt = bidt = 0);
 		count_passes(b2 = b3 = b4 = b5 = passes = pc_hash = 0);
 	}
 
@@ -163,11 +163,10 @@ namespace mbp
 		log_pass_counts("Passed bitmasks:       ", a, (bm_size / 2));
 		log_pass_counts("Passed sieve:          ", ps15, a);
 		log_pass_counts("Passed 4-rem tests:    ", b, ps15);
-		log_pass_counts("Passed 10-rem tests:   ", c, b);
-		log_pass_counts("Passed 8-rem tests:    ", d, c);
-		log_pass_counts("Passed 12-rem tests:   ", e, d);
-		log_pass_counts("Passed 16-rem tests:   ", f, e);
-		log_pass_counts("P. branchless divtests:", bldt, f);
+		log_pass_counts("Passed 8-rem tests:    ", c, b);
+		log_pass_counts("Passed 12-rem tests:   ", d, c);
+		log_pass_counts("Passed 16-rem tests:   ", e, d);
+		log_pass_counts("P. branchless divtests:", bldt, e);
 		log_pass_counts("P. branching divtests: ", bidt, bldt);
 		log_pass_counts("Passed b2 BPSW test:   ", b2, bidt);
 		log_pass_counts("Passed b3 prime test:  ", b3, b2);
@@ -189,33 +188,17 @@ namespace mbp
 		candidates_end = two_div_tests_with_four_rems<12, 29, 6, 37, on_fast_path>(candidates, candidates_end);
 		count_passes(b += (candidates_end - candidates));
 
-		// bases 6, 7, and 8 mod 11 (10 remainders)
-		candidates_end = div_tests_with_10_rems<on_fast_path>(candidates, candidates_end);
-		count_passes(c += (candidates_end - candidates));
-
 		// bases 8 and 9 mod 17 (8 remainders)
 		candidates_end = div_tests_with_8_rems<on_fast_path>(candidates, candidates_end);
-		count_passes(d += (candidates_end - candidates));
+		count_passes(c += (candidates_end - candidates));
 
 		// bases 6, 7, and 11 mod 13 (12 remainders)
 		candidates_end = div_tests_with_12_rems<on_fast_path>(candidates, candidates_end);
-		count_passes(e += (candidates_end - candidates));
+		count_passes(d += (candidates_end - candidates));
 
 		// bases 3, 5, 6, 7, 10, 11 and 12 mod 17 (16 remainders)
 		candidates_end = div_tests_with_16_rems<on_fast_path>(candidates, candidates_end);
-		count_passes(f += (candidates_end - candidates));
-
-		// bases 8 and 12 mod 19 (6 remainders)
-		//candidates_end = two_div_tests_with_six_rems<on_fast_path>(candidates, candidates_end);
-		//count_passes(dt6b += (candidates_end - candidates));
-
-		// bases 4, 5, 6, and 9 mod 19 (9 remainders)
-		//candidates_end = div_tests_with_nine_rems<on_fast_path>(candidates, candidates_end);
-		//count_passes(dt9 += (candidates_end - candidates));
-
-		// bases 7 and 11 mod 19 (3 remainders)
-		//candidates_end = two_div_tests_with_three_rems<on_fast_path>(candidates, candidates_end);
-		//count_passes(dt3b += (candidates_end - candidates));
+		count_passes(e += (candidates_end - candidates));
 
 
 

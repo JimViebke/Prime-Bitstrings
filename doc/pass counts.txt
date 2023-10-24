@@ -1333,3 +1333,58 @@ Passed b4 prime test:          3,415 (removed ~ 85%) (~     0 candidates pass pe
 Passed b5 prime test:            445 (removed ~ 87%) (~     0 candidates pass per main loop iteration)
 
 hash of pass counts: a77f71dc4b2a1f4e
+
+
+
+Skip sieving:
+
+65040 main loop iters
+Passed bitmasks:       1,437,099,443 (removed ~100%) (~22,095 candidates pass per main loop iteration)
+Passed 4-rem tests:    1,239,553,721 (removed ~ 14%) (~19,058 candidates pass per main loop iteration)
+Passed 10-rem tests:     931,142,203 (removed ~ 25%) (~14,316 candidates pass per main loop iteration)
+Passed 8-rem tests:      826,512,544 (removed ~ 12%) (~12,707 candidates pass per main loop iteration)
+Passed 12-rem tests:     651,790,323 (removed ~ 22%) (~10,021 candidates pass per main loop iteration)
+Passed 16-rem tests:     426,988,777 (removed ~ 35%) (~ 6,565 candidates pass per main loop iteration)
+P. branchless divtests:   32,161,074 (removed ~ 93%) (~   494 candidates pass per main loop iteration)
+P. branching divtests:       401,386 (removed ~ 99%) (~     6 candidates pass per main loop iteration)
+Passed b2 BPSW test:         119,775 (removed ~ 71%) (~     1 candidates pass per main loop iteration)
+Passed b3 prime test:         22,684 (removed ~ 82%) (~     0 candidates pass per main loop iteration)
+Passed b4 prime test:          3,415 (removed ~ 85%) (~     0 candidates pass per main loop iteration)
+Passed b5 prime test:            445 (removed ~ 87%) (~     0 candidates pass per main loop iteration)
+
+hash of pass counts: d9f1743deba2f650
+
+Add bitmasks for 10-rem div tests:
+
+65040 main loop iters
+Passed bitmasks:       1,079,450,967 (removed ~100%) (~16,596 candidates pass per main loop iteration)
+Passed 4-rem tests:      931,142,203 (removed ~ 14%) (~14,316 candidates pass per main loop iteration)
+Passed 8-rem tests:      826,512,544 (removed ~ 12%) (~12,707 candidates pass per main loop iteration)
+Passed 12-rem tests:     651,790,323 (removed ~ 22%) (~10,021 candidates pass per main loop iteration)
+Passed 16-rem tests:     426,988,777 (removed ~ 35%) (~ 6,565 candidates pass per main loop iteration)
+P. branchless divtests:   32,161,074 (removed ~ 93%) (~   494 candidates pass per main loop iteration)
+P. branching divtests:       401,386 (removed ~ 99%) (~     6 candidates pass per main loop iteration)
+Passed b2 BPSW test:         119,775 (removed ~ 71%) (~     1 candidates pass per main loop iteration)
+Passed b3 prime test:         22,684 (removed ~ 82%) (~     0 candidates pass per main loop iteration)
+Passed b4 prime test:          3,415 (removed ~ 85%) (~     0 candidates pass per main loop iteration)
+Passed b5 prime test:            445 (removed ~ 87%) (~     0 candidates pass per main loop iteration)
+
+hash of pass counts: eb8750faab2e4c5d
+
+Re-enable sieving:
+
+65040 main loop iters
+Passed bitmasks:       1,079,450,967 (removed ~100%) (~16,596 candidates pass per main loop iteration)
+Passed sieve:            976,642,811 (removed ~ 10%) (~15,016 candidates pass per main loop iteration)
+Passed 4-rem tests:      841,793,924 (removed ~ 14%) (~12,942 candidates pass per main loop iteration)
+Passed 8-rem tests:      747,054,092 (removed ~ 12%) (~11,486 candidates pass per main loop iteration)
+Passed 12-rem tests:     589,074,943 (removed ~ 22%) (~ 9,057 candidates pass per main loop iteration)
+Passed 16-rem tests:     385,907,396 (removed ~ 35%) (~ 5,933 candidates pass per main loop iteration)
+P. branchless divtests:   28,892,972 (removed ~ 93%) (~   444 candidates pass per main loop iteration)
+P. branching divtests:       401,386 (removed ~ 99%) (~     6 candidates pass per main loop iteration)
+Passed b2 BPSW test:         119,775 (removed ~ 71%) (~     1 candidates pass per main loop iteration)
+Passed b3 prime test:         22,684 (removed ~ 82%) (~     0 candidates pass per main loop iteration)
+Passed b4 prime test:          3,415 (removed ~ 85%) (~     0 candidates pass per main loop iteration)
+Passed b5 prime test:            445 (removed ~ 87%) (~     0 candidates pass per main loop iteration)
+
+hash of pass counts: e9bb11b3285bf868

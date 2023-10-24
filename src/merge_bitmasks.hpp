@@ -86,6 +86,9 @@ namespace mbp
 	static const std::unique_ptr<std::array<bit_array<pow_2_16>, 11>> b4m11_lookup = build_bitmask_for<4, 11>();
 	static const std::unique_ptr<std::array<bit_array<pow_2_16>, 11>> b5m11_lookup = build_bitmask_for<5, 11>();
 	static const std::unique_ptr<std::array<bit_array<pow_2_16>, 11>> b9m11_lookup = build_bitmask_for<9, 11>();
+	static const std::unique_ptr<std::array<bit_array<pow_2_16>, 11>> b6m11_lookup = build_bitmask_for<6, 11>();
+	static const std::unique_ptr<std::array<bit_array<pow_2_16>, 11>> b7m11_lookup = build_bitmask_for<7, 11>();
+	static const std::unique_ptr<std::array<bit_array<pow_2_16>, 11>> b8m11_lookup = build_bitmask_for<8, 11>();
 
 
 
@@ -268,47 +271,101 @@ namespace mbp
 
 		if constexpr (pass == 3)
 		{
-			constexpr uint64_t bitmask = bitmask_for<3, 11>::val;
-			static_assert(bitmask == bitmask_for<4, 11>::val);
-			static_assert(bitmask == bitmask_for<5, 11>::val);
-			static_assert(bitmask == bitmask_for<9, 11>::val);
-			static_assert(period_of<bitmask>() == 5);
+			{
+				constexpr uint64_t bitmask = bitmask_for<3, 11>::val;
+				static_assert(bitmask == bitmask_for<4, 11>::val);
+				static_assert(bitmask == bitmask_for<5, 11>::val);
+				static_assert(bitmask == bitmask_for<9, 11>::val);
+				static_assert(period_of<bitmask>() == 5);
 
-			const size_t pc_0 = pop_count(next_number & ((bitmask << 0) & outer_48_bits_mask));
-			size_t b3_sum = pc_0;
-			size_t b4_sum = pc_0;
-			size_t b5_sum = pc_0;
-			size_t b9_sum = pc_0;
-			const size_t pc_1 = pop_count(next_number & ((bitmask << 1) & outer_48_bits_mask));
-			b3_sum += pc_1 * pow_mod<3, 1, 11>::rem;
-			b4_sum += pc_1 * pow_mod<4, 1, 11>::rem;
-			b5_sum += pc_1 * pow_mod<5, 1, 11>::rem;
-			b9_sum += pc_1 * pow_mod<9, 1, 11>::rem;
-			const size_t pc_2 = pop_count(next_number & ((bitmask << 2) & outer_48_bits_mask));
-			b3_sum += pc_2 * pow_mod<3, 2, 11>::rem;
-			b4_sum += pc_2 * pow_mod<4, 2, 11>::rem;
-			b5_sum += pc_2 * pow_mod<5, 2, 11>::rem;
-			b9_sum += pc_2 * pow_mod<9, 2, 11>::rem;
-			const size_t pc_3 = pop_count(next_number & ((bitmask << 3) & outer_48_bits_mask));
-			b3_sum += pc_3 * pow_mod<3, 3, 11>::rem;
-			b4_sum += pc_3 * pow_mod<4, 3, 11>::rem;
-			b5_sum += pc_3 * pow_mod<5, 3, 11>::rem;
-			b9_sum += pc_3 * pow_mod<9, 3, 11>::rem;
-			const size_t pc_4 = pop_count(next_number & ((bitmask << 4) & outer_48_bits_mask));
-			b3_sum += pc_4 * pow_mod<3, 4, 11>::rem;
-			b4_sum += pc_4 * pow_mod<4, 4, 11>::rem;
-			b5_sum += pc_4 * pow_mod<5, 4, 11>::rem;
-			b9_sum += pc_4 * pow_mod<9, 4, 11>::rem;
+				const size_t pc_0 = pop_count(next_number & ((bitmask << 0) & outer_48_bits_mask));
+				size_t b3_sum = pc_0;
+				size_t b4_sum = pc_0;
+				size_t b5_sum = pc_0;
+				size_t b9_sum = pc_0;
+				const size_t pc_1 = pop_count(next_number & ((bitmask << 1) & outer_48_bits_mask));
+				b3_sum += pc_1 * pow_mod<3, 1, 11>::rem;
+				b4_sum += pc_1 * pow_mod<4, 1, 11>::rem;
+				b5_sum += pc_1 * pow_mod<5, 1, 11>::rem;
+				b9_sum += pc_1 * pow_mod<9, 1, 11>::rem;
+				const size_t pc_2 = pop_count(next_number & ((bitmask << 2) & outer_48_bits_mask));
+				b3_sum += pc_2 * pow_mod<3, 2, 11>::rem;
+				b4_sum += pc_2 * pow_mod<4, 2, 11>::rem;
+				b5_sum += pc_2 * pow_mod<5, 2, 11>::rem;
+				b9_sum += pc_2 * pow_mod<9, 2, 11>::rem;
+				const size_t pc_3 = pop_count(next_number & ((bitmask << 3) & outer_48_bits_mask));
+				b3_sum += pc_3 * pow_mod<3, 3, 11>::rem;
+				b4_sum += pc_3 * pow_mod<4, 3, 11>::rem;
+				b5_sum += pc_3 * pow_mod<5, 3, 11>::rem;
+				b9_sum += pc_3 * pow_mod<9, 3, 11>::rem;
+				const size_t pc_4 = pop_count(next_number & ((bitmask << 4) & outer_48_bits_mask));
+				b3_sum += pc_4 * pow_mod<3, 4, 11>::rem;
+				b4_sum += pc_4 * pow_mod<4, 4, 11>::rem;
+				b5_sum += pc_4 * pow_mod<5, 4, 11>::rem;
+				b9_sum += pc_4 * pow_mod<9, 4, 11>::rem;
 
-			// __assume(b3_sum <= get_sum_of_rems<11, in_base<3>>(outer_48_bits_mask));
-			// __assume(b4_sum <= get_sum_of_rems<11, in_base<4>>(outer_48_bits_mask));
-			// __assume(b5_sum <= get_sum_of_rems<11, in_base<5>>(outer_48_bits_mask));
-			// __assume(b9_sum <= get_sum_of_rems<11, in_base<9>>(outer_48_bits_mask));
+				// __assume(b3_sum <= get_sum_of_rems<11, in_base<3>>(outer_48_bits_mask));
+				// __assume(b4_sum <= get_sum_of_rems<11, in_base<4>>(outer_48_bits_mask));
+				// __assume(b5_sum <= get_sum_of_rems<11, in_base<5>>(outer_48_bits_mask));
+				// __assume(b9_sum <= get_sum_of_rems<11, in_base<9>>(outer_48_bits_mask));
 
-			lookup_1_ptr = (*b3m11_lookup)[b3_sum % 11].data() + byte_offset;
-			lookup_2_ptr = (*b4m11_lookup)[b4_sum % 11].data() + byte_offset;
-			lookup_3_ptr = (*b5m11_lookup)[b5_sum % 11].data() + byte_offset;
-			lookup_4_ptr = (*b9m11_lookup)[b9_sum % 11].data() + byte_offset;
+				lookup_1_ptr = (*b3m11_lookup)[b3_sum % 11].data() + byte_offset;
+				lookup_2_ptr = (*b4m11_lookup)[b4_sum % 11].data() + byte_offset;
+				lookup_3_ptr = (*b5m11_lookup)[b5_sum % 11].data() + byte_offset;
+				lookup_4_ptr = (*b9m11_lookup)[b9_sum % 11].data() + byte_offset;
+			}
+
+			{
+				constexpr size_t bitmask = bitmask_for<6, 11>::val;
+				static_assert(bitmask == bitmask_for<7, 11>::val);
+				static_assert(bitmask == bitmask_for<8, 11>::val);
+				static_assert(period_of<bitmask>() == 10);
+
+				const size_t pc_0 = pop_count(next_number & ((bitmask << 0) & outer_48_bits_mask));
+				size_t b6_sum = pc_0;
+				size_t b7_sum = pc_0;
+				size_t b8_sum = pc_0;
+				const size_t pc_1 = pop_count(next_number & ((bitmask << 1) & outer_48_bits_mask));
+				b6_sum += pc_1 * pow_mod<6, 1, 11>::rem;
+				b7_sum += pc_1 * pow_mod<7, 1, 11>::rem;
+				b8_sum += pc_1 * pow_mod<8, 1, 11>::rem;
+				const size_t pc_2 = pop_count(next_number & ((bitmask << 2) & outer_48_bits_mask));
+				b6_sum += pc_2 * pow_mod<6, 2, 11>::rem;
+				b7_sum += pc_2 * pow_mod<7, 2, 11>::rem;
+				b8_sum += pc_2 * pow_mod<8, 2, 11>::rem;
+				const size_t pc_3 = pop_count(next_number & ((bitmask << 3) & outer_48_bits_mask));
+				b6_sum += pc_3 * pow_mod<6, 3, 11>::rem;
+				b7_sum += pc_3 * pow_mod<7, 3, 11>::rem;
+				b8_sum += pc_3 * pow_mod<8, 3, 11>::rem;
+				const size_t pc_4 = pop_count(next_number & ((bitmask << 4) & outer_48_bits_mask));
+				b6_sum += pc_4 * pow_mod<6, 4, 11>::rem;
+				b7_sum += pc_4 * pow_mod<7, 4, 11>::rem;
+				b8_sum += pc_4 * pow_mod<8, 4, 11>::rem;
+				const size_t pc_5 = pop_count(next_number & ((bitmask << 5) & outer_48_bits_mask));
+				b6_sum += pc_5 * pow_mod<6, 5, 11>::rem;
+				b7_sum += pc_5 * pow_mod<7, 5, 11>::rem;
+				b8_sum += pc_5 * pow_mod<8, 5, 11>::rem;
+				const size_t pc_6 = pop_count(next_number & ((bitmask << 6) & outer_48_bits_mask));
+				b6_sum += pc_6 * pow_mod<6, 6, 11>::rem;
+				b7_sum += pc_6 * pow_mod<7, 6, 11>::rem;
+				b8_sum += pc_6 * pow_mod<8, 6, 11>::rem;
+				const size_t pc_7 = pop_count(next_number & ((bitmask << 7) & outer_48_bits_mask));
+				b6_sum += pc_7 * pow_mod<6, 7, 11>::rem;
+				b7_sum += pc_7 * pow_mod<7, 7, 11>::rem;
+				b8_sum += pc_7 * pow_mod<8, 7, 11>::rem;
+				const size_t pc_8 = pop_count(next_number & ((bitmask << 8) & outer_48_bits_mask));
+				b6_sum += pc_8 * pow_mod<6, 8, 11>::rem;
+				b7_sum += pc_8 * pow_mod<7, 8, 11>::rem;
+				b8_sum += pc_8 * pow_mod<8, 8, 11>::rem;
+				const size_t pc_9 = pop_count(next_number & ((bitmask << 9) & outer_48_bits_mask));
+				b6_sum += pc_9 * pow_mod<6, 9, 11>::rem;
+				b7_sum += pc_9 * pow_mod<7, 9, 11>::rem;
+				b8_sum += pc_9 * pow_mod<8, 9, 11>::rem;
+
+				lookup_5_ptr = (*b6m11_lookup)[b6_sum % 11].data() + byte_offset;
+				lookup_6_ptr = (*b7m11_lookup)[b7_sum % 11].data() + byte_offset;
+				lookup_7_ptr = (*b8m11_lookup)[b8_sum % 11].data() + byte_offset;
+			}
 		}
 	}
 
@@ -331,32 +388,22 @@ namespace mbp
 		const size_t elements_to_rollover = (pow_2_16 - ((number & bits_1_16_mask) >> 1)) % pow_2_16; // map 65,536 -> 0
 
 		uint64_t mask = *(uint64_t*)in;
-		uint64_t bit_patterns_mask{};
-		if constexpr (pass < 3)
-			bit_patterns_mask = (*(uint64_t*)lookup_1_ptr &
-								 *(uint64_t*)lookup_2_ptr &
-								 *(uint64_t*)lookup_3_ptr &
-								 *(uint64_t*)lookup_4_ptr &
-								 *(uint64_t*)lookup_5_ptr &
-								 *(uint64_t*)lookup_6_ptr &
-								 *(uint64_t*)lookup_7_ptr);
-		else
-			bit_patterns_mask = (*(uint64_t*)lookup_1_ptr &
-								 *(uint64_t*)lookup_2_ptr &
-								 *(uint64_t*)lookup_3_ptr &
-								 *(uint64_t*)lookup_4_ptr);
+		const uint64_t bit_patterns_mask = (*(uint64_t*)lookup_1_ptr &
+											*(uint64_t*)lookup_2_ptr &
+											*(uint64_t*)lookup_3_ptr &
+											*(uint64_t*)lookup_4_ptr &
+											*(uint64_t*)lookup_5_ptr &
+											*(uint64_t*)lookup_6_ptr &
+											*(uint64_t*)lookup_7_ptr);
 
 		in += sizeof(uint64_t);
 		lookup_1_ptr += sizeof(uint64_t);
 		lookup_2_ptr += sizeof(uint64_t);
 		lookup_3_ptr += sizeof(uint64_t);
 		lookup_4_ptr += sizeof(uint64_t);
-		if constexpr (pass < 3)
-		{
-			lookup_5_ptr += sizeof(uint64_t);
-			lookup_6_ptr += sizeof(uint64_t);
-			lookup_7_ptr += sizeof(uint64_t);
-		}
+		lookup_5_ptr += sizeof(uint64_t);
+		lookup_6_ptr += sizeof(uint64_t);
+		lookup_7_ptr += sizeof(uint64_t);
 
 		if (elements_to_rollover >= 64) // copy another block using lookup data
 		{
@@ -370,20 +417,13 @@ namespace mbp
 			set_lookup_ptrs<pass>(out, 0, number + (elements_to_rollover * 2), dummy_ptr,
 								  lookup_1_ptr, lookup_2_ptr, lookup_3_ptr, lookup_4_ptr, lookup_5_ptr, lookup_6_ptr, lookup_7_ptr);
 
-			uint64_t new_mask{};
-			if constexpr (pass < 3)
-				new_mask = (*(uint64_t*)lookup_1_ptr &
-							*(uint64_t*)lookup_2_ptr &
-							*(uint64_t*)lookup_3_ptr &
-							*(uint64_t*)lookup_4_ptr &
-							*(uint64_t*)lookup_5_ptr &
-							*(uint64_t*)lookup_6_ptr &
-							*(uint64_t*)lookup_7_ptr) << elements_to_rollover;
-			else
-				new_mask = (*(uint64_t*)lookup_1_ptr &
-							*(uint64_t*)lookup_2_ptr &
-							*(uint64_t*)lookup_3_ptr &
-							*(uint64_t*)lookup_4_ptr) << elements_to_rollover;
+			const uint64_t new_mask = (*(uint64_t*)lookup_1_ptr &
+									   *(uint64_t*)lookup_2_ptr &
+									   *(uint64_t*)lookup_3_ptr &
+									   *(uint64_t*)lookup_4_ptr &
+									   *(uint64_t*)lookup_5_ptr &
+									   *(uint64_t*)lookup_6_ptr &
+									   *(uint64_t*)lookup_7_ptr) << elements_to_rollover;
 
 			const uint64_t select_from_old = (1ull << elements_to_rollover) - 1; // up to and including rollover
 			const uint64_t select_from_new = ~select_from_old;
@@ -477,15 +517,9 @@ namespace mbp
 				const uint256_t data_2 = _mm256_loadu_si256((uint256_t*)(lookup_2_ptr + offset));
 				const uint256_t data_3 = _mm256_loadu_si256((uint256_t*)(lookup_3_ptr + offset));
 				const uint256_t data_4 = _mm256_loadu_si256((uint256_t*)(lookup_4_ptr + offset));
-				uint256_t data_5{};
-				uint256_t data_6{};
-				uint256_t data_7{};
-				if constexpr (pass < 3)
-				{
-					data_5 = _mm256_loadu_si256((uint256_t*)(lookup_5_ptr + offset));
-					data_6 = _mm256_loadu_si256((uint256_t*)(lookup_6_ptr + offset));
-					data_7 = _mm256_loadu_si256((uint256_t*)(lookup_7_ptr + offset));
-				}
+				const uint256_t data_5 = _mm256_loadu_si256((uint256_t*)(lookup_5_ptr + offset));
+				const uint256_t data_6 = _mm256_loadu_si256((uint256_t*)(lookup_6_ptr + offset));
+				const uint256_t data_7 = _mm256_loadu_si256((uint256_t*)(lookup_7_ptr + offset));
 
 				if (offset % (2 * bytes_per_step) == 0) // every other iteration
 				{
@@ -496,39 +530,17 @@ namespace mbp
 					_mm_prefetch((char*)lookup_2_ptr + offset + prefetch_offset, _MM_HINT_T0);
 					_mm_prefetch((char*)lookup_3_ptr + offset + prefetch_offset, _MM_HINT_T0);
 					_mm_prefetch((char*)lookup_4_ptr + offset + prefetch_offset, _MM_HINT_T0);
-					if constexpr (pass < 3)
-					{
-						_mm_prefetch((char*)lookup_5_ptr + offset + prefetch_offset, _MM_HINT_T0);
-						_mm_prefetch((char*)lookup_6_ptr + offset + prefetch_offset, _MM_HINT_T0);
-						_mm_prefetch((char*)lookup_7_ptr + offset + prefetch_offset, _MM_HINT_T0);
-					}
-
-					// Demote input and output cache lines. Both will be reused, but some mask data will be reused sooner.
-					// In passes >1, input and output pointers are the same, so [in] only needs to be demoted in pass 1.
-
-					//if constexpr (pass == 1)
-					//{
-					//	_mm_cldemote(in + offset - 64);
-					//}
-
-					//_mm_cldemote(out + offset - 64);
+					_mm_prefetch((char*)lookup_5_ptr + offset + prefetch_offset, _MM_HINT_T0);
+					_mm_prefetch((char*)lookup_6_ptr + offset + prefetch_offset, _MM_HINT_T0);
+					_mm_prefetch((char*)lookup_7_ptr + offset + prefetch_offset, _MM_HINT_T0);
 				}
 
-				uint256_t merged_data{};
 				const uint256_t m1 = _mm256_and_si256(data_0, data_1);
 				const uint256_t m2 = _mm256_and_si256(data_2, data_3);
-				if constexpr (pass < 3)
-				{
-					const uint256_t m3 = _mm256_and_si256(data_4, data_5);
-					const uint256_t m4 = _mm256_and_si256(data_6, data_7);
-					merged_data = _mm256_and_si256(_mm256_and_si256(m1, m2),
-												   _mm256_and_si256(m3, m4));
-				}
-				else
-				{
-					merged_data = _mm256_and_si256(_mm256_and_si256(m1, m2),
-												   data_4);
-				}
+				const uint256_t m3 = _mm256_and_si256(data_4, data_5);
+				const uint256_t m4 = _mm256_and_si256(data_6, data_7);
+				const uint256_t merged_data = _mm256_and_si256(_mm256_and_si256(m1, m2),
+															   _mm256_and_si256(m3, m4));
 
 				_mm256_storeu_si256((uint256_t*)(out + offset), merged_data);
 
@@ -553,12 +565,9 @@ namespace mbp
 			lookup_2_ptr += n_steps * bytes_per_step;
 			lookup_3_ptr += n_steps * bytes_per_step;
 			lookup_4_ptr += n_steps * bytes_per_step;
-			if constexpr (pass < 3)
-			{
-				lookup_5_ptr += n_steps * bytes_per_step;
-				lookup_6_ptr += n_steps * bytes_per_step;
-				lookup_7_ptr += n_steps * bytes_per_step;
-			}
+			lookup_5_ptr += n_steps * bytes_per_step;
+			lookup_6_ptr += n_steps * bytes_per_step;
+			lookup_7_ptr += n_steps * bytes_per_step;
 
 			number += n_steps * elements_per_step * 2; // * 2 because the sieve only contains odd numbers
 

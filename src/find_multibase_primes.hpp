@@ -26,7 +26,7 @@ namespace mbp
 		gmp_randclass gmp_rand{ gmp_randinit_mt };
 		mpz_class mpz_number{};
 
-		count_passes(size_t a, ps15, b, c, d, e, f, bldt, bidt, b2, b3, b4, b5, passes, pc_hash);
+		count_passes(size_t a, ps15, b, c, d, e, bldt, bidt, b2, b3, b4, b5, passes, pc_hash);
 	};
 
 	void print_config();
