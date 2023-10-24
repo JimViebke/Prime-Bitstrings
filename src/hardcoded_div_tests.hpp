@@ -2139,20 +2139,24 @@ namespace mbp
 			const uint8_t* const indivisible_b8 = indivisible_by[get_prime_index<17>::idx].data() + b8m17_rem;
 			const uint8_t* const indivisible_b9 = indivisible_by[get_prime_index<17>::idx].data() + b9m17_rem;
 
-			alignas(32) volatile uint64_t sums[16]{};
+			alignas(32) volatile uint32_t sums[16]{};
+
+			// load 8 candidates into two registers
+			uint256_t ymm0 = _mm256_loadu_si256((uint256_t*)(input + 0));
+			uint256_t ymm1 = _mm256_loadu_si256((uint256_t*)(input + 4));
+			// keep the bottom 32 bits of our 8 candidates
+			ymm0 = _mm256_blend_epi32(ymm0, _mm256_slli_epi64(ymm1, 32), 0b10'10'10'10);
 
 			// run vector instructions one iteration ahead
 			{
-				// load 8 candidates into two registers
-				uint256_t ymm0 = _mm256_loadu_si256((uint256_t*)(input + 0));
-				uint256_t ymm1 = _mm256_loadu_si256((uint256_t*)(input + 4));
-
-				// we only want the bottom 32 bits of our 8 candidates
-				ymm0 = _mm256_blend_epi32(ymm0, _mm256_slli_epi64(ymm1, 32), 0b10'10'10'10);
-
 				// select the high and low halves of each byte
 				uint256_t lo_nybbles = _mm256_and_si256(ymm0, nybble_mask);
 				uint256_t hi_nybbles = _mm256_and_si256(_mm256_srli_epi64(ymm0, 4), nybble_mask);
+
+				// load two iterations ahead
+				ymm0 = _mm256_loadu_si256((uint256_t*)(input + 8));
+				uint256_t ymm1 = _mm256_loadu_si256((uint256_t*)(input + 12));
+				ymm0 = _mm256_blend_epi32(ymm0, _mm256_slli_epi64(ymm1, 32), 0b10'10'10'10);
 
 				// replace the bits of each nybble with their remainder
 				uint256_t lo_nybbles_b8m17 = _mm256_shuffle_epi8(nybble_lookup_8m17_lo, lo_nybbles);
@@ -2170,24 +2174,25 @@ namespace mbp
 				uint256_t sums_0426_b9m17 = _mm256_sad_epu8(candidates_0426_b9m17, _mm256_setzero_si256());
 				uint256_t sums_1537_b9m17 = _mm256_sad_epu8(candidates_1537_b9m17, _mm256_setzero_si256());
 
+				// pack u64 results -> u32s
+				const uint256_t sums_04152637_b8m17 = _mm256_packus_epi32(sums_0426_b8m17, sums_1537_b8m17);
+				const uint256_t sums_04152637_b9m17 = _mm256_packus_epi32(sums_0426_b9m17, sums_1537_b9m17);
+
 				// store results on the stack
-				_mm256_storeu_si256((uint256_t*)(sums + 0), sums_0426_b8m17);
-				_mm256_storeu_si256((uint256_t*)(sums + 4), sums_1537_b8m17);
-				_mm256_storeu_si256((uint256_t*)(sums + 8), sums_0426_b9m17);
-				_mm256_storeu_si256((uint256_t*)(sums + 12), sums_1537_b9m17);
+				_mm256_storeu_si256((uint256_t*)(sums + 0), sums_04152637_b8m17);
+				_mm256_storeu_si256((uint256_t*)(sums + 8), sums_04152637_b9m17);
 			}
 
 			for (; input < candidates_end_rounded; )
 			{
 				// run vector instructions one iteration ahead
-
-				uint256_t ymm0 = _mm256_loadu_si256((uint256_t*)(input + 8));
-				uint256_t ymm1 = _mm256_loadu_si256((uint256_t*)(input + 12));
-
-				ymm0 = _mm256_blend_epi32(ymm0, _mm256_slli_epi64(ymm1, 32), 0b10'10'10'10);
-
 				uint256_t lo_nybbles = _mm256_and_si256(ymm0, nybble_mask);
 				uint256_t hi_nybbles = _mm256_and_si256(_mm256_srli_epi64(ymm0, 4), nybble_mask);
+
+				// load two iterations ahead
+				ymm0 = _mm256_loadu_si256((uint256_t*)(input + 16));
+				uint256_t ymm1 = _mm256_loadu_si256((uint256_t*)(input + 20));
+				ymm0 = _mm256_blend_epi32(ymm0, _mm256_slli_epi64(ymm1, 32), 0b10'10'10'10);
 
 				uint256_t lo_nybbles_b8m17 = _mm256_shuffle_epi8(nybble_lookup_8m17_lo, lo_nybbles);
 				uint256_t hi_nybbles_b8m17 = _mm256_shuffle_epi8(nybble_lookup_8m17_hi, hi_nybbles);
@@ -2202,16 +2207,19 @@ namespace mbp
 				uint256_t sums_0426_b9m17 = _mm256_sad_epu8(candidates_0426_b9m17, _mm256_setzero_si256());
 				uint256_t sums_1537_b9m17 = _mm256_sad_epu8(candidates_1537_b9m17, _mm256_setzero_si256());
 
+				const uint256_t sums_04152637_b8m17 = _mm256_packus_epi32(sums_0426_b8m17, sums_1537_b8m17);
+				const uint256_t sums_04152637_b9m17 = _mm256_packus_epi32(sums_0426_b9m17, sums_1537_b9m17);
+
 				*output = *input++; // always copy
 				const size_t inc_a = indivisible_b8[sums[0]] & indivisible_b9[sums[0 + 8]];
 				output = (uint64_t*)(((uint8_t*)output) + inc_a); // branchless conditional increment
 
 				*output = *input++;
-				const size_t inc_b = indivisible_b8[sums[4]] & indivisible_b9[sums[4 + 8]];
+				const size_t inc_b = indivisible_b8[sums[2]] & indivisible_b9[sums[2 + 8]];
 				output = (uint64_t*)(((uint8_t*)output) + inc_b);
 
 				*output = *input++;
-				const size_t inc_c = indivisible_b8[sums[2]] & indivisible_b9[sums[2 + 8]];
+				const size_t inc_c = indivisible_b8[sums[4]] & indivisible_b9[sums[4 + 8]];
 				output = (uint64_t*)(((uint8_t*)output) + inc_c);
 
 				*output = *input++;
@@ -2223,11 +2231,11 @@ namespace mbp
 				output = (uint64_t*)(((uint8_t*)output) + inc_e);
 
 				*output = *input++;
-				const size_t inc_f = indivisible_b8[sums[5]] & indivisible_b9[sums[5 + 8]];
+				const size_t inc_f = indivisible_b8[sums[3]] & indivisible_b9[sums[3 + 8]];
 				output = (uint64_t*)(((uint8_t*)output) + inc_f);
 
 				*output = *input++;
-				const size_t inc_g = indivisible_b8[sums[3]] & indivisible_b9[sums[3 + 8]];
+				const size_t inc_g = indivisible_b8[sums[5]] & indivisible_b9[sums[5 + 8]];
 				output = (uint64_t*)(((uint8_t*)output) + inc_g);
 
 				*output = *input++;
@@ -2235,10 +2243,8 @@ namespace mbp
 				output = (uint64_t*)(((uint8_t*)output) + inc_h);
 
 				// store the above results for the next iteration
-				_mm256_storeu_si256((uint256_t*)(sums + 0), sums_0426_b8m17);
-				_mm256_storeu_si256((uint256_t*)(sums + 4), sums_1537_b8m17);
-				_mm256_storeu_si256((uint256_t*)(sums + 8), sums_0426_b9m17);
-				_mm256_storeu_si256((uint256_t*)(sums + 12), sums_1537_b9m17);
+				_mm256_storeu_si256((uint256_t*)(sums + 0), sums_04152637_b8m17);
+				_mm256_storeu_si256((uint256_t*)(sums + 8), sums_04152637_b9m17);
 			} // end for
 		} // end if on_fast_path
 
