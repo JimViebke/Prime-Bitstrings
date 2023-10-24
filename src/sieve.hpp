@@ -539,27 +539,9 @@ namespace mbp::prime_sieve
 		// don't do any sieving if our bitmasks + static sieve already cleared enough
 		if (density < vector_density_threshold)
 		{
-			//std::cout << __FILE__ << ' ' << __LINE__ << '\n';
-			//std::cout << "small_primes_lookup.data() = " << small_primes_lookup.data() << '\n';
-			//std::cout << "prime_ptr =                  " << prime_ptr << '\n';
-			//std::cout << "difference = " << prime_ptr - small_primes_lookup.data() << '\n';
-			//std::cin.ignore();
-
 			update_sieve_offsets_cache(prime_ptr, offset_cache_ptr);
 			return;
 		}
-
-		//if (*offset_cache_ptr > 20'000)
-		//{
-		//	std::cout << "Hol' up. Dumping sieve_offsets_cache:\n";
-
-		//	for (size_t i = 0; i < sieve_offsets_cache.size(); ++i)
-		//	{
-		//		std::cout << i << '\t' << sieve_offsets_cache[i] << '\n';
-		//	}
-
-		//	std::cin.ignore();
-		//}
 
 		static_assert(small_primes_lookup[static_sieve_primes.size() + 1] == 17);
 		aligned_vectorized_sieve_pass<17>(sieve, prime_ptr, offset_cache_ptr);
@@ -590,12 +572,6 @@ namespace mbp::prime_sieve
 		{
 			if (density < scalar_density_threshold)
 			{
-				//std::cout << __FILE__ << ' ' << __LINE__ << '\n';
-				//std::cout << "small_primes_lookup.data() = " << small_primes_lookup.data() << '\n';
-				//std::cout << "prime_ptr =                  " << prime_ptr << '\n';
-				//std::cout << "difference = " << prime_ptr - small_primes_lookup.data() << '\n';
-				//std::cin.ignore();
-
 				// If we stop sieving early, we still need to update our offsets cache
 				update_sieve_offsets_cache(prime_ptr, offset_cache_ptr);
 				break;
