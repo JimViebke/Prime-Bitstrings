@@ -45,12 +45,7 @@ namespace mbp::div_test
 		std::vector<std::array<remainder_t, 64>> permuted_div_tests;
 	};
 
-	// calculate a^b mod m
-	template<size_t a, size_t b, size_t m>
-	struct pow_mod
-	{
-		static constexpr size_t rem = pk::powMod(a, b, m);
-	};
+
 
 	namespace detail
 	{
@@ -140,7 +135,7 @@ namespace mbp::div_test
 		template<size_t divisor, size_t base, size_t mask, size_t place_value>
 		constexpr __forceinline void get_sum_of_rems(size_t& rem, const size_t number)
 		{
-			rem += pop_count(number & (mask << place_value)) * pow_mod<base, place_value, divisor>::rem;
+			rem += pop_count(number & (mask << place_value)) * pow_mod(base, place_value, divisor);
 			if constexpr (place_value > 0)
 				get_sum_of_rems<divisor, base, mask, place_value - 1>(rem, number);
 		}

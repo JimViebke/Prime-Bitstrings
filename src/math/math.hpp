@@ -11,6 +11,7 @@
 
 #include "../config.hpp"
 #include "../util/types.hpp"
+#include "pk_prime.hpp"
 
 namespace mbp
 {
@@ -109,4 +110,9 @@ namespace mbp
 		return gcd(b, a % b);
 	}
 
+	// consteval wrapper for PK's impl
+	consteval size_t pow_mod(size_t a, size_t b, size_t m)
+	{
+		return pk::powMod(a, b, m);
+	}
 }
