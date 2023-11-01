@@ -19,65 +19,47 @@ namespace mbp::prime_sieve
 		return sieve;
 	}
 
-	std::array<sieve_offset_t, small_primes_lookup.size()> sieve_offsets_cache;
+	std::array<sieve_offset_t, n_of_vector_sieve_primes> sieve_offsets_cache;
 
-
-
-	void set_up_sieve_offsets_cache(const size_t start)
+	void set_up_sieve_offsets_cache(const uint64_t start)
 	{
 		static_assert(sizeof(sieve_offset_t) >= sizeof(sieve_prime_t));
 
-		// Start with the first prime not in the static sieve.
-		for (size_t i = static_sieve_primes.size() + 1; i < small_primes_lookup.size(); ++i)
+		// start with the first prime not in the static sieve
+		auto prime_it = small_primes_lookup.begin() + static_sieve_primes.size() + 1;
+		for (size_t i = 0; i < sieve_offsets_cache.size(); ++i)
 		{
-			const size_t p = small_primes_lookup[i];
+			const size_t prime = *prime_it++;
+			size_t stride = prime;
 
-			if (p >= 17 && p <= largest_aligned_vector_sieve_prime) // handle separately
+			if (prime > largest_aligned_vector_sieve_prime &&
+				prime <= largest_vector_sieve_prime)
 			{
-				size_t n = p - (start % p); // get distance to the next multiple of p
-
-				if (n % 2 == 1) // conditionally step from an even to an odd multiple
-					n += p;
-
-				if (n == 2ull * p) // handle edge cases where start % prime == 0
-					n = 0;
-
-				n /= 2; // convert distance to index
-
-				sieve_offsets_cache[i] = sieve_offset_t(n);
-				continue;
+				stride *= 15;
 			}
 
-			// We sieve by strides of 15*p, so align p to an (odd) multiple of 15*p
-			const size_t p15 = p * 15;
+			// find the distance to the next multiple of the stride
+			size_t n = stride - (start % stride);
 
-			// Find out how far it is to the next multiple of 15p.
-			size_t n = p15 - (start % p15);
-
-			// Start is always odd. Therefore, if n is odd, it is pointing to the next even multiple of p15.
-			// -- increase by p15
+			// make sure start + n is an odd multiple of the stride (start is always odd)
 			if (n % 2 == 1)
-				n += p15;
-			// However, if n is even, it is pointing to the next odd multiple of p15.
-			// -- do nothing
+				n += stride;
 
-			// handle edge cases where start % prime == 0
-			if (n == 2 * p15)
+			if (n == 2 * stride) // handle edge cases where start % stride == 0
 				n = 0;
 
-			// We now have the distance to the next odd multiple of p15.
-			// Divide by 2 to get the *index* of the next odd multiple of p15.
-			n /= 2;
+			n /= 2; // convert from distance to index
 
-			if (p <= largest_vector_sieve_prime)
+			if (prime > largest_aligned_vector_sieve_prime &&
+				prime <= largest_vector_sieve_prime)
 			{
 				// We sieve by strides of 8*15*p, starting with a bit offset of 0.
 				// Advance by 15*p until we have this alignment.
 				while (n % 8 != 0)
-					n += p15;
+					n += stride;
 
-				// If we've ended up at the second multiple of 8*15*p, step back to the first.
-				n = util::min(n, n - 8ull * p15);
+				// if we've reached the second multiple of 8*15*p, step back to the first
+				n = util::min(n, n - 8ull * stride);
 			}
 
 			sieve_offsets_cache[i] = sieve_offset_t(n);
@@ -331,25 +313,5 @@ namespace mbp::prime_sieve
 		}
 		std::cout << "\n\n\n";
 	}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 }

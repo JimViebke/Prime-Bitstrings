@@ -10,27 +10,33 @@ namespace mbp::prime_sieve
 {
 	const sieve_container generate_static_sieve();
 
-	using sieve_offset_t = util::narrowest_uint_for_val<static_sieve_size>;
-	extern std::array<sieve_offset_t, small_primes_lookup.size()> sieve_offsets_cache;
+	constexpr size_t n_of_vector_sieve_primes = []() consteval
+		{
+			auto first = small_primes_lookup.begin() + static_sieve_primes.size() + 1;
+			auto last = std::find(first,
+								  small_primes_lookup.end(),
+								  largest_vector_sieve_prime) + 1;
+			return last - first;
+		}();
 
-	void set_up_sieve_offsets_cache(const size_t start);
+	using sieve_offset_t = util::narrowest_uint_for_val<static_sieve_size>;
+	extern std::array<sieve_offset_t, n_of_vector_sieve_primes> sieve_offsets_cache;
+
+	void set_up_sieve_offsets_cache(const uint64_t start);
 
 	// precalculate stride - (sieve_size % stride)
-	constexpr static std::array<sieve_offset_t, small_primes_lookup.size()> modulo_precomp = []() consteval {
-		std::array<sieve_offset_t, small_primes_lookup.size()> arr{};
+	constexpr static std::array<sieve_offset_t, n_of_vector_sieve_primes> modulo_precomp = []() consteval {
+		std::array<sieve_offset_t, n_of_vector_sieve_primes> arr{};
 
-		for (size_t i = static_sieve_primes.size() + 1; i < small_primes_lookup.size(); ++i)
+		auto prime_it = small_primes_lookup.begin() + static_sieve_primes.size() + 1;
+		for (size_t i = 0; i < arr.size(); ++i, ++prime_it)
 		{
-			const size_t prime = small_primes_lookup[i];
+			const size_t prime = *prime_it;
+			size_t stride = prime;
 
-			if (prime >= 17 && prime <= largest_aligned_vector_sieve_prime) // handle separately
-			{
-				arr[i] = sieve_offset_t(prime - (sieve_container::size() % prime));
-				continue;
-			}
+			if (prime > largest_aligned_vector_sieve_prime) 
+				stride *= 15ull * 8;
 
-			size_t stride = prime * 15;
-			if (prime <= largest_vector_sieve_prime) stride *= 8;
 			arr[i] = sieve_offset_t(stride - (sieve_container::size() % stride));
 		}
 
@@ -40,27 +46,17 @@ namespace mbp::prime_sieve
 	static void update_sieve_offsets_cache(const sieve_prime_t* prime_ptr,
 										   sieve_offset_t* offset_ptr)
 	{
-		const auto* mp_ptr = modulo_precomp.data() + (prime_ptr - small_primes_lookup.data());
-
-		//std::cout << __FILE__ << ' ' << __LINE__ << '\n';
-		//std::cout << "small_primes_lookup.data() = " << small_primes_lookup.data() << '\n';
-		//std::cout << "prime_ptr =                  " << prime_ptr << '\n';
-		//std::cout << "difference = " << prime_ptr - small_primes_lookup.data() << '\n';
-		//std::cin.ignore();
+		const auto* mp_ptr = modulo_precomp.data() + (offset_ptr - sieve_offsets_cache.data());
 
 		// Calculate the offset of the next odd multiple of the stride size.
 		for (size_t prime = *prime_ptr;
-			 prime <= largest_sieve_prime;
+			 prime <= largest_vector_sieve_prime;
 			 prime = *++prime_ptr, ++offset_ptr, ++mp_ptr)
 		{
 			size_t stride = prime;
 
-			// *15 if the prime is used for unaligned vector sieving or scalar sieving
-			stride *= (prime > largest_aligned_vector_sieve_prime) ? 15 : 1;
-
-			// *8 if the prime is used for unaligned vector sieving
-			stride *= (prime > largest_aligned_vector_sieve_prime &&
-					   prime <= largest_vector_sieve_prime) ? 8 : 1;
+			// *(15*8) if the prime is used for unaligned vector sieving
+			stride *= (prime > largest_aligned_vector_sieve_prime) ? (15 * 8) : 1;
 
 			size_t n = *offset_ptr;
 			n += *mp_ptr;
@@ -531,13 +527,11 @@ namespace mbp::prime_sieve
 
 		// Start with the first prime not in the static sieve
 		const sieve_prime_t* prime_ptr = small_primes_lookup.data() + static_sieve_primes.size() + 1;
-		sieve_offset_t* offset_cache_ptr = sieve_offsets_cache.data() + static_sieve_primes.size() + 1;
-
-		// calculate sieve density
-		double density = double(sieve_popcount) / sieve_container::size();
+		sieve_offset_t* offset_cache_ptr = sieve_offsets_cache.data();
 
 		// don't do any sieving if our bitmasks + static sieve already cleared enough
-		if (density < vector_density_threshold)
+		constexpr size_t popcount_threshold = vector_density_threshold * sieve_container::size();
+		if (sieve_popcount <= popcount_threshold)
 		{
 			update_sieve_offsets_cache(prime_ptr, offset_cache_ptr);
 			return;
@@ -563,9 +557,18 @@ namespace mbp::prime_sieve
 		vectorized_sieve_pass<79>(sieve, prime_ptr, offset_cache_ptr);
 		static_assert(largest_vector_sieve_prime == 79);
 
-		constexpr double vectorized_sieving_removes = .3106; // 31.06% (may be out of date)
+
+
+		return; // don't do any scalar sieving for now
+
+
+
+		constexpr double vectorized_sieving_removes = .3106; // 31.06% (for primes 19-79)
 		constexpr double scale = 1.0 - vectorized_sieving_removes;
 
+		// calculate sieve density before vector sieving
+		double density = double(sieve_popcount) / sieve_container::size();
+		// estimate sieve density after vector sieving
 		density *= scale;
 
 		for (;;)
