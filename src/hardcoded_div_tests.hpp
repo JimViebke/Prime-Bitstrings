@@ -1970,31 +1970,23 @@ namespace mbp
 		const uint256_t rems_45 = _mm256_loadu_si256((uint256_t*)&static_rems_45);
 		const uint256_t rems_6x = _mm256_loadu_si256((uint256_t*)&static_rems_6x);
 
-		const uint256_t shuffle_mask_lo = _mm256_set_epi64x(0x0101010101010101, 0x0000000000000000, 0x0101010101010101, 0x0000000000000000);
-		const uint256_t shuffle_mask_hi = _mm256_set_epi64x(0x0303030303030303, 0x0202020202020202, 0x0303030303030303, 0x0202020202020202);
+		const uint256_t shuffle_mask = _mm256_set_epi64x(0x0303030303030303, 0x0202020202020202, 0x0101010101010101, 0x0000000000000000);
 		const uint256_t and_mask = _mm256_set1_epi64x(0x80'40'20'10'08'04'02'01);
 
-		alignas(32) volatile uint64_t sums_0213465x[8]{};
+		alignas(32) volatile uint32_t sums[8]{};
 
 		{
-			// this loads more than we need, but VBROADCASTI128 is the cheapest way to load to both lanes
-			const uint128_t xmm_candidate = _mm_loadu_si128((uint128_t*)input);
-			const uint256_t candidate = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_candidate), xmm_candidate, 1);
+			// load one candidate into all positions
+			const uint256_t candidate = _mm256_set1_epi64x(*input);
 
 			// convert bits to bytes
-			uint256_t candidate_lo = _mm256_shuffle_epi8(candidate, shuffle_mask_lo);
-			uint256_t candidate_hi = _mm256_shuffle_epi8(candidate, shuffle_mask_hi);
-			candidate_lo = _mm256_andnot_si256(candidate_lo, and_mask);
-			candidate_hi = _mm256_andnot_si256(candidate_hi, and_mask);
-			candidate_lo = _mm256_cmpeq_epi8(candidate_lo, _mm256_setzero_si256());
-			candidate_hi = _mm256_cmpeq_epi8(candidate_hi, _mm256_setzero_si256());
-			candidate_lo = _mm256_and_si256(candidate_lo, _mm256_set1_epi8(0x01));
-			candidate_hi = _mm256_and_si256(candidate_hi, _mm256_set1_epi8(0x01));
+			uint256_t lower_bytes = _mm256_shuffle_epi8(candidate, shuffle_mask);
+			lower_bytes = _mm256_andnot_si256(lower_bytes, and_mask);
+			lower_bytes = _mm256_cmpeq_epi8(lower_bytes, _mm256_setzero_si256());
 
-			// get popcounts of lower 32 bits in range 0-2, in both lanes
-			const uint256_t pc_lower = _mm256_add_epi8(candidate_lo, candidate_hi);
 			// get popcounts of all 64 bits in range 0-4, in both lanes
-			const uint256_t pc = _mm256_add_epi8(pc_lower, upper_bytes);
+			uint256_t pc = _mm256_sub_epi8(upper_bytes, lower_bytes);
+			pc = _mm256_sub_epi8(pc, _mm256_permute2x128_si256(lower_bytes, lower_bytes, 1));
 
 			// multiply 16+16 8-bit values by 16+16 remainders, storing partially summed results as 8+8 uint16_ts
 			const uint256_t sums_01 = _mm256_maddubs_epi16(pc, rems_01);
@@ -2006,18 +1998,19 @@ namespace mbp
 			uint256_t sums_0213 = _mm256_packus_epi16(sums_01, sums_23);
 			uint256_t sums_465x = _mm256_packus_epi16(sums_45, sums_6x);
 
-			// h-sum into 4 16-bit integers, 2 in each lane
+			// h-sum into 4x 16-bit integers, 2 in each lane
 			sums_0213 = _mm256_sad_epu8(sums_0213, _mm256_setzero_si256());
 			sums_465x = _mm256_sad_epu8(sums_465x, _mm256_setzero_si256());
 
+			// pack to 8x 32-bit integers
+			const uint256_t sums_0246135x = _mm256_packus_epi32(sums_0213, sums_465x);
+
 			// store on the stack
-			_mm256_storeu_si256((uint256_t*)(sums_0213465x + 0), sums_0213);
-			_mm256_storeu_si256((uint256_t*)(sums_0213465x + 4), sums_465x);
+			_mm256_storeu_si256((uint256_t*)sums, sums_0246135x);
 		}
 
 		// load ahead
-		uint128_t xmm_candidate = _mm_loadu_si128((uint128_t*)(input + 1));
-		uint256_t candidate = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_candidate), xmm_candidate, 1);
+		uint256_t candidate = _mm256_set1_epi64x(*(input + 1));
 
 		for (; input < candidates_end; )
 		{
@@ -2034,22 +2027,16 @@ namespace mbp
 				}
 			}
 
-			uint256_t candidate_lo = _mm256_shuffle_epi8(candidate, shuffle_mask_lo);
-			uint256_t candidate_hi = _mm256_shuffle_epi8(candidate, shuffle_mask_hi);
+			uint256_t lower_bytes = _mm256_shuffle_epi8(candidate, shuffle_mask);
 
 			// load two iterations ahead
-			xmm_candidate = _mm_loadu_si128((uint128_t*)(input + 2));
-			candidate = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_candidate), xmm_candidate, 1);
+			candidate = _mm256_set1_epi64x(*(input + 2));
 
-			candidate_lo = _mm256_andnot_si256(candidate_lo, and_mask);
-			candidate_hi = _mm256_andnot_si256(candidate_hi, and_mask);
-			candidate_lo = _mm256_cmpeq_epi8(candidate_lo, _mm256_setzero_si256());
-			candidate_hi = _mm256_cmpeq_epi8(candidate_hi, _mm256_setzero_si256());
-			candidate_lo = _mm256_and_si256(candidate_lo, _mm256_set1_epi8(0x01));
-			candidate_hi = _mm256_and_si256(candidate_hi, _mm256_set1_epi8(0x01));
+			lower_bytes = _mm256_andnot_si256(lower_bytes, and_mask);
+			lower_bytes = _mm256_cmpeq_epi8(lower_bytes, _mm256_setzero_si256());
 
-			const uint256_t pc_lower = _mm256_add_epi8(candidate_lo, candidate_hi);
-			const uint256_t pc = _mm256_add_epi8(pc_lower, upper_bytes);
+			uint256_t pc = _mm256_sub_epi8(upper_bytes, lower_bytes);
+			pc = _mm256_sub_epi8(pc, _mm256_permute2x128_si256(lower_bytes, lower_bytes, 1));
 
 			const uint256_t sums_01 = _mm256_maddubs_epi16(pc, rems_01);
 			const uint256_t sums_23 = _mm256_maddubs_epi16(pc, rems_23);
@@ -2062,21 +2049,22 @@ namespace mbp
 			sums_0213 = _mm256_sad_epu8(sums_0213, _mm256_setzero_si256());
 			sums_465x = _mm256_sad_epu8(sums_465x, _mm256_setzero_si256());
 
+			const uint256_t sums_0246135x = _mm256_packus_epi32(sums_0213, sums_465x);
+
 			*output = *input++; // always write
 
-			// Only advance the pointer if the nth bit is 0 in all lookups
-			const size_t inc = indivisible_by_17[sums_0213465x[0]]
-				& indivisible_by_17[sums_0213465x[1]]
-				& indivisible_by_17[sums_0213465x[2]]
-				& indivisible_by_17[sums_0213465x[3]]
-				& indivisible_by_17[sums_0213465x[4]]
-				& indivisible_by_17[sums_0213465x[5]]
-				& indivisible_by_17[sums_0213465x[6]];
+			// Only advance the pointer if the number is still a candidate
+			const size_t inc = indivisible_by_17[sums[0]]
+				& indivisible_by_17[sums[1]]
+				& indivisible_by_17[sums[2]]
+				& indivisible_by_17[sums[3]]
+				& indivisible_by_17[sums[4]]
+				& indivisible_by_17[sums[5]]
+				& indivisible_by_17[sums[6]];
 			output = (uint64_t*)(((uint8_t*)output) + inc);
 
 			// store the above results for the next iteration
-			_mm256_storeu_si256((uint256_t*)(sums_0213465x + 0), sums_0213);
-			_mm256_storeu_si256((uint256_t*)(sums_0213465x + 4), sums_465x);
+			_mm256_storeu_si256((uint256_t*)sums, sums_0246135x);
 		}
 
 		return output;
