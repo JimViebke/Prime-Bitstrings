@@ -411,3 +411,4 @@ CompileScoreSettings.json
 doc/additional benchmark notes.txt
 *.profdata
 *.profraw
+*.yaml
