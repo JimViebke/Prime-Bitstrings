@@ -87,6 +87,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <OpenMPSupport>false</OpenMPSupport>
       <AdditionalOptions>-Wfatal-errors -march=haswell -Qunused-arguments -Wno-unused-function</AdditionalOptions>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -119,6 +120,7 @@
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
       <ExceptionHandling>false</ExceptionHandling>
       <OpenMPSupport>false</OpenMPSupport>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -157,6 +159,7 @@
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
       <ExceptionHandling>false</ExceptionHandling>
       <OpenMPSupport>false</OpenMPSupport>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
