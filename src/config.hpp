@@ -43,7 +43,8 @@ namespace mbp
 		constexpr size_t largest_vector_sieve_prime = 79; // default 79
 		constexpr size_t largest_sieve_prime = 263; // default 263
 
-		constexpr double vector_density_threshold = 0.005; // default .005 (.5%)
+		constexpr double vector_density_threshold = 0.0035; // default .0035 (.35%)
+		constexpr double unaligned_vector_density_threshold = 0.006; // default .006 (.6%)
 		constexpr double scalar_density_threshold = 0.030; // default 0.030 (3%)
 	}
 

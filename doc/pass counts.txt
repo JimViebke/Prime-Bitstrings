@@ -1408,3 +1408,24 @@ Passed b4 prime test:          3,415 (removed ~ 85%) (~     0 candidates pass pe
 Passed b5 prime test:            445 (removed ~ 87%) (~     0 candidates pass per main loop iteration)
 
 hash of pass counts: 62fc9fd1aed08c03
+
+
+
+Add separate density thresholds for aligned vs unaligned vector sieving:
+
+65040 main loop iters
+Passed bitmasks:       1,079,450,967 (removed ~100%) (~16,596 candidates pass per main loop iteration)
+Passed sieve:            798,172,584 (removed ~ 27%) (~12,272 candidates pass per main loop iteration)
+Passed 4-rem tests:      687,931,191 (removed ~ 14%) (~10,577 candidates pass per main loop iteration)
+Passed 8-rem tests:      610,390,352 (removed ~ 12%) (~ 9,384 candidates pass per main loop iteration)
+Passed 12-rem tests:     481,328,569 (removed ~ 22%) (~ 7,400 candidates pass per main loop iteration)
+Passed 16-rem tests:     315,350,538 (removed ~ 35%) (~ 4,848 candidates pass per main loop iteration)
+P. branchless divtests:   23,641,101 (removed ~ 93%) (~   363 candidates pass per main loop iteration)
+P. branching divtests:       401,386 (removed ~ 99%) (~     6 candidates pass per main loop iteration)
+Passed b2 BPSW test:         119,775 (removed ~ 71%) (~     1 candidates pass per main loop iteration)
+Passed b3 prime test:         22,684 (removed ~ 82%) (~     0 candidates pass per main loop iteration)
+Passed b4 prime test:          3,415 (removed ~ 85%) (~     0 candidates pass per main loop iteration)
+Passed b5 prime test:            445 (removed ~ 87%) (~     0 candidates pass per main loop iteration)
+
+hash of pass counts: fdd99e1311d791d2
+

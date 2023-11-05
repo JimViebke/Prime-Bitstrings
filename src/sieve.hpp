@@ -514,6 +514,21 @@ namespace mbp::prime_sieve
 
 
 
+	consteval size_t calculate_unaligned_pc_threshold()
+	{
+		double scale = 1.0;
+		for (auto* ptr = small_primes_lookup.data() + static_sieve_primes.size() + 1;
+			 *ptr <= sieve_prime_t(largest_aligned_vector_sieve_prime); ++ptr)
+		{
+			double prime = double(*ptr);
+			scale *= (prime - 1.0) / prime;
+		}
+
+		return (unaligned_vector_density_threshold / scale) * sieve_container::size();
+	}
+
+
+
 	inline_toggle static void partial_sieve(sieve_container& sieve,
 											const size_t sieve_popcount)
 	{
@@ -548,6 +563,14 @@ namespace mbp::prime_sieve
 		aligned_vectorized_sieve_pass<43>(sieve, prime_ptr, offset_cache_ptr);
 		aligned_vectorized_sieve_pass<47>(sieve, prime_ptr, offset_cache_ptr);
 		static_assert(largest_aligned_vector_sieve_prime == 47);
+
+		constexpr size_t unaligned_pc_threshold = calculate_unaligned_pc_threshold();
+		if (sieve_popcount <= unaligned_pc_threshold)
+		{
+			update_sieve_offsets_cache(prime_ptr, offset_cache_ptr);
+			return;
+		}
+
 		vectorized_sieve_pass<53>(sieve, prime_ptr, offset_cache_ptr);
 		vectorized_sieve_pass<59>(sieve, prime_ptr, offset_cache_ptr);
 		vectorized_sieve_pass<61>(sieve, prime_ptr, offset_cache_ptr);
