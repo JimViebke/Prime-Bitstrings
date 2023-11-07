@@ -792,7 +792,7 @@ namespace mbp::prime_sieve
 
 			if (n_chunks_rounded >= 4)
 			{
-				alignas(32) uint32_t buffer[8]{};
+				alignas(32) volatile uint32_t buffer[8]{};
 
 				const uint256_t identity = _mm256_loadu_si256((uint256_t*)static_identity);
 				const uint256_t seven_register = _mm256_set1_epi32(7);
