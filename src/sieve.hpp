@@ -1016,6 +1016,7 @@ namespace mbp::prime_sieve
 				}
 			}
 
+		#pragma clang loop unroll(disable) vectorize(disable)
 			for (; i < n_chunks; ++i)
 			{
 				uint64_t chunk = sorted_chunks[popcount][i];
