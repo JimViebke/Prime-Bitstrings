@@ -1,6 +1,7 @@
 #pragma once
 
-#include <immintrin.h>
+#include <stdint.h>
+#include <x86intrin.h>
 
 namespace mbp
 {

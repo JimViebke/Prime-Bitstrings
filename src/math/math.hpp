@@ -5,7 +5,6 @@
 #pragma warning(pop)
 
 #include <bit>
-#include <immintrin.h>
 #include <stdint.h>
 #include <vector>
 

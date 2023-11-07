@@ -4,6 +4,7 @@
 #include <iomanip>
 
 #include "math/math.hpp"
+#include "util/simd.hpp"
 #include "util/types.hpp"
 
 namespace mbp::prime_sieve
