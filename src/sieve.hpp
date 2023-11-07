@@ -744,7 +744,7 @@ namespace mbp::prime_sieve
 
 				// store packed chunks and indexes
 				_mm256_storeu_si256((uint256_t*)(&sorted_chunks[0][out_idx]), packed_data);
-				*(uint64_t*)(&chunk_indexes[0][out_idx]) = _mm_extract_epi64(keep_indexes, 0);
+				_mm_storeu_si64((uint64_t*)(&chunk_indexes[0][out_idx]), keep_indexes);
 
 				out_idx += out_idx_advance[bit_mask]; // advance based on the number of elements we stored
 				indexes = _mm_add_epi16(indexes, inc);
@@ -948,11 +948,9 @@ namespace mbp::prime_sieve
 				}
 
 				// save pc counts so far
-				_mm256_storeu_si256((uint256_t*)buffer, pc_counts);
-				for (size_t idx = 0; idx < 8; ++idx)
-				{
-					n_chunks_with_pc[idx] = chunk_count_t(buffer[idx]);
-				}
+				pc_counts = _mm256_packus_epi32(pc_counts, _mm256_setzero_si256()); // compress
+				pc_counts = _mm256_permute4x64_epi64(pc_counts, 0b10'00); // pack to low lane
+				_mm_storeu_si128((uint128_t*)(&n_chunks_with_pc[0]), _mm256_castsi256_si128(pc_counts));
 			}
 
 			// handle 0-3 remaining elements
