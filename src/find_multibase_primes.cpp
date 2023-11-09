@@ -141,7 +141,6 @@ namespace mbp
 
 			#if analyze_div_tests
 				full_div_tests.print_div_tests();
-				//run_div_test_analysis(number);
 			#endif
 			}
 
@@ -151,8 +150,6 @@ namespace mbp
 
 
 	#if analyze_div_tests
-		  // Run one final step before exiting
-		  // run_div_test_analysis();
 		full_div_tests.print_div_tests();
 	#endif
 
