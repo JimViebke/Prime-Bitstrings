@@ -111,6 +111,41 @@ namespace mbp
 		return outer_even_pc - outer_odd_pc + 23; // +23 to normalize -23,24 to 0,47
 	}
 
+	template<size_t base, size_t prime>
+	consteval std::array<uint8_t, 16> build_16_byte_shuffle_lookup()
+	{
+		std::array<uint8_t, 16> lookup{};
+		for (size_t i = 0; i < 16; ++i)
+		{
+			if (i & 0b0001) lookup[i] += pow_mod(base, 0, prime);
+			if (i & 0b0010) lookup[i] += pow_mod(base, 1, prime);
+			if (i & 0b0100) lookup[i] += pow_mod(base, 2, prime);
+			if (i & 0b1000) lookup[i] += pow_mod(base, 3, prime);
+		}
+		return lookup;
+	}
+	consteval std::array<uint8_t, 16 * 5> build_16_byte_shuffle_lookups()
+	{
+		std::array<uint8_t, 16 * 5> lookups{};
+
+		auto a = build_16_byte_shuffle_lookup<3, 5>();
+		std::copy(a.begin(), a.end(), lookups.begin());
+
+		a = build_16_byte_shuffle_lookup<4, 17>();
+		std::copy(a.begin(), a.end(), lookups.begin() + 16);
+
+		a = build_16_byte_shuffle_lookup<5, 13>();
+		std::copy(a.begin(), a.end(), lookups.begin() + 32);
+
+		a = build_16_byte_shuffle_lookup<8, 13>();
+		std::copy(a.begin(), a.end(), lookups.begin() + 48);
+
+		a = build_16_byte_shuffle_lookup<13, 17>();
+		std::copy(a.begin(), a.end(), lookups.begin() + 64);
+
+		return lookups;
+	}
+
 	// out_ptr is used to set in_ptr
 	template<size_t pass>
 	__forceinline void set_lookup_ptrs(const uint8_t* out_ptr,
@@ -146,6 +181,40 @@ namespace mbp
 			static_assert(bitmask == bitmask_for<8, 13>::val);
 			static_assert(bitmask == bitmask_for<13, 17>::val);
 			static_assert(period_of<bitmask>() == 4);
+
+			//// 8 bytes * 2 = 16 nybbles -> we need a different 16-entry shuffle lookup for each of 5 div test
+			//// 5 lanes = 2.5 registers 
+			//alignas(32) constexpr static std::array<uint8_t, 16 * 5> shuffle_lookups = build_16_byte_shuffle_lookups();
+			//const uint256_t nybble_lookup_01 = _mm256_load_si256((uint256_t*)&shuffle_lookups[0]);
+			//const uint256_t nybble_lookup_23 = _mm256_load_si256((uint256_t*)&shuffle_lookups[32]);
+			//const uint128_t nybble_lookup_4 = _mm_load_si128((uint128_t*)&shuffle_lookups[64]);
+
+			//// create four copies of our number
+			//uint256_t ymm = _mm256_set1_epi64x(next_number & outer_48_bits_mask);
+			//// shift high copies right by 1 nybble
+			//ymm = _mm256_blend_pd(ymm, _mm256_srli_epi64(ymm, 4), 0b0101);
+			//// mask to select the low nybble of each byte
+			//ymm = _mm256_and_si256(ymm, _mm256_set1_epi8(0x0F));
+
+			//uint256_t rems_01 = _mm256_shuffle_epi8(nybble_lookup_01, ymm);
+			//uint256_t rems_23 = _mm256_shuffle_epi8(nybble_lookup_23, ymm);
+			//uint128_t rems_4 = _mm_shuffle_epi8(nybble_lookup_4, _mm256_castsi256_si128(ymm));
+
+			//// get 2 partial sums for each test
+			//rems_01 = _mm256_sad_epu8(rems_01, _mm256_setzero_si256());
+			//rems_23 = _mm256_sad_epu8(rems_23, _mm256_setzero_si256());
+			//rems_4 = _mm_sad_epu8(rems_4, _mm_setzero_si128());
+
+			//// add adjacent sums
+			//rems_01 = _mm256_add_epi64(rems_01, _mm256_bsrli_epi128(rems_01, 8));
+			//rems_23 = _mm256_add_epi64(rems_23, _mm256_bsrli_epi128(rems_23, 8));
+			//rems_4 = _mm_add_epi64(rems_4, _mm_bsrli_si128(rems_4, 8));
+
+			//auto b3_sum = _mm256_extract_epi64(rems_01, 0);
+			//auto b4_sum = _mm256_extract_epi64(rems_01, 2);
+			//auto b5_sum = _mm256_extract_epi64(rems_23, 0);
+			//auto b8_sum = _mm256_extract_epi64(rems_23, 2);
+			//auto b13_sum = _mm_extract_epi64(rems_4, 0);
 
 			const size_t pc_0 = pop_count(next_number & ((bitmask << 0) & outer_48_bits_mask));
 			size_t b3_sum = pc_0;
