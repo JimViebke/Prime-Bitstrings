@@ -52,18 +52,4 @@ namespace mbp::util
 		return b < a ? b : a;
 	}
 
-	template<typename T>
-	__forceinline T min(T a, T b, T c)
-	{
-		T x = min(a, b);
-		return c < x ? c : x;
-	}
-
-	template<typename T>
-	__forceinline T min(T a, T b, T c, T d)
-	{
-		T x = min(a, b);
-		T y = min(c, d);
-		return y < x ? y : x;
-	}
 }
