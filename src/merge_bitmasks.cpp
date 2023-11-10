@@ -1,11 +1,6 @@
 
-#include <memory>
-#include <iostream>
-
 #include "math/math.hpp"
 #include "merge_bitmasks.hpp"
-#include "sieve.hpp"
-#include "trial_division/multibase_div_tests.hpp"
 #include "util/types.hpp"
 
 namespace mbp

@@ -5,7 +5,6 @@
 #include "config.hpp"
 #include "math/math.hpp"
 #include "sieve.hpp"
-#include "trial_division/multibase_div_tests.hpp"
 
 namespace mbp
 {
@@ -24,10 +23,7 @@ namespace mbp
 	template<size_t base, size_t prime>
 	std::unique_ptr<std::array<bit_array<pow_2_16>, prime>> build_bitmask_for()
 	{
-		using namespace div_test::detail;
-
 		using lookup_t = decltype(build_bitmask_for<base, prime>())::element_type;
-
 		std::unique_ptr<lookup_t> lookup = std::make_unique<lookup_t>();
 
 		// Generate a small lookup mapping a bit index to its remainder

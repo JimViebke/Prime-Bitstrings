@@ -74,7 +74,8 @@ namespace mbp
 
 
 
-#if 0 // accumulate and print pass counts
+#if 0
+// accumulate and print pass counts
 #define count_passes(...) __VA_ARGS__
 #define log_pass_counts(str, count, count_before) { \
 	auto w = std::setw; \
