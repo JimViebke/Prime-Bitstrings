@@ -626,8 +626,4 @@ namespace mbp
 		return sieve_popcount;
 	}
 
-
-	void merge_bitmasks_one_by_one(uint64_t number,
-								   std::array<sieve_container, prime_sieve::steps>& sieves,
-								   std::array<size_t, prime_sieve::steps>& sieve_popcounts);
 }
