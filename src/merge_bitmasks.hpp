@@ -172,12 +172,6 @@ namespace mbp
 			b8_sum += pc_3 * pow_mod(8, 3, 13);
 			b13_sum += pc_3 * pow_mod(13, 3, 17);
 
-			//__assume(b3_sum <= get_sum_of_rems<5, in_base<3>>(outer_48_bits_mask));
-			//__assume(b4_sum <= get_sum_of_rems<17, in_base<4>>(outer_48_bits_mask));
-			//__assume(b5_sum <= get_sum_of_rems<13, in_base<5>>(outer_48_bits_mask));
-			//__assume(b8_sum <= get_sum_of_rems<13, in_base<8>>(outer_48_bits_mask));
-			//__assume(b13_sum <= get_sum_of_rems<17, in_base<13>>(outer_48_bits_mask));
-
 			lookup_3_ptr = (*b3m5_lookup)[b3_sum % 5].data() + byte_offset;
 			lookup_4_ptr = (*b4m17_lookup)[b4_sum % 17].data() + byte_offset;
 			lookup_5_ptr = (*b5m13_lookup)[b5_sum % 13].data() + byte_offset;
@@ -209,10 +203,6 @@ namespace mbp
 				b3_sum += pc_2 * pow_mod(3, 2, 13);
 				b4_sum += pc_2 * pow_mod(4, 2, 7);
 				b9_sum += pc_2 * pow_mod(9, 2, 13);
-
-				// __assume(b3_sum <= get_sum_of_rems<13, in_base<3>>(outer_48_bits_mask));
-				// __assume(b4_sum <= get_sum_of_rems<7, in_base<4>>(outer_48_bits_mask));
-				// __assume(b9_sum <= get_sum_of_rems<13, in_base<9>>(outer_48_bits_mask));
 
 				lookup_1_ptr = (*b3m13_lookup)[b3_sum % 13].data() + byte_offset;
 				lookup_2_ptr = (*b4m7_lookup)[b4_sum % 7].data() + byte_offset;
@@ -257,11 +247,6 @@ namespace mbp
 				b5_sum += pc_5 * pow_mod(5, 5, 7);
 				b10_sum += pc_5 * pow_mod(10, 5, 13);
 
-				// __assume(b3_sum <= get_sum_of_rems<7, in_base<3>>(outer_48_bits_mask));
-				// __assume(b4_sum <= get_sum_of_rems<13, in_base<4>>(outer_48_bits_mask));
-				// __assume(b5_sum <= get_sum_of_rems<7, in_base<5>>(outer_48_bits_mask));
-				// __assume(b10_sum <= get_sum_of_rems<13, in_base<10>>(outer_48_bits_mask));
-
 				lookup_4_ptr = (*b3m7_lookup)[b3_sum % 7].data() + byte_offset;
 				lookup_5_ptr = (*b4m13_lookup)[b4_sum % 13].data() + byte_offset;
 				lookup_6_ptr = (*b5m7_lookup)[b5_sum % 7].data() + byte_offset;
@@ -303,11 +288,6 @@ namespace mbp
 				b4_sum += pc_4 * pow_mod(4, 4, 11);
 				b5_sum += pc_4 * pow_mod(5, 4, 11);
 				b9_sum += pc_4 * pow_mod(9, 4, 11);
-
-				// __assume(b3_sum <= get_sum_of_rems<11, in_base<3>>(outer_48_bits_mask));
-				// __assume(b4_sum <= get_sum_of_rems<11, in_base<4>>(outer_48_bits_mask));
-				// __assume(b5_sum <= get_sum_of_rems<11, in_base<5>>(outer_48_bits_mask));
-				// __assume(b9_sum <= get_sum_of_rems<11, in_base<9>>(outer_48_bits_mask));
 
 				lookup_1_ptr = (*b3m11_lookup)[b3_sum % 11].data() + byte_offset;
 				lookup_2_ptr = (*b4m11_lookup)[b4_sum % 11].data() + byte_offset;
@@ -457,6 +437,7 @@ namespace mbp
 			0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4 };
 		constexpr static uint64_t static_nybble_mask[4] = {
 			0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F };
+
 		// while out != aligned_end:
 		// - iterate by 32 bytes until we hit aligned_end, or a rollover of bits 1-16, whichever happens first
 		// - if we broke before aligned_end, we hit a rollover
