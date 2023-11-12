@@ -363,14 +363,14 @@ namespace mbp
 	{
 		const size_t elements_to_rollover = (pow_2_16 - ((number & bits_1_16_mask) >> 1)) % pow_2_16; // map 65,536 -> 0
 
-		uint64_t mask = *(uint64_t*)in;
-		const uint64_t bit_patterns_mask = (*(uint64_t*)lookup_1_ptr &
-											*(uint64_t*)lookup_2_ptr &
-											*(uint64_t*)lookup_3_ptr &
-											*(uint64_t*)lookup_4_ptr &
-											*(uint64_t*)lookup_5_ptr &
-											*(uint64_t*)lookup_6_ptr &
-											*(uint64_t*)lookup_7_ptr);
+		uint64_t block = *(uint64_t*)in;
+		const uint64_t mask = (*(uint64_t*)lookup_1_ptr &
+							   *(uint64_t*)lookup_2_ptr &
+							   *(uint64_t*)lookup_3_ptr &
+							   *(uint64_t*)lookup_4_ptr &
+							   *(uint64_t*)lookup_5_ptr &
+							   *(uint64_t*)lookup_6_ptr &
+							   *(uint64_t*)lookup_7_ptr);
 
 		in += sizeof(uint64_t);
 		lookup_1_ptr += sizeof(uint64_t);
@@ -383,7 +383,7 @@ namespace mbp
 
 		if (elements_to_rollover >= 64) // copy another block using lookup data
 		{
-			mask &= bit_patterns_mask;
+			block &= mask;
 		}
 		else // elements_to_rollover is 0 to 63
 		{
@@ -404,20 +404,20 @@ namespace mbp
 			const uint64_t select_from_old = (1ull << elements_to_rollover) - 1; // up to and including rollover
 			const uint64_t select_from_new = ~select_from_old;
 
-			mask &= ((bit_patterns_mask & select_from_old) |
-					 (new_mask & select_from_new));
+			block &= (mask & select_from_old) |
+					 (new_mask & select_from_new);
 
 			// (re)set
 			set_lookup_ptrs<pass>(out, sieve_offset + sizeof(uint64_t), number + (64ull * 2), dummy_ptr,
 								  lookup_1_ptr, lookup_2_ptr, lookup_3_ptr, lookup_4_ptr, lookup_5_ptr, lookup_6_ptr, lookup_7_ptr);
 		}
 
-		*(uint64_t*)out = mask;
+		*(uint64_t*)out = block;
 		out += sizeof(uint64_t);
 
 		if constexpr (pass == last_pass)
 		{
-			sieve_popcount += pop_count(mask);
+			sieve_popcount += pop_count(block);
 		}
 
 		number += (64ull * 2);
