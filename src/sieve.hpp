@@ -423,83 +423,122 @@ namespace mbp::prime_sieve
 		// [popcount][chunk indexes]
 		static std::array<std::array<chunk_idx_t, n_sieve_chunks>, 8> chunk_indexes;
 
-		static const std::array<uint64_t, 16> permute_masks = [] {
-			std::array<uint64_t, 16> masks{};
+		template<size_t n, size_t idx = 0>
+		__forceinline void chunks_to_mask(const uint64_t* const sieve_data,
+										  uint64_t& mask)
+		{
+			// load 4x chunks
+			uint256_t data = _mm256_loadu_si256(((uint256_t*)sieve_data) + idx);
+			// create masks for zero chunks
+			data = _mm256_cmpeq_epi64(data, _mm256_setzero_si256());
+			// get 4-bit mask
+			uint64_t new_mask = _mm256_movemask_pd(_mm256_castsi256_pd(data));
 
-			for (size_t i = 0; i < 16; ++i)
+			new_mask <<= idx * 4;
+			mask |= new_mask;
+
+			if constexpr (idx + 1 < n)
+				chunks_to_mask<n, idx + 1>(sieve_data, mask);
+		}
+
+		template<size_t strides>
+		__forceinline void pack_chunks(const uint64_t* const in,
+									   const uint64_t chunk_idx,
+									   uint64_t& out_idx) requires (strides <= 16)
+		{
+			uint64_t mask = 0;
+			chunks_to_mask<strides>(in, mask);
+
+			// invert the bits we care about
+			if constexpr (strides == 16)
 			{
-				const uint64_t byte_mask = _pdep_u64(~i, 0x0001000100010001) * 0xFFFF; // convert bits to bytes
-				const uint64_t permute_indexes = _pext_u64(0x0706050403020100, byte_mask);
-
-				masks[i] = permute_indexes;
+				mask = ~mask;
+			}
+			else
+			{
+				constexpr uint64_t keep_bits = (1ull << (strides * 4)) - 1;
+				mask ^= keep_bits;
 			}
 
-			return masks;
-		}();
-		static const std::array<uint8_t, 16> out_idx_advance = [] {
-			std::array<uint8_t, 16> lookup{};
-			for (size_t i = 0; i < 16; ++i)
-				lookup[i] = uint8_t(4 - pop_count(i));
-			return lookup;
-		}();
+			size_t pc = pop_count(mask);
+
+			while (pc >= 4)
+			{
+				size_t idx = _tzcnt_u64(mask);
+				mask = _blsr_u64(mask);
+				const auto xmm0 = _mm_cvtsi64_si128(in[idx]);
+				chunk_indexes[0][out_idx + 0] = chunk_idx + idx;
+
+				idx = _tzcnt_u64(mask);
+				mask = _blsr_u64(mask);
+				const auto xmm1 = _mm_cvtsi64_si128(in[idx]);
+				chunk_indexes[0][out_idx + 1] = chunk_idx + idx;
+
+				idx = _tzcnt_u64(mask);
+				mask = _blsr_u64(mask);
+				const auto xmm2 = _mm_cvtsi64_si128(in[idx]);
+				chunk_indexes[0][out_idx + 2] = chunk_idx + idx;
+
+				idx = _tzcnt_u64(mask);
+				mask = _blsr_u64(mask);
+				const auto xmm3 = _mm_cvtsi64_si128(in[idx]);
+				chunk_indexes[0][out_idx + 3] = chunk_idx + idx;
+
+				const uint256_t ymm0 = _mm256_set_m128i(_mm_unpacklo_epi64(xmm2, xmm3),
+														_mm_unpacklo_epi64(xmm0, xmm1));
+				_mm256_storeu_si256((uint256_t*)(&sorted_chunks[0][out_idx]), ymm0);
+
+				pc -= 4;
+				out_idx += 4;
+			}
+
+			// 0-3 final steps - always run 3 to avoid a branch
+
+			size_t idx = _tzcnt_u64(mask);
+			mask = _blsr_u64(mask);
+			const auto xmm0 = _mm_cvtsi64_si128(in[idx]);
+			chunk_indexes[0][out_idx + 0] = chunk_idx + idx;
+
+			idx = _tzcnt_u64(mask);
+			mask = _blsr_u64(mask);
+			const auto xmm1 = _mm_cvtsi64_si128(in[idx]);
+			chunk_indexes[0][out_idx + 1] = chunk_idx + idx;
+
+			idx = _tzcnt_u64(mask);
+			const auto chunk_2 = in[idx];
+			chunk_indexes[0][out_idx + 2] = chunk_idx + idx;
+
+			const auto chunks_01 = _mm_unpacklo_epi64(xmm0, xmm1);
+			_mm_storeu_si128((uint128_t*)(&sorted_chunks[0][out_idx]), chunks_01);
+			sorted_chunks[0][out_idx + 2] = chunk_2;
+
+			out_idx += pc; // advance by 0-3
+		}
 
 		inline_toggle static size_t pack_nonzero_sieve_chunks(const uint64_t* const sieve_data)
 		{
-			constexpr size_t trailing_chunks = (n_sieve_chunks % 4);
-			constexpr size_t n_sieve_chunks_rounded = n_sieve_chunks - trailing_chunks;
+			constexpr size_t rounded_end_64 = (n_sieve_chunks / 64) * 64;
+			constexpr size_t rounded_end_4 = (n_sieve_chunks / 4) * 4;
 
-			uint128_t indexes = _mm_setr_epi16(0, 1, 2, 3, 0, 0, 0, 0);
-			const uint128_t inc = _mm_setr_epi16(4, 4, 4, 4, 0, 0, 0, 0);
+			const uint64_t* in = sieve_data;
+			uint64_t out_idx = 0;
 
-			size_t out_idx = 0;
-
-			// load one iteration ahead
-			uint256_t data = _mm256_load_si256((uint256_t*)(&sieve_data[0]));
-
-			for (size_t i = 0; i < n_sieve_chunks_rounded; i += 4)
+			// pack using 16 strides of 4 chunks each
+			for (size_t chunk_idx = 0; chunk_idx != rounded_end_64; chunk_idx += 64, in += 64)
 			{
-				uint256_t mask_256 = _mm256_cmpeq_epi64(data, _mm256_setzero_si256()); // find the zero chunks
-				const auto bit_mask = _mm256_movemask_pd(_mm256_castsi256_pd(mask_256));
-
-				// convert element mask to shuffle/permute mask
-				const uint128_t permute_mask = _mm_cvtsi64_si128(permute_masks[bit_mask]);
-
-				// pack chunks
-				const uint256_t packed_data = _mm256_permutevar8x32_epi32(data, _mm256_cvtepu8_epi32(permute_mask));
-
-				// load one iteration ahead
-				data = _mm256_load_si256((uint256_t*)(&sieve_data[i + 4]));
-
-				// pack indexes
-				const uint128_t keep_indexes = _mm_shuffle_epi8(indexes, permute_mask);
-
-				// store packed chunks and indexes
-				_mm256_storeu_si256((uint256_t*)(&sorted_chunks[0][out_idx]), packed_data);
-				_mm_storeu_si64((uint64_t*)(&chunk_indexes[0][out_idx]), keep_indexes);
-
-				out_idx += out_idx_advance[bit_mask]; // advance based on the number of elements we stored
-				indexes = _mm_add_epi16(indexes, inc);
+				pack_chunks<16>(in, chunk_idx, out_idx);
 			}
 
-			if constexpr (trailing_chunks >= 1)
+			// pack using 0-15 strides of 4 chunks each
+			constexpr size_t remaining_strides = (rounded_end_4 - rounded_end_64) / 4;
+			pack_chunks<remaining_strides>(in, rounded_end_64, out_idx);
+
+			// pack 0-3 remaining chunks
+			for (size_t chunk_idx = rounded_end_4; chunk_idx < n_sieve_chunks; ++chunk_idx)
 			{
-				const uint64_t chunk = sieve_data[n_sieve_chunks_rounded];
+				const uint64_t chunk = sieve_data[chunk_idx];
 				sorted_chunks[0][out_idx] = chunk;
-				chunk_indexes[0][out_idx] = n_sieve_chunks_rounded;
-				out_idx += (chunk != 0);
-			}
-			if constexpr (trailing_chunks >= 2)
-			{
-				const uint64_t chunk = sieve_data[n_sieve_chunks_rounded + 1];
-				sorted_chunks[0][out_idx] = chunk;
-				chunk_indexes[0][out_idx] = n_sieve_chunks_rounded + 1;
-				out_idx += (chunk != 0);
-			}
-			if constexpr (trailing_chunks == 3)
-			{
-				const uint64_t chunk = sieve_data[n_sieve_chunks_rounded + 2];
-				sorted_chunks[0][out_idx] = chunk;
-				chunk_indexes[0][out_idx] = n_sieve_chunks_rounded + 2;
+				chunk_indexes[0][out_idx] = chunk_idx_t(chunk_idx);
 				out_idx += (chunk != 0);
 			}
 
