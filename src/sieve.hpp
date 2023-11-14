@@ -424,11 +424,11 @@ namespace mbp::prime_sieve
 		static std::array<std::array<chunk_idx_t, n_sieve_chunks>, 8> chunk_indexes;
 
 		template<size_t n, size_t idx = 0>
-		__forceinline void chunks_to_mask(const uint64_t* const sieve_data,
+		__forceinline void chunks_to_mask(const uint64_t* const in,
 										  uint64_t& mask)
 		{
 			// load 4x chunks
-			uint256_t data = _mm256_loadu_si256(((uint256_t*)sieve_data) + idx);
+			uint256_t data = _mm256_loadu_si256(((uint256_t*)in) + idx);
 			// create masks for zero chunks
 			data = _mm256_cmpeq_epi64(data, _mm256_setzero_si256());
 			// get 4-bit mask
@@ -438,11 +438,12 @@ namespace mbp::prime_sieve
 			mask |= new_mask;
 
 			if constexpr (idx + 1 < n)
-				chunks_to_mask<n, idx + 1>(sieve_data, mask);
+				chunks_to_mask<n, idx + 1>(in, mask);
 		}
 
 		template<size_t strides>
-		__forceinline void pack_chunks(const uint64_t* const in,
+		__forceinline void pack_chunks(uint64_t* const sieve_data,
+									   const uint64_t* const in,
 									   const uint64_t chunk_idx,
 									   uint64_t& out_idx) requires (strides <= 16)
 		{
@@ -486,7 +487,7 @@ namespace mbp::prime_sieve
 
 				const uint256_t ymm0 = _mm256_set_m128i(_mm_unpacklo_epi64(xmm2, xmm3),
 														_mm_unpacklo_epi64(xmm0, xmm1));
-				_mm256_storeu_si256((uint256_t*)(&sorted_chunks[0][out_idx]), ymm0);
+				_mm256_storeu_si256((uint256_t*)(&sieve_data[out_idx]), ymm0);
 
 				pc -= 4;
 				out_idx += 4;
@@ -505,17 +506,18 @@ namespace mbp::prime_sieve
 			chunk_indexes[0][out_idx + 1] = chunk_idx + idx;
 
 			idx = _tzcnt_u64(mask);
-			const auto chunk_2 = in[idx];
+			const auto xmm2 = _mm_cvtsi64_si128(in[idx]);
 			chunk_indexes[0][out_idx + 2] = chunk_idx + idx;
 
-			const auto chunks_01 = _mm_unpacklo_epi64(xmm0, xmm1);
-			_mm_storeu_si128((uint128_t*)(&sorted_chunks[0][out_idx]), chunks_01);
-			sorted_chunks[0][out_idx + 2] = chunk_2;
+			// pack chunks to [0, 1, 2, x]
+			const uint256_t ymm0 = _mm256_set_m128i(xmm2,
+													_mm_unpacklo_epi64(xmm0, xmm1));
+			_mm256_storeu_si256((uint256_t*)(&sieve_data[out_idx]), ymm0);
 
 			out_idx += pc; // advance by 0-3
 		}
 
-		inline_toggle static size_t pack_nonzero_sieve_chunks(const uint64_t* const sieve_data)
+		inline_toggle static size_t pack_nonzero_sieve_chunks(uint64_t* const sieve_data)
 		{
 			constexpr size_t rounded_end_64 = (n_sieve_chunks / 64) * 64;
 			constexpr size_t rounded_end_4 = (n_sieve_chunks / 4) * 4;
@@ -526,18 +528,18 @@ namespace mbp::prime_sieve
 			// pack using 16 strides of 4 chunks each
 			for (size_t chunk_idx = 0; chunk_idx != rounded_end_64; chunk_idx += 64, in += 64)
 			{
-				pack_chunks<16>(in, chunk_idx, out_idx);
+				pack_chunks<16>(sieve_data, in, chunk_idx, out_idx);
 			}
 
 			// pack using 0-15 strides of 4 chunks each
 			constexpr size_t remaining_strides = (rounded_end_4 - rounded_end_64) / 4;
-			pack_chunks<remaining_strides>(in, rounded_end_64, out_idx);
+			pack_chunks<remaining_strides>(sieve_data, in, rounded_end_64, out_idx);
 
 			// pack 0-3 remaining chunks
 			for (size_t chunk_idx = rounded_end_4; chunk_idx < n_sieve_chunks; ++chunk_idx)
 			{
 				const uint64_t chunk = sieve_data[chunk_idx];
-				sorted_chunks[0][out_idx] = chunk;
+				sieve_data[out_idx] = chunk;
 				chunk_indexes[0][out_idx] = chunk_idx_t(chunk_idx);
 				out_idx += (chunk != 0);
 			}
@@ -545,18 +547,14 @@ namespace mbp::prime_sieve
 			return out_idx; // the final index is the number of non-zero chunks
 		}
 
-		inline_toggle static void sort_chunks(const size_t n_nonzero_chunks)
+		inline_toggle static void sort_chunks(const uint64_t* const sieve_data,
+											  const size_t n_nonzero_chunks)
 		{
 			using namespace detail;
 
 			constexpr static uint32_t static_identity[8] = { 0, 1, 2, 3, 4, 5, 6, 7 };
-			constexpr static uint8_t static_pc_shuf_lookup[32] = {
-				0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
-					0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4 };
-			constexpr static uint64_t static_nybble_mask[4] = {
-				0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F };
-
-			const uint64_t* const sieve_data = sorted_chunks[0].data();
+			constexpr static uint8_t static_pc_shuf_lookup[16] = {
+				0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4 };
 
 			const size_t n_chunks_rounded = n_nonzero_chunks - (n_nonzero_chunks % 4);
 
@@ -566,8 +564,8 @@ namespace mbp::prime_sieve
 
 				const uint256_t identity = _mm256_loadu_si256((uint256_t*)static_identity);
 				const uint256_t seven_register = _mm256_set1_epi32(7);
-				const uint256_t nybble_mask = _mm256_loadu_si256((uint256_t*)static_nybble_mask);
-				const uint256_t pc_shuf_lookup = _mm256_loadu_si256((uint256_t*)static_pc_shuf_lookup);
+				const uint256_t nybble_mask = _mm256_set1_epi8(0b0000'1111);
+				const uint256_t pc_shuf_lookup = _mm256_broadcastsi128_si256(*(uint128_t*)&static_pc_shuf_lookup);
 				const uint256_t ymm_n_sieve_chunks = _mm256_set1_epi32(n_sieve_chunks);
 				uint256_t pc_counts{};
 
@@ -849,7 +847,7 @@ namespace mbp::prime_sieve
 
 	// sort 64-bit chunks of the sieve by popcount, then use custom loops that perform the exact number of required reads
 	inline_toggle static uint64_t* gather_sieve_results(uint64_t* candidates,
-														const sieve_container& sieve,
+														sieve_container& sieve,
 														const uint64_t number)
 	{
 		using namespace detail;
@@ -859,10 +857,10 @@ namespace mbp::prime_sieve
 			pc = 0;
 
 		// pack non-zero sieve chunks before bitmap decoding
-		const size_t n_nonzero_chunks = pack_nonzero_sieve_chunks((const uint64_t* const)sieve.data());
+		const size_t n_nonzero_chunks = pack_nonzero_sieve_chunks((uint64_t* const)sieve.data());
 
 		// prepare arrays of 64-bit chunks, where the chunks in array n contain exactly n set bits (n candidates)
-		sort_chunks(n_nonzero_chunks);
+		sort_chunks((const uint64_t* const)sieve.data(), n_nonzero_chunks);
 
 		uint64_t* const candidates_start = candidates;
 		extract_bit_indexes(candidates);
