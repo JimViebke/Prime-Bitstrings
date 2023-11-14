@@ -19,7 +19,7 @@ msbuild "Prime Bitstrings.vcxproj" -p:Configuration=Profile -p:Platform=x64 -t:B
 
 :: Run profile exe
 
-@start /min "" "x64\Profile\PB profile.exe"
+@start /min "" "x64\Profile\PB profile.exe" benchmark
 @if %errorlevel% neq 0 exit /b %errorlevel%
 
 @for /L %%i in (1, 1, 100) do @(	

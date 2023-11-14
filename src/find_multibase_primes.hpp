@@ -11,7 +11,7 @@ namespace mbp
 	public:
 		find_multibase_primes();
 
-		void run();
+		void run(const bool benchmark);
 
 	private:
 
@@ -19,7 +19,8 @@ namespace mbp
 		inline_toggle uint64_t* div_tests(uint64_t* candidates_end);
 
 		void full_primality_tests(const uint64_t* candidates,
-								  const uint64_t* const candidates_end);
+								  const uint64_t* const candidates_end,
+								  const bool benchmark);
 
 		div_test::full_div_tests full_div_tests{};
 
@@ -29,5 +30,5 @@ namespace mbp
 		count_passes(size_t a, ps15, b, c, d, e, bldt, bidt, b2, b3, b4, b5, passes, pc_hash);
 	};
 
-	void print_config();
+	void print_config(const bool benchmark);
 }

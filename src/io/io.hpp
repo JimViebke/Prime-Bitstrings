@@ -4,7 +4,7 @@
 
 namespace mbp
 {
-	void print_preamble();
+	void print_preamble(const bool benchmark);
 
 	void set_up_results_path();
 	size_t load_from_results();

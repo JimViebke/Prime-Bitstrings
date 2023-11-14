@@ -8,7 +8,8 @@
 #include "math/franken_mpir.hpp"
 
 void mbp::find_multibase_primes::full_primality_tests(const uint64_t* candidates,
-													  const uint64_t* const candidates_end)
+													  const uint64_t* const candidates_end,
+													  const bool benchmark)
 {
 	for (; candidates < candidates_end; ++candidates)
 	{
@@ -43,14 +44,14 @@ void mbp::find_multibase_primes::full_primality_tests(const uint64_t* candidates
 		mpz_number.set_str(bin_str, 8);
 		if (!franken::mpir_is_prime(mpz_number, gmp_rand, div_test::n_of_primes - 1))
 		{
-			if constexpr (!benchmark_mode) log_result(candidate, 7);
+			if (!benchmark) log_result(candidate, 7);
 			continue;
 		}
 
 		mpz_number.set_str(bin_str, 9);
 		if (!mpir_is_prime(mpz_number, gmp_rand))
 		{
-			if constexpr (!benchmark_mode) log_result(candidate, 8);
+			if (!benchmark) log_result(candidate, 8);
 			continue;
 		}
 

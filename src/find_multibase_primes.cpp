@@ -46,11 +46,12 @@ namespace mbp
 		count_passes(b2 = b3 = b4 = b5 = passes = pc_hash = 0);
 	}
 
-	void mbp::find_multibase_primes::run()
+	void mbp::find_multibase_primes::run(const bool benchmark)
 	{
 		constexpr size_t loop_size = 2ull * sieve_container::size() * prime_sieve::steps;
 
-		size_t number = benchmark_mode ? bm_start : load_from_results();
+		uint64_t number = benchmark ? bm_start : load_from_results();
+		const uint64_t stop = benchmark ? bm_stop : uint64_t(-1);
 
 		// Round starting number down to the nearest odd multiple of a product of primes
 		number -= prime_sieve::product_of_static_sieve_primes; // n -= k
@@ -63,13 +64,12 @@ namespace mbp
 
 		prime_sieve::set_up_sieve_offsets_cache(number);
 
-		size_t next_div_test_reorder = number + div_test::reorder_interval;
+		uint64_t next_div_test_reorder = number + div_test::reorder_interval;
 
 		// Start the clock after setup
-		const auto start = util::current_time_in_ms();
+		const auto start_time = util::current_time_in_ms();
 
-		// (condition should optimize out)
-		while (benchmark_mode ? number < bm_stop : true)
+		while (number < stop)
 		{
 			// Merge static sieve, popcount, gcd, and div test bitmasks
 			for (size_t i = 0; i < prime_sieve::steps; ++i)
@@ -125,7 +125,7 @@ namespace mbp
 
 				if (pt_buffer_size == pt_buffer_capacity)
 				{
-					full_primality_tests(pt_buffer.data(), pt_buffer.data() + pt_buffer.size());
+					full_primality_tests(pt_buffer.data(), pt_buffer.data() + pt_buffer.size(), benchmark);
 					pt_buffer_size = 0;
 				}
 			}
@@ -153,7 +153,7 @@ namespace mbp
 		full_div_tests.print_div_tests();
 	#endif
 
-		std::cout << "Finished. " << util::current_time_in_ms() - start << " ms elapsed\n";
+		std::cout << "Finished. " << util::current_time_in_ms() - start_time << " ms elapsed\n";
 
 		count_passes(std::cout << passes << " main loop iters\n");
 
@@ -213,11 +213,11 @@ namespace mbp
 
 
 
-	void print_config()
+	void print_config(const bool benchmark)
 	{
 		std::stringstream ss{};
 
-		if constexpr (benchmark_mode)
+		if (benchmark)
 		{
 			ss << "Benchmarking from ";
 			if constexpr (bm_start == p11) ss << "p11";

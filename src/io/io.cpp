@@ -10,9 +10,9 @@
 #include "../config.hpp"
 #include "../math/math.hpp"
 
-void mbp::print_preamble()
+void mbp::print_preamble(const bool benchmark)
 {
-	std::cout << "Built " __DATE__ " " __TIME__ << ((mbp::benchmark_mode) ? "... " : "\n");
+	std::cout << "Built " __DATE__ " " __TIME__ << (benchmark ? "... " : "\n");
 }
 
 namespace mbp
@@ -112,12 +112,8 @@ void mbp::log_result(const uint64_t n, const size_t up_to_base)
 	// Don't log to file or print perf info for the first result
 	if (last_n != 0)
 	{
-		// Don't log in benchmark mode
-		if constexpr (!benchmark_mode)
-		{
-			std::ofstream ofs(results_path, std::ofstream::app);
-			ofs << ss.str() << '\n';
-		}
+		std::ofstream ofs(results_path, std::ofstream::app);
+		ofs << ss.str() << '\n';
 
 		// Continue populating the stringstream
 
