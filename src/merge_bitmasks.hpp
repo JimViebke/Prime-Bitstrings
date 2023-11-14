@@ -107,12 +107,9 @@ namespace mbp
 		return outer_even_pc - outer_odd_pc + 23; // +23 to normalize -23,24 to 0,47
 	}
 
-	// out_ptr is used to set in_ptr
 	template<size_t pass>
-	__forceinline void set_lookup_ptrs(const uint8_t* out_ptr,
-									   const size_t sieve_offset,
+	__forceinline void set_lookup_ptrs(const size_t sieve_offset,
 									   const uint64_t next_number,
-									   const uint8_t*& in_ptr,
 									   const uint8_t*& lookup_1_ptr,
 									   const uint8_t*& lookup_2_ptr,
 									   const uint8_t*& lookup_3_ptr,
@@ -131,8 +128,6 @@ namespace mbp
 		{
 			const size_t pc_idx = pc_lookup_idx(next_number);
 			const size_t gcd_idx = gcd_lookup_idx(next_number);
-
-			in_ptr = static_sieve.data() + sieve_offset; // the offset into the sieve is also the offset into the static sieve
 			lookup_1_ptr = pc_lookup[pc_idx].data() + byte_offset;
 			lookup_2_ptr = gcd_lookup[gcd_idx].data() + byte_offset;
 
@@ -173,10 +168,6 @@ namespace mbp
 			lookup_5_ptr = (*b5m13_lookup)[b5_sum % 13].data() + byte_offset;
 			lookup_6_ptr = (*b8m13_lookup)[b8_sum % 13].data() + byte_offset;
 			lookup_7_ptr = (*b13m17_lookup)[b13_sum % 17].data() + byte_offset;
-		}
-		else // all passes except for pass 1
-		{
-			in_ptr = out_ptr; // wherever we're writing to in the sieve is also the location we have to read from
 		}
 
 		if constexpr (pass == 2)
@@ -387,10 +378,7 @@ namespace mbp
 		}
 		else // elements_to_rollover is 0 to 63
 		{
-			const uint8_t v{}; // we don't want set_lookup_ptrs() to modify the input ptr
-			auto dummy_ptr = &v;
-
-			set_lookup_ptrs<pass>(out, 0, number + (elements_to_rollover * 2), dummy_ptr,
+			set_lookup_ptrs<pass>(0, number + (elements_to_rollover * 2),
 								  lookup_1_ptr, lookup_2_ptr, lookup_3_ptr, lookup_4_ptr, lookup_5_ptr, lookup_6_ptr, lookup_7_ptr);
 
 			const uint64_t new_mask = (*(uint64_t*)lookup_1_ptr &
@@ -404,11 +392,11 @@ namespace mbp
 			const uint64_t select_from_old = (1ull << elements_to_rollover) - 1; // up to and including rollover
 			const uint64_t select_from_new = ~select_from_old;
 
-			block &= (mask & select_from_old) |
-					 (new_mask & select_from_new);
+			block &= ((mask & select_from_old) |
+					  (new_mask & select_from_new));
 
 			// (re)set
-			set_lookup_ptrs<pass>(out, sieve_offset + sizeof(uint64_t), number + (64ull * 2), dummy_ptr,
+			set_lookup_ptrs<pass>(sieve_offset + sizeof(uint64_t), number + (64ull * 2),
 								  lookup_1_ptr, lookup_2_ptr, lookup_3_ptr, lookup_4_ptr, lookup_5_ptr, lookup_6_ptr, lookup_7_ptr);
 		}
 
@@ -444,7 +432,9 @@ namespace mbp
 
 		uint8_t* out = sieve.data();
 
-		const uint8_t* in{}; // either the static sieve (pass 1) or the sieve (every other pass)
+		// load data from the static sieve on pass 1, and the sieve on every other pass
+		const uint8_t* in = (pass == 1) ? static_sieve.data() : out;
+
 		const uint8_t* lookup_1_ptr{}; // pointers into our large bitmask lookups
 		const uint8_t* lookup_2_ptr{};
 		const uint8_t* lookup_3_ptr{};
@@ -453,8 +443,7 @@ namespace mbp
 		const uint8_t* lookup_6_ptr{};
 		const uint8_t* lookup_7_ptr{};
 
-		set_lookup_ptrs<pass>(out, 0, number, in,
-							  lookup_1_ptr, lookup_2_ptr, lookup_3_ptr, lookup_4_ptr, lookup_5_ptr, lookup_6_ptr, lookup_7_ptr);
+		set_lookup_ptrs<pass>(0, number, lookup_1_ptr, lookup_2_ptr, lookup_3_ptr, lookup_4_ptr, lookup_5_ptr, lookup_6_ptr, lookup_7_ptr);
 
 		constexpr size_t bytes_per_step = sizeof(uint256_t);
 
@@ -484,12 +473,7 @@ namespace mbp
 
 			for (size_t offset = 0; offset < n_steps * bytes_per_step; offset += bytes_per_step)
 			{
-				uint256_t data_0;
-				if constexpr (pass == 1)
-					data_0 = _mm256_loadu_si256((uint256_t*)(in + offset));
-				else
-					data_0 = _mm256_loadu_si256((uint256_t*)(out + offset));
-
+				const uint256_t data_0 = _mm256_loadu_si256((uint256_t*)(in + offset));
 				const uint256_t data_1 = _mm256_loadu_si256((uint256_t*)(lookup_1_ptr + offset));
 				const uint256_t data_2 = _mm256_loadu_si256((uint256_t*)(lookup_2_ptr + offset));
 				const uint256_t data_3 = _mm256_loadu_si256((uint256_t*)(lookup_3_ptr + offset));
