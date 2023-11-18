@@ -425,7 +425,7 @@ namespace mbp::prime_sieve
 
 		template<size_t n, size_t idx = 0>
 		__forceinline void chunks_to_mask(const uint64_t* const in,
-										  uint64_t& mask)
+										  uint64_t& mask) requires (n <= 16)
 		{
 			// load 4x chunks
 			uint256_t data = _mm256_loadu_si256(((uint256_t*)in) + idx);
@@ -442,55 +442,73 @@ namespace mbp::prime_sieve
 		}
 
 		template<size_t strides>
-		__forceinline void pack_chunks(uint64_t* const sieve_data,
-									   const uint64_t* const in,
-									   const uint64_t chunk_idx,
-									   uint64_t& out_idx) requires (strides <= 16)
+		__forceinline uint64_t chunks_to_mask(const uint64_t* const in) requires (strides <= 16)
 		{
 			uint64_t mask = 0;
 			chunks_to_mask<strides>(in, mask);
 
-			// invert the bits we care about
+			// invert the mask bits we care about
 			if constexpr (strides == 16)
 			{
-				mask = ~mask;
+				return ~mask;
 			}
 			else
 			{
 				constexpr uint64_t keep_bits = (1ull << (strides * 4)) - 1;
-				mask ^= keep_bits;
+				return mask ^ keep_bits;
 			}
+		}
+
+		template<size_t strides>
+		__forceinline void pack_and_partially_extract(uint64_t* const sieve_data,
+									   const uint64_t* const in,
+									   const uint64_t chunk_idx,
+									   uint64_t& out_idx,
+									   uint64_t*& candidates) requires (strides <= 16)
+		{
+			uint64_t mask = chunks_to_mask<strides>(in);
 
 			size_t pc = pop_count(mask);
 
 			while (pc >= 4)
 			{
-				size_t idx = _tzcnt_u64(mask);
-				mask = _blsr_u64(mask);
-				const auto xmm0 = _mm_cvtsi64_si128(in[idx]);
-				chunk_indexes[0][out_idx + 0] = chunk_idx + idx;
-
-				idx = _tzcnt_u64(mask);
-				mask = _blsr_u64(mask);
-				const auto xmm1 = _mm_cvtsi64_si128(in[idx]);
-				chunk_indexes[0][out_idx + 1] = chunk_idx + idx;
-
-				idx = _tzcnt_u64(mask);
-				mask = _blsr_u64(mask);
-				const auto xmm2 = _mm_cvtsi64_si128(in[idx]);
-				chunk_indexes[0][out_idx + 2] = chunk_idx + idx;
-
-				idx = _tzcnt_u64(mask);
-				mask = _blsr_u64(mask);
-				const auto xmm3 = _mm_cvtsi64_si128(in[idx]);
-				chunk_indexes[0][out_idx + 3] = chunk_idx + idx;
-
-				const uint256_t ymm0 = _mm256_set_m128i(_mm_unpacklo_epi64(xmm2, xmm3),
-														_mm_unpacklo_epi64(xmm0, xmm1));
-				_mm256_storeu_si256((uint256_t*)(&sieve_data[out_idx]), ymm0);
-
 				pc -= 4;
-				out_idx += 4;
+
+				size_t idx = _tzcnt_u64(mask); // find the offset of the next nonzero chunk
+				mask = _blsr_u64(mask); // reset the bit we just read
+				uint64_t chunk = in[idx]; // load the chunk (it contains at least one candidate)
+				chunk_indexes[0][out_idx] = chunk_idx + idx; // store the chunk's index
+				*candidates++ = (chunk_idx + idx) * 64 + _tzcnt_u64(chunk); // generate the first candidate
+				chunk = _blsr_u64(chunk); // clear the handled bit
+				sieve_data[out_idx] = chunk; // store the modified chunk
+				out_idx += (chunk != 0); // advance if there are bits remaining
+
+				idx = _tzcnt_u64(mask);
+				mask = _blsr_u64(mask);
+				chunk = in[idx];
+				chunk_indexes[0][out_idx] = chunk_idx + idx;
+				*candidates++ = (chunk_idx + idx) * 64 + _tzcnt_u64(chunk);
+				chunk = _blsr_u64(chunk);
+				sieve_data[out_idx] = chunk;
+				out_idx += (chunk != 0);
+
+				idx = _tzcnt_u64(mask);
+				mask = _blsr_u64(mask);
+				chunk = in[idx];
+				chunk_indexes[0][out_idx] = chunk_idx + idx;
+				*candidates++ = (chunk_idx + idx) * 64 + _tzcnt_u64(chunk);
+				chunk = _blsr_u64(chunk);
+				sieve_data[out_idx] = chunk;
+				out_idx += (chunk != 0);
+
+				idx = _tzcnt_u64(mask);
+				mask = _blsr_u64(mask);
+				chunk = in[idx];
+				chunk_indexes[0][out_idx] = chunk_idx + idx;
+				*candidates++ = (chunk_idx + idx) * 64 + _tzcnt_u64(chunk);
+				chunk = _blsr_u64(chunk);
+				sieve_data[out_idx] = chunk;
+				out_idx += (chunk != 0);
 			}
 
 			// 0-3 final steps - always run 3 to avoid a branch
@@ -517,7 +535,8 @@ namespace mbp::prime_sieve
 			out_idx += pc; // advance by 0-3
 		}
 
-		inline_toggle static size_t pack_nonzero_sieve_chunks(uint64_t* const sieve_data)
+		inline_toggle static size_t pack_and_partially_extract(uint64_t* const sieve_data,
+															   uint64_t*& candidates)
 		{
 			constexpr size_t rounded_end_64 = (n_sieve_chunks / 64) * 64;
 			constexpr size_t rounded_end_4 = (n_sieve_chunks / 4) * 4;
@@ -528,12 +547,12 @@ namespace mbp::prime_sieve
 			// pack using 16 strides of 4 chunks each
 			for (size_t chunk_idx = 0; chunk_idx != rounded_end_64; chunk_idx += 64, in += 64)
 			{
-				pack_chunks<16>(sieve_data, in, chunk_idx, out_idx);
+				pack_and_partially_extract<16>(sieve_data, in, chunk_idx, out_idx, candidates);
 			}
 
 			// pack using 0-15 strides of 4 chunks each
 			constexpr size_t remaining_strides = (rounded_end_4 - rounded_end_64) / 4;
-			pack_chunks<remaining_strides>(sieve_data, in, rounded_end_64, out_idx);
+			pack_and_partially_extract<remaining_strides>(sieve_data, in, rounded_end_64, out_idx, candidates);
 
 			// pack 0-3 remaining chunks
 			for (size_t chunk_idx = rounded_end_4; chunk_idx < n_sieve_chunks; ++chunk_idx)
@@ -856,13 +875,13 @@ namespace mbp::prime_sieve
 		for (chunk_count_t& pc : n_chunks_with_pc)
 			pc = 0;
 
-		// pack non-zero sieve chunks before bitmap decoding
-		const size_t n_nonzero_chunks = pack_nonzero_sieve_chunks((uint64_t* const)sieve.data());
+		uint64_t* const candidates_start = candidates;
+
+		const size_t n_nonzero_chunks = pack_and_partially_extract((uint64_t* const)sieve.data(), candidates);
 
 		// prepare arrays of 64-bit chunks, where the chunks in array n contain exactly n set bits (n candidates)
 		sort_chunks((const uint64_t* const)sieve.data(), n_nonzero_chunks);
 
-		uint64_t* const candidates_start = candidates;
 		extract_bit_indexes(candidates);
 
 		convert_indexes_to_bitstrings(candidates_start, candidates, number);
