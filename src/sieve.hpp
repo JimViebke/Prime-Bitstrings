@@ -470,9 +470,9 @@ namespace mbp::prime_sieve
 
 			size_t pc = pop_count(mask);
 
-			while (pc >= 4)
+			while (pc >= 2)
 			{
-				pc -= 4;
+				pc -= 2;
 
 				size_t idx = _tzcnt_u64(mask); // find the offset of the next nonzero chunk
 				mask = _blsr_u64(mask); // reset the bit we just read
@@ -491,48 +491,15 @@ namespace mbp::prime_sieve
 				chunk = _blsr_u64(chunk);
 				sieve_data[out_idx] = chunk;
 				out_idx += (chunk != 0);
-
-				idx = _tzcnt_u64(mask);
-				mask = _blsr_u64(mask);
-				chunk = in[idx];
-				chunk_indexes[0][out_idx] = chunk_idx + idx;
-				*candidates++ = (chunk_idx + idx) * 64 + _tzcnt_u64(chunk);
-				chunk = _blsr_u64(chunk);
-				sieve_data[out_idx] = chunk;
-				out_idx += (chunk != 0);
-
-				idx = _tzcnt_u64(mask);
-				mask = _blsr_u64(mask);
-				chunk = in[idx];
-				chunk_indexes[0][out_idx] = chunk_idx + idx;
-				*candidates++ = (chunk_idx + idx) * 64 + _tzcnt_u64(chunk);
-				chunk = _blsr_u64(chunk);
-				sieve_data[out_idx] = chunk;
-				out_idx += (chunk != 0);
 			}
 
-			// 0-3 final steps - always run 3 to avoid a branch
+			// 0-1 final steps - always run 1 to avoid a branch
 
 			size_t idx = _tzcnt_u64(mask);
-			mask = _blsr_u64(mask);
-			const auto xmm0 = _mm_cvtsi64_si128(in[idx]);
+			sieve_data[out_idx] = in[idx];
 			chunk_indexes[0][out_idx + 0] = chunk_idx + idx;
 
-			idx = _tzcnt_u64(mask);
-			mask = _blsr_u64(mask);
-			const auto xmm1 = _mm_cvtsi64_si128(in[idx]);
-			chunk_indexes[0][out_idx + 1] = chunk_idx + idx;
-
-			idx = _tzcnt_u64(mask);
-			const auto xmm2 = _mm_cvtsi64_si128(in[idx]);
-			chunk_indexes[0][out_idx + 2] = chunk_idx + idx;
-
-			// pack chunks to [0, 1, 2, x]
-			const uint256_t ymm0 = _mm256_set_m128i(xmm2,
-													_mm_unpacklo_epi64(xmm0, xmm1));
-			_mm256_storeu_si256((uint256_t*)(&sieve_data[out_idx]), ymm0);
-
-			out_idx += pc; // advance by 0-3
+			out_idx += pc; // advance by 0-1
 		}
 
 		inline_toggle static size_t pack_and_partially_extract(uint64_t* const sieve_data,
