@@ -112,7 +112,7 @@
       <AssemblerOutput>AssemblyAndSourceCode</AssemblerOutput>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
-      <AdditionalOptions>-Wfatal-errors -march=haswell -Qunused-arguments -Wno-unused-function -fprofile-instr-use</AdditionalOptions>
+      <AdditionalOptions>-Wfatal-errors -march=haswell -Qunused-arguments -Wno-unused-function -fprofile-instr-use -ftime-trace</AdditionalOptions>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <StringPooling>true</StringPooling>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
