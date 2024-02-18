@@ -179,6 +179,7 @@
     <ClCompile Include="src\merge_bitmasks.cpp" />
     <ClCompile Include="src\primality_tests.cpp" />
     <ClCompile Include="src\sieve.cpp" />
+    <ClCompile Include="src\static_sieve.cpp" />
     <ClCompile Include="src\trial_division\multibase_div_tests.cpp" />
     <ClCompile Include="src\util\simd.cpp" />
     <ClCompile Include="src\util\utility.cpp" />
@@ -256,6 +257,7 @@
     <ClInclude Include="src\config.hpp" />
     <ClInclude Include="src\math\franken_mpir.hpp" />
     <ClInclude Include="src\math\sieve_tests.hpp" />
+    <ClInclude Include="src\static_sieve.hpp" />
     <ClInclude Include="src\trial_division\multibase_div_tests.hpp" />
     <ClInclude Include="src\math\pk_prime.hpp" />
     <ClInclude Include="src\math\math.hpp" />

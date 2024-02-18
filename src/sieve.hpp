@@ -6,8 +6,6 @@
 
 namespace mbp::prime_sieve
 {
-	const sieve_container generate_static_sieve();
-
 	constexpr size_t n_of_vector_sieve_primes = []() consteval
 		{
 			auto first = small_primes_lookup.begin() + static_sieve_primes.size() + 1;

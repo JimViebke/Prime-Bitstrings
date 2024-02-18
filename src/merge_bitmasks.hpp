@@ -4,7 +4,7 @@
 
 #include "config.hpp"
 #include "math/math.hpp"
-#include "sieve.hpp"
+#include "static_sieve.hpp"
 
 namespace mbp
 {
