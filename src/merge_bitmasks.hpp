@@ -94,7 +94,7 @@ namespace mbp
 
 	__forceinline size_t pc_lookup_idx(const uint64_t number)
 	{
-		return pop_count(number & outer_48_bits_mask) - 2; // -2 to normalize popcount 2-48 to idx 0-46
+		return pop_count(number & outer_48_bits_mask) - 2; // -2 to normalize popcount 2,48 to index 0,46
 	}
 
 	__forceinline size_t gcd_lookup_idx(const uint64_t number)
@@ -104,7 +104,7 @@ namespace mbp
 
 		const auto outer_even_pc = pop_count(number & even_mask);
 		const auto outer_odd_pc = pop_count(number & odd_mask);
-		return outer_even_pc - outer_odd_pc + 23; // +23 to normalize -23,24 to 0,47
+		return outer_even_pc - outer_odd_pc + 23; // +23 to normalize -23,24 to index 0,47
 	}
 
 	template<size_t pass>
@@ -337,6 +337,7 @@ namespace mbp
 	}
 
 	constexpr size_t last_pass = 3;
+	constexpr size_t popcount_from_pass = last_pass;
 
 	template<size_t pass>
 	__forceinline void merge_one_block(uint8_t*& out,
@@ -403,7 +404,7 @@ namespace mbp
 		*(uint64_t*)out = block;
 		out += sizeof(uint64_t);
 
-		if constexpr (pass == last_pass)
+		if constexpr (pass >= popcount_from_pass)
 		{
 			sieve_popcount += pop_count(block);
 		}
@@ -465,7 +466,7 @@ namespace mbp
 			uint256_t nybble_mask{};
 			uint256_t pc_shuf_lookup{};
 			uint256_t pc{};
-			if constexpr (pass == last_pass)
+			if constexpr (pass >= popcount_from_pass)
 			{
 				nybble_mask = _mm256_loadu_si256((uint256_t*)static_nybble_mask);
 				pc_shuf_lookup = _mm256_loadu_si256((uint256_t*)static_pc_shuf_lookup);
@@ -505,7 +506,7 @@ namespace mbp
 
 				_mm256_storeu_si256((uint256_t*)(out + offset), merged_data);
 
-				if constexpr (pass == last_pass)
+				if constexpr (pass >= popcount_from_pass)
 				{
 					// data -> nybbles
 					const uint256_t nybbles_lo = _mm256_and_si256(merged_data, nybble_mask);
@@ -532,7 +533,7 @@ namespace mbp
 
 			number += n_steps * elements_per_step * 2; // * 2 because the sieve only contains odd numbers
 
-			if constexpr (pass == last_pass)
+			if constexpr (pass >= popcount_from_pass)
 			{
 				alignas(sizeof(uint256_t)) uint64_t buf[4]{};
 				_mm256_storeu_si256((uint256_t*)buf, pc);
