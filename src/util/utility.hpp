@@ -1,6 +1,6 @@
 #pragma once
 
-#include <numeric>
+#include <limits>
 
 #include "stdint.h"
 
@@ -11,10 +11,9 @@ namespace mbp::util
 	void print_as_bits(const uint64_t n);
 	void print_as_bits(const uint32_t n);
 
-	__forceinline bool upper_32_bits_match(const size_t a, const size_t b)
+	__forceinline bool upper_32_bits_match(const uint64_t a, const uint64_t b)
 	{
-		constexpr size_t mask = size_t(-1) << 32;
-		return (a & mask) == (b & mask);
+		return (a >> 32) == (b >> 32);
 	}
 
 	namespace util_detail
