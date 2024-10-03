@@ -2,8 +2,8 @@
 #include <algorithm>
 #include <iostream>
 
-#include "multibase_div_tests.hpp"
 #include "../util/simd.hpp"
+#include "multibase_div_tests.hpp"
 
 #if analyze_div_tests
 #include <iomanip>
@@ -342,13 +342,13 @@ namespace mbp::div_test
 
 		uint64_t* shrinking_end = candidates_end;
 
-		static constexpr uint64_t static_shuffle_mask_byte_0[4] = { 
+		static constexpr uint64_t static_shuffle_mask_byte_0[4] = {
 			0x0000000000000000, 0x0808080808080808, 0x0000000000000000, 0x0808080808080808 };
-		static constexpr uint64_t static_shuffle_mask_byte_1[4] = { 
+		static constexpr uint64_t static_shuffle_mask_byte_1[4] = {
 			0x0101010101010101, 0x0909090909090909, 0x0101010101010101, 0x0909090909090909 };
-		static constexpr uint64_t static_shuffle_mask_byte_2[4] = { 
+		static constexpr uint64_t static_shuffle_mask_byte_2[4] = {
 			0x0202020202020202, 0x0A0A0A0A0A0A0A0A, 0x0202020202020202, 0x0A0A0A0A0A0A0A0A };
-		static constexpr uint64_t static_shuffle_mask_byte_3[4] = { 
+		static constexpr uint64_t static_shuffle_mask_byte_3[4] = {
 			0x0303030303030303, 0x0B0B0B0B0B0B0B0B, 0x0303030303030303, 0x0B0B0B0B0B0B0B0B };
 
 		const uint256_t shuffle_mask_byte_0 = _mm256_load_si256((uint256_t*)static_shuffle_mask_byte_0);
@@ -611,7 +611,7 @@ namespace mbp::div_test
 				selected_rems_2 = _mm256_sad_epu8(selected_rems_2, _mm256_setzero_si256());
 				selected_rems_3 = _mm256_sad_epu8(selected_rems_3, _mm256_setzero_si256());
 
-				// vertically add sets of 16 remainders
+				// vertically add sets of 16-bit remainders
 				uint256_t sum = _mm256_add_epi64(
 					_mm256_add_epi64(selected_rems_0, selected_rems_1),
 					_mm256_add_epi64(selected_rems_2, selected_rems_3));
@@ -746,7 +746,8 @@ namespace mbp::div_test
 	{
 		using namespace div_test;
 
-		const auto div_test_pred = [](const auto& a, const auto& b) {
+		const auto div_test_pred = [](const auto& a, const auto& b)
+		{
 			return a.hits < b.hits;
 		};
 

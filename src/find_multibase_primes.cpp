@@ -20,7 +20,8 @@ namespace mbp
 
 
 	// 2x the expected number of candidates from the sieve passes
-	constexpr size_t candidates_capacity = [] {
+	constexpr size_t candidates_capacity = []
+	{
 		double cleared = 0.0;
 		for (size_t i = 1; i < small_primes_lookup.size(); ++i)
 			cleared += (1.0 - cleared) * (1.0 / small_primes_lookup[i]);
