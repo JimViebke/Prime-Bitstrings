@@ -310,5 +310,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="VTune Profiler Results\Prime Bitstrings\Prime Bitstrings.vtuneproj" />
+    <None Include="src\cpp.hint" />
   </ItemGroup>
 </Project>

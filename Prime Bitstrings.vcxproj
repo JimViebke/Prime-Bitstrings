@@ -277,6 +277,7 @@
     <Text Include="results.txt" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="src\cpp.hint" />
     <None Include="VTune Profiler Results\Prime Bitstrings\Prime Bitstrings.vtuneproj" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
