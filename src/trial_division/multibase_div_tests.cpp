@@ -241,7 +241,7 @@ namespace mbp::div_test
 			return lookup;
 		}
 
-		std::array<std::vector<uint8_t>, n_of_primes> build_indivisible_lookup()
+		static std::array<std::vector<uint8_t>, n_of_primes> build_indivisible_lookup()
 		{
 			const div_tests_t div_tests_temp = detail::generate_div_tests_impl();
 
@@ -328,7 +328,30 @@ namespace mbp::div_test
 		permute_div_tests();
 	}
 
+	static const std::array<uint256_t, 16> permute_masks = []
+	{
+		std::array<uint256_t, 16> permute_masks{};
 
+		// map each of four bits to 64 bits of data, or 2x 32 bits of data
+		for (uint64_t i = 0; i < 16; ++i)
+		{
+			// produce 16 copies of each of four bits
+			uint64_t mask = _pdep_u64(i, 0x00001000100010001) * 0xFFFF;
+			// extract matching indices
+			mask = _pext_u64(0x0706050403020100, mask);
+			// spread 64 bits to 4x 16 bits
+			permute_masks[i] = _mm256_cvtepu8_epi32(_mm_cvtsi64_si128(mask));
+		}
+
+		return permute_masks;
+	}();
+	//static const std::array<uint64_t, 16 /* * 4 */> increment_lookup = [] consteval
+	//{
+	//	std::array<uint64_t, 16 /* * 4 */> lookup{};
+	//	for (size_t i = 0; i < 16; ++i)
+	//		lookup[i /* * 4 */] = pop_count(i) * 8;
+	//	return lookup;
+	//}();
 
 	template<bool on_fast_path>
 	uint64_t* full_div_tests::branchless_div_tests(uint64_t* const candidates_begin,
@@ -460,6 +483,27 @@ namespace mbp::div_test
 					const uint64_t inc_b = indivisible_ptr[sums[1]];
 					const uint64_t inc_c = indivisible_ptr[sums[2]];
 					const uint64_t inc_d = indivisible_ptr[sums[3]];
+
+					// We can save 2 (additional?) instrs by:
+					// 1: getting the lookup_index to the correct value by shifts alone.
+					// 2: replacing the movzx,lea pair with an add with a memory operand.
+
+					// lookup_index counts 8 per element.
+					// 32/8 = 4, so access by steps of 8 * uint32_t.
+					// 8/8 = 1, so access by steps of 8 * uint8_t.
+
+					//const size_t lookup_index = (inc_a) | (inc_b << 1) | (inc_c << 2) | (inc_d << 3);
+					//const uint256_t permute_mask = _mm256_loadu_si256((uint256_t*)(((uint32_t*)permute_masks.data()) + lookup_index));
+
+					//// reload 4 candidates
+					//const uint256_t candidates_unpacked = _mm256_loadu_si256((uint256_t*)input);
+					//input += 4;
+					//// pack down to 0-4 candidates
+					//const uint256_t candidates_packed = _mm256_permutevar8x32_epi32(candidates_unpacked, permute_mask);
+					//// store
+					//_mm256_storeu_si256((uint256_t*)output, candidates_packed);
+					//// branchlessly increment by 0-4 candidates
+					//output = (uint64_t*)(((uint8_t*)output) + *(uint64_t*)(((int8_t*)increment_lookup.data()) + lookup_index));
 
 					// load and increment
 					const uint64_t candidate_a = *input;
