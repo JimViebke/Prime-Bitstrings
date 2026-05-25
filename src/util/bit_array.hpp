@@ -3,6 +3,12 @@
 // Bitset with 32-byte / 256-bit alignment
 
 #include <algorithm>
+#include <array>
+#include <avx2intrin.h>
+#include <avxintrin.h>
+#include <cstdint>
+#include <popcntintrin.h>
+#include <type_traits>
 
 #include "simd.hpp"
 
@@ -48,10 +54,10 @@ namespace mbp
 					*in = uint64_t(-1);
 			}
 
-			constexpr size_t extra_bits = n_elements % 64;
+			constexpr size_t extra_bits{ n_elements % 64 };
 			if constexpr (extra_bits > 0)
 			{
-				constexpr size_t offset = size_in_bytes() - 8;
+				constexpr size_t offset{ size_in_bytes() - 8 };
 				*(uint64_t*)(&_data[offset]) &= (1ull << extra_bits) - 1;
 			}
 		}
@@ -98,8 +104,8 @@ namespace mbp
 			uint256_t ymm_pc{};
 			for (const uint256_t* in = (uint256_t*)_data.data(); in != rounded_end; )
 			{
-				const uint256_t* const stride_end = in + std::min(rounded_end - in,
-																  15ll); // uint8::max / 8
+				const uint256_t* const stride_end =
+					in + std::min(rounded_end - in, 15ll); // uint8::max / 8
 
 				uint256_t inner_pc{};
 				for (; in < stride_end; ++in)
@@ -107,13 +113,17 @@ namespace mbp
 					const uint256_t ymm0 = _mm256_loadu_si256(in);
 
 					const uint256_t nybbles_lo = _mm256_and_si256(ymm0, nybble_mask);
-					const uint256_t nybbles_hi = _mm256_and_si256(_mm256_srli_epi64(ymm0, 4), nybble_mask);
+					const uint256_t nybbles_hi =
+						_mm256_and_si256(_mm256_srli_epi64(ymm0, 4), nybble_mask);
 
-					inner_pc = _mm256_add_epi8(inner_pc, _mm256_shuffle_epi8(nybble_pc_lookup, nybbles_lo));
-					inner_pc = _mm256_add_epi8(inner_pc, _mm256_shuffle_epi8(nybble_pc_lookup, nybbles_hi));
+					inner_pc = _mm256_add_epi8(
+						inner_pc, _mm256_shuffle_epi8(nybble_pc_lookup, nybbles_lo));
+					inner_pc = _mm256_add_epi8(
+						inner_pc, _mm256_shuffle_epi8(nybble_pc_lookup, nybbles_hi));
 				}
 
-				ymm_pc = _mm256_add_epi64(ymm_pc, _mm256_sad_epu8(inner_pc, _mm256_setzero_si256()));
+				ymm_pc = _mm256_add_epi64(
+					ymm_pc, _mm256_sad_epu8(inner_pc, _mm256_setzero_si256()));
 			}
 
 			// add high and low lanes
@@ -125,11 +135,11 @@ namespace mbp
 
 			const uint64_t* in = (const uint64_t*)rounded_end;
 
-			constexpr size_t extra_bits = n_elements % 256;
-			if constexpr (extra_bits >= 64 * 0) pc += _mm_popcnt_u64(*in++);
-			if constexpr (extra_bits >= 64 * 1) pc += _mm_popcnt_u64(*in++);
-			if constexpr (extra_bits >= 64 * 2) pc += _mm_popcnt_u64(*in++);
-			if constexpr (extra_bits >= 64 * 3) pc += _mm_popcnt_u64(*in++);
+			constexpr size_t extra_bits{ n_elements % 256 };
+			if constexpr (extra_bits >= 64ull * 0) pc += _mm_popcnt_u64(*in++);
+			if constexpr (extra_bits >= 64ull * 1) pc += _mm_popcnt_u64(*in++);
+			if constexpr (extra_bits >= 64ull * 2) pc += _mm_popcnt_u64(*in++);
+			if constexpr (extra_bits >= 64ull * 3) pc += _mm_popcnt_u64(*in++);
 
 			return pc;
 		}

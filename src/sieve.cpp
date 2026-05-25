@@ -1,8 +1,13 @@
 
+#include <algorithm>
+#include <array>
+#include <cstdint>
 #include <iostream>
 
+#include "config.hpp"
 #include "math/math.hpp"
 #include "sieve.hpp"
+#include "util/types.hpp"
 
 namespace mbp::prime_sieve
 {
@@ -16,8 +21,8 @@ namespace mbp::prime_sieve
 		auto prime_it = small_primes_lookup.begin() + static_sieve_primes.size() + 1;
 		for (size_t i = 0; i < sieve_offsets_cache.size(); ++i)
 		{
-			const size_t prime = *prime_it++;
-			size_t stride = prime;
+			const size_t prime{ *prime_it++ };
+			size_t stride{ prime };
 
 			if (prime > largest_aligned_vector_sieve_prime &&
 				prime <= largest_vector_sieve_prime)
@@ -26,7 +31,7 @@ namespace mbp::prime_sieve
 			}
 
 			// find the distance to the next multiple of the stride
-			size_t n = stride - (start % stride);
+			size_t n{ stride - (start % stride) };
 
 			// make sure start + n is an odd multiple of the stride (start is always odd)
 			if (n % 2 == 1)
@@ -46,20 +51,23 @@ namespace mbp::prime_sieve
 					n += stride;
 
 				// if we've reached the second multiple of 8*15*p, step back to the first
-				n = util::min(n, n - 8ull * stride);
+				n = std::min(n, n - 8ull * stride);
 			}
 
 			sieve_offsets_cache[i] = sieve_offset_t(n);
 		}
 	}
 
-	void dump_sieve_offsets_cache()
+	namespace
 	{
-		std::cout << "Dumping sieve_offsets_cache:\n";
-
-		for (size_t i = 0; i < sieve_offsets_cache.size(); ++i)
+		void dump_sieve_offsets_cache()
 		{
-			std::cout << i << '\t' << sieve_offsets_cache[i] << '\n';
+			std::cout << "Dumping sieve_offsets_cache:\n";
+
+			for (size_t i = 0; i < sieve_offsets_cache.size(); ++i)
+			{
+				std::cout << i << '\t' << sieve_offsets_cache[i] << '\n';
+			}
 		}
 	}
 
@@ -67,8 +75,8 @@ namespace mbp::prime_sieve
 	{
 		for (size_t i = static_sieve_primes.size() + 1; small_primes_lookup[i] <= largest_sieve_prime; ++i)
 		{
-			const uint64_t prime = small_primes_lookup[i];
-			const size_t offset = sieve_offsets_cache[i];
+			const size_t prime{ small_primes_lookup[i] };
+			const size_t offset{ sieve_offsets_cache[i] };
 
 			if (prime >= 17 && prime <= largest_aligned_vector_sieve_prime) // handle separately
 			{
@@ -89,7 +97,7 @@ namespace mbp::prime_sieve
 				continue;
 			}
 
-			const uint64_t p15 = 15ull * prime;
+			const size_t p15{ 15ull * prime };
 
 			// 1. start + (2 * offset) should be evenly divisible by 15*p
 			if ((start + (2 * offset)) % p15 != 0)
@@ -121,5 +129,4 @@ namespace mbp::prime_sieve
 			}
 		}
 	}
-
 }

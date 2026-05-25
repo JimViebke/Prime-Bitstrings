@@ -1,7 +1,11 @@
 #pragma once
 
-#include <stdint.h>
-#include <x86intrin.h>
+#include <avx2intrin.h>
+#include <avxintrin.h>
+#include <cstdint>
+#include <emmintrin.h>
+#include <mmintrin.h>
+#include <type_traits>
 
 namespace mbp
 {
@@ -72,7 +76,7 @@ namespace mbp::util
 	void print_vector_as(const vector_t& data)
 	{
 		static_assert(std::is_unsigned<scalar_t>());
-		
+
 		using namespace detail;
 
 		const scalar_t* ptr = (const scalar_t*)&data;

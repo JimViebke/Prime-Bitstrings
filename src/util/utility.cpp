@@ -1,8 +1,11 @@
-#include "utility.hpp"
 
 #include <bitset>
 #include <chrono>
+#include <cstdint>
 #include <iostream>
+#include <sstream>
+
+#include "utility.hpp"
 
 namespace mbp::util
 {
@@ -34,7 +37,7 @@ namespace mbp::util
 		std::cout << ss.str();
 	}
 
-	// via https://stackoverflow.com/a/12996028/2924233
+	// Via https://stackoverflow.com/a/12996028/2924233
 	uint64_t hash(uint64_t x)
 	{
 		x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9;

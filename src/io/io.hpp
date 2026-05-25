@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <vector>
 
 namespace mbp
@@ -18,8 +19,8 @@ namespace mbp
 
 	namespace io
 	{
-		constexpr size_t num_threads = 1; // should be passed by command line instead
-		constexpr size_t block_size = 1'000'000'000;
+		inline constexpr size_t num_threads{ 1 }; // should be passed by command line instead
+		inline constexpr size_t block_size{ 1'000'000'000 };
 
 		struct multibase_prime
 		{
@@ -39,5 +40,4 @@ namespace mbp
 
 		block log_block_and_get_next_block(const block& completed);
 	}
-
 }

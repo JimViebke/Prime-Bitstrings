@@ -1,8 +1,7 @@
 #pragma once
 
+#include <cstdint>
 #include <limits>
-
-#include "stdint.h"
 
 namespace mbp::util
 {
@@ -30,25 +29,24 @@ namespace mbp::util
 		template<uint64_t val>
 		consteval auto narrowest_uint_for_val()
 		{
-			if constexpr (val <= std::numeric_limits<uint8_t>::max()) return uint8_t(0);
-			else if constexpr (val <= std::numeric_limits<uint16_t>::max()) return uint16_t(0);
-			else if constexpr (val <= std::numeric_limits<uint32_t>::max()) return uint32_t(0);
-			else return uint64_t(0);
+			if constexpr (val <= std::numeric_limits<uint8_t>::max())
+				return uint8_t{ 0 };
+			else if constexpr (val <= std::numeric_limits<uint16_t>::max())
+				return uint16_t{ 0 };
+			else if constexpr (val <= std::numeric_limits<uint32_t>::max())
+				return uint32_t{ 0 };
+			else
+				return uint64_t{ 0 };
 		}
 	}
 
 	template<size_t n_bits>
-	using narrowest_uint_for_n_bits = decltype(util_detail::narrowest_uint_for_n_bits<n_bits>());
+	using narrowest_uint_for_n_bits =
+		decltype(util_detail::narrowest_uint_for_n_bits<n_bits>());
 
 	template<uint64_t val>
-	using narrowest_uint_for_val = decltype(util_detail::narrowest_uint_for_val<val>());
+	using narrowest_uint_for_val =
+		decltype(util_detail::narrowest_uint_for_val<val>());
 
 	uint64_t hash(uint64_t x);
-
-	template<typename T>
-	__forceinline T min(T a, T b)
-	{
-		return b < a ? b : a;
-	}
-
 }

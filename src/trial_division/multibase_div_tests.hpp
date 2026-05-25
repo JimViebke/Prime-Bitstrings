@@ -8,10 +8,15 @@ Given any bitstring, the value of each digit is either base^(digit position) or 
 Therefore, for base b, place value n, and a small prime p, we calculate and store b^n % p. These remainders eventually follow a repeating pattern, often shorter than the chosen n, so we only need to store k unique remainders. At runtime, for each of the k remainders, use a bitmask to select every k-th bit, perform a popcount, and multiply the count by that k-th remainder. Adding these k results together gives us a small sum of remainders, s. If s is evenly divisible by p, then the bitstring is divisible by p in base b. Discard it.
 */
 
+#include <array>
+#include <cstdint>
+#include <utility>
 #include <vector>
 
+#include "../config.hpp"
 #include "../math/math.hpp"
 #include "../math/pk_prime.hpp"
+#include "../util/utility.hpp"
 #include "types.hpp"
 
 namespace mbp::div_test
@@ -24,18 +29,20 @@ namespace mbp::div_test
 		full_div_tests();
 
 		template<bool on_fast_path>
-		uint64_t* branchless_div_tests(uint64_t* const candidates_begin,
-									   uint64_t* const candidates_end,
-									   const size_t n_of_tests);
+		uint64_t* branchless_div_tests(
+			uint64_t* const candidates_begin,
+			uint64_t* const candidates_end,
+			const size_t n_of_tests);
 
 		template<bool on_fast_path>
-		uint64_t* branching_div_tests(uint64_t* input,
-									  const uint64_t* const candidates_end,
-									  const size_t start_offset);
+		uint64_t* branching_div_tests(
+			uint64_t* input,
+			const uint64_t* const candidates_end,
+			const size_t start_offset);
 
 		void update_div_test_order();
 		void print_div_tests();
-		void run_div_test_analysis(const size_t number);
+		void run_div_test_analysis(const uint64_t number);
 
 	private:
 		void permute_div_tests();
@@ -49,53 +56,44 @@ namespace mbp::div_test
 
 	namespace detail
 	{
-		// bitmask for all base^n mod prime
+		// Bitmask for any base^n % prime.
 		template<size_t base, size_t prime>
-		struct bitmask_for
-		{
-			static consteval size_t f()
+		constexpr uint64_t bitmask_for{ []() consteval {
+			// Calculate the period of base^n % prime.
+			size_t i = 0;
+			for (; i < 64; ++i)
 			{
-				// Calculate the period of base^n % prime
-				size_t i = 0;
-				for (; i < 64; ++i)
-				{
-					remainder_t rem = remainder_t(pk::powMod(base, i, prime));
-					if (rem == 1 && i > 0) break; // break when the pattern repeats
-				}
-
-				size_t bitmask = 0;
-				for (size_t j = 0; j < 64 && i < 64; j += i)
-				{
-					bitmask <<= i;
-					bitmask |= 1;
-				}
-
-				return bitmask;
+				remainder_t rem = remainder_t(pk::powMod(base, i, prime));
+				// Break when the pattern repeats.
+				if (rem == 1 && i > 0) break;
 			}
-			static constexpr size_t val = f();
-		};
 
-		template<size_t bitmask>
-		consteval size_t period_of()
-		{
+			// Mark every i-th bit starting from bit 0.
+			uint64_t bitmask = 0;
+			for (size_t j = 0; j < 64 && i < 64; j += i)
+			{
+				bitmask <<= i;
+				bitmask |= 1;
+			}
+
+			return bitmask;
+		}() };
+
+		template<uint64_t bitmask>
+		constexpr size_t period_of{ []() consteval {
 			for (size_t i = 1; i < 64; ++i)
 				if ((bitmask >> i) & 1)
 					return i;
-			return -1; // should never happen
-		}
+			std::unreachable();
+		}() };
 
 		template<size_t prime>
-		struct get_prime_index
-		{
-			static consteval size_t f()
-			{
-				for (size_t i = 0; i < 64; ++i)
-					if (small_primes_lookup[i] == prime)
-						return i;
-				return -1; // should never happen
-			}
-			static constexpr size_t idx = f();
-		};
+		constexpr size_t prime_index_of{ []() consteval {
+			for (size_t i = 0; i < 64; ++i)
+				if (small_primes_lookup[i] == prime)
+					return i;
+			std::unreachable();
+		}() };
 	}
 
 	namespace detail
@@ -113,7 +111,7 @@ namespace mbp::div_test
 	// Replaces "n % prime[idx] == 0" with "lookup[n] & (1 << idx)", usually as bittest + cmov
 	__forceinline bool has_small_prime_factor(const size_t n, const prime_idx_t prime_index)
 	{
-		return (detail::prime_factor_lookup[n] & (detail::prime_lookup_t(1) << prime_index)) != 0;
+		return (detail::prime_factor_lookup[n] &
+			(detail::prime_lookup_t(1) << prime_index)) != 0;
 	}
-
 }

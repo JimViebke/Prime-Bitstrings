@@ -1,15 +1,24 @@
 
+#include <array>
+#include <cstdint>
 #include <iomanip>
+#include <ios>
 #include <iostream>
+#include <memory>
 #include <sstream>
 
+#include <mpir.h>
+
+#include "config.hpp"
 #include "find_multibase_primes.hpp"
 #include "hardcoded_div_tests.hpp"
 #include "io/io.hpp"
+#include "math/math.hpp"
 #include "merge_bitmasks.hpp"
 #include "sieve.hpp"
 #include "trial_division/multibase_div_tests.hpp"
 #include "util/types.hpp"
+#include "util/utility.hpp"
 
 namespace mbp
 {
@@ -21,20 +30,20 @@ namespace mbp
 
 	// 2x the expected number of candidates from the sieve passes
 	constexpr size_t candidates_capacity = []
-	{
-		double cleared = 0.0;
-		for (size_t i = 1; i < small_primes_lookup.size(); ++i)
-			cleared += (1.0 - cleared) * (1.0 / small_primes_lookup[i]);
-		return 2 * size_t((1.0 - cleared) * sieve_container::size() * prime_sieve::steps);
-	}();
+		{
+			double cleared{ 0.0 };
+			for (size_t i = 1; i < small_primes_lookup.size(); ++i)
+				cleared += (1.0 - cleared) * (1.0 / small_primes_lookup[i]);
+			return 2 * size_t((1.0 - cleared) * sieve_container::size() * prime_sieve::steps);
+		}();
 	static std::array<uint64_t, candidates_capacity> candidates_storage alignas(64);
 
 
 
 	// buffer candidates for full primality testing until we have 64
-	constexpr size_t pt_buffer_capacity = 64;
+	constexpr size_t pt_buffer_capacity{ 64 };
 	static std::array<uint64_t, pt_buffer_capacity> pt_buffer alignas(64);
-	static size_t pt_buffer_size = 0;
+	static size_t pt_buffer_size{ 0 };
 
 
 
@@ -49,10 +58,10 @@ namespace mbp
 
 	void mbp::find_multibase_primes::run(const bool benchmark)
 	{
-		constexpr size_t loop_size = 2ull * sieve_container::size() * prime_sieve::steps;
+		constexpr size_t loop_size{ 2ull * sieve_container::size() * prime_sieve::steps };
 
-		uint64_t number = benchmark ? bm_start : load_from_results();
-		const uint64_t stop = benchmark ? bm_stop : uint64_t(-1);
+		uint64_t number{ benchmark ? bm_start : load_from_results() };
+		const uint64_t stop{ benchmark ? bm_stop : uint64_t(-1) };
 
 		// Round starting number down to the nearest odd multiple of a product of primes
 		number -= prime_sieve::product_of_static_sieve_primes; // n -= k
@@ -65,7 +74,7 @@ namespace mbp
 
 		prime_sieve::set_up_sieve_offsets_cache(number);
 
-		uint64_t next_div_test_reorder = number + div_test::reorder_interval;
+		uint64_t next_div_test_reorder{ number + div_test::reorder_interval };
 
 		// Start the clock after setup
 		const auto start_time = util::current_time_in_ms();
@@ -75,17 +84,17 @@ namespace mbp
 			// Merge static sieve, popcount, gcd, and div test bitmasks
 			for (size_t i = 0; i < prime_sieve::steps; ++i)
 			{
-				const uint64_t sieve_start = number + (i * sieve_container::size() * 2);
+				const uint64_t sieve_start{ number + (i * sieve_container::size() * 2) };
 				merge_bitmasks<1>(sieve_start, (*sieves)[i]);
 			}
 			for (size_t i = 0; i < prime_sieve::steps; ++i)
 			{
-				const uint64_t sieve_start = number + (i * sieve_container::size() * 2);
+				const uint64_t sieve_start{ number + (i * sieve_container::size() * 2) };
 				merge_bitmasks<2>(sieve_start, (*sieves)[i]);
 			}
 			for (size_t i = 0; i < prime_sieve::steps; ++i)
 			{
-				const uint64_t sieve_start = number + (i * sieve_container::size() * 2);
+				const uint64_t sieve_start{ number + (i * sieve_container::size() * 2) };
 				sieve_popcounts[i] = merge_bitmasks<3>(sieve_start, (*sieves)[i]);
 				count_passes(a += sieve_popcounts[i]);
 			}
@@ -97,13 +106,13 @@ namespace mbp
 				count_passes(ps15 += (*sieves)[i].count_bits());
 			}
 
-			uint64_t* const candidates = candidates_storage.data();
-			uint64_t* candidates_end = candidates;
+			uint64_t* const candidates{ candidates_storage.data() };
+			uint64_t* candidates_end{ candidates };
 
 			// Convert 1-bit candidates to 64-bit candidates
 			for (size_t i = 0; i < prime_sieve::steps; ++i)
 			{
-				const uint64_t sieve_start = number + (i * sieve_container::size() * 2);
+				const uint64_t sieve_start{ number + (i * sieve_container::size() * 2) };
 				candidates_end = prime_sieve::gather_sieve_results(candidates_end, (*sieves)[i], sieve_start);
 			}
 
@@ -140,9 +149,9 @@ namespace mbp
 				full_div_tests.update_div_test_order();
 				next_div_test_reorder += div_test::reorder_interval;
 
-			#if analyze_div_tests
+#if analyze_div_tests
 				full_div_tests.print_div_tests();
-			#endif
+#endif
 			}
 
 			count_passes(++passes);
@@ -150,9 +159,9 @@ namespace mbp
 
 
 
-	#if analyze_div_tests
+#if analyze_div_tests
 		full_div_tests.print_div_tests();
-	#endif
+#endif
 
 		std::cout << "Finished. " << util::current_time_in_ms() - start_time << " ms elapsed\n";
 
@@ -172,13 +181,13 @@ namespace mbp
 		log_pass_counts("Passed b5 prime test:  ", b5, b4);
 
 		count_passes(std::cout << "\nhash of pass counts: " <<
-					 std::hex << pc_hash << std::dec << '\n');
+			std::hex << pc_hash << std::dec << '\n');
 	}
 
 	template<bool on_fast_path>
 	uint64_t* mbp::find_multibase_primes::div_tests(uint64_t* candidates_end)
 	{
-		uint64_t* const candidates = candidates_storage.data();
+		uint64_t* const candidates{ candidates_storage.data() };
 
 		// Perform some div tests separately when a specialized implementation is faster
 
@@ -216,7 +225,7 @@ namespace mbp
 
 	void print_config(const bool benchmark)
 	{
-		std::stringstream ss{};
+		std::stringstream ss;
 
 		if (benchmark)
 		{
@@ -244,7 +253,7 @@ namespace mbp
 
 		ss << "SPRP rounds: " << prime_test::n_random_bases << ", td limit: " << largest_sieve_prime << '\n';
 
-	#define stringify(macro) #macro
+#define stringify(macro) #macro
 
 		std::cout << ss.str() << std::endl;
 	}

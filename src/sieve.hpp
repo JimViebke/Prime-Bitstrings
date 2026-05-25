@@ -1,19 +1,30 @@
 #pragma once
 
+#include <algorithm>
+#include <array>
+#include <avx2intrin.h>
+#include <avxintrin.h>
+#include <bmiintrin.h>
+#include <cstdint>
+#include <emmintrin.h>
+
+#include "config.hpp"
 #include "math/math.hpp"
+#include "util/bit_array.hpp"
 #include "util/simd.hpp"
 #include "util/types.hpp"
+#include "util/utility.hpp"
 
 namespace mbp::prime_sieve
 {
-	constexpr size_t n_of_vector_sieve_primes = []() consteval
+	inline constexpr size_t n_of_vector_sieve_primes{ []() consteval
 		{
-			auto first = small_primes_lookup.begin() + static_sieve_primes.size() + 1;
-			auto last = std::find(first,
-								  small_primes_lookup.end(),
-								  largest_vector_sieve_prime) + 1;
-			return last - first;
-		}();
+			const auto first = small_primes_lookup.begin() + static_sieve_primes.size() + 1;
+			const auto last = std::find(first,
+				small_primes_lookup.end(),
+				largest_vector_sieve_prime) + 1;
+			return size_t(last - first);
+		}() };
 
 	using sieve_offset_t = util::narrowest_uint_for_val<static_sieve_size>;
 	extern std::array<sieve_offset_t, n_of_vector_sieve_primes> sieve_offsets_cache;
@@ -21,42 +32,45 @@ namespace mbp::prime_sieve
 	void set_up_sieve_offsets_cache(const uint64_t start);
 
 	// precalculate stride - (sieve_size % stride)
-	constexpr static std::array<sieve_offset_t, n_of_vector_sieve_primes> modulo_precomp = []() consteval {
+	inline constexpr std::array<sieve_offset_t, n_of_vector_sieve_primes> modulo_precomp =
+		[]() consteval {
 		std::array<sieve_offset_t, n_of_vector_sieve_primes> arr{};
 
 		auto prime_it = small_primes_lookup.begin() + static_sieve_primes.size() + 1;
 		for (size_t i = 0; i < arr.size(); ++i, ++prime_it)
 		{
-			const size_t prime = *prime_it;
-			size_t stride = prime;
+			const size_t prime{ *prime_it };
+			size_t stride{ prime };
 
-			if (prime > largest_aligned_vector_sieve_prime) 
+			if (prime > largest_aligned_vector_sieve_prime)
 				stride *= 15ull * 8;
 
 			arr[i] = sieve_offset_t(stride - (sieve_container::size() % stride));
 		}
 
 		return arr;
-	}();
+		}();
 
-	static void update_sieve_offsets_cache(const sieve_prime_t* prime_ptr,
-										   sieve_offset_t* offset_ptr)
+	inline void update_sieve_offsets_cache(
+		const sieve_prime_t* prime_ptr,
+		sieve_offset_t* offset_ptr)
 	{
-		const auto* mp_ptr = modulo_precomp.data() + (offset_ptr - sieve_offsets_cache.data());
+		const sieve_offset_t* mp_ptr{
+			modulo_precomp.data() + (offset_ptr - sieve_offsets_cache.data()) };
 
 		// Calculate the offset of the next odd multiple of the stride size.
 		for (size_t prime = *prime_ptr;
-			 prime <= largest_vector_sieve_prime;
-			 prime = *++prime_ptr, ++offset_ptr, ++mp_ptr)
+			prime <= largest_vector_sieve_prime;
+			prime = *++prime_ptr, ++offset_ptr, ++mp_ptr)
 		{
-			size_t stride = prime;
+			size_t stride{ prime };
 
 			// *(15*8) if the prime is used for unaligned vector sieving
 			stride *= (prime > largest_aligned_vector_sieve_prime) ? (15 * 8) : 1;
 
-			size_t n = *offset_ptr;
+			size_t n{ *offset_ptr };
 			n += *mp_ptr;
-			n = util::min(n, n - stride);
+			n = std::min(n, n - stride);
 
 			*offset_ptr = sieve_offset_t(n);
 		}
@@ -105,11 +119,15 @@ namespace mbp::prime_sieve
 	template<size_t p, size_t chunk = 0>
 	__forceinline void generate_aligned_vector_writes(
 		uint256_t* const ptr, const auto& masks,
-		const uint256_t& mask_0, const uint256_t& mask_1, const uint256_t& mask_2, const uint256_t& mask_3,
-		const uint256_t& mask_4, const uint256_t& mask_5, const uint256_t& mask_6, const uint256_t& mask_7,
-		const uint256_t& mask_8, const uint256_t& mask_9, const uint256_t& mask_10, const uint256_t& mask_11)
+		const uint256_t& mask_0, const uint256_t& mask_1,
+		const uint256_t& mask_2, const uint256_t& mask_3,
+		const uint256_t& mask_4, const uint256_t& mask_5,
+		const uint256_t& mask_6, const uint256_t& mask_7,
+		const uint256_t& mask_8, const uint256_t& mask_9,
+		const uint256_t& mask_10, const uint256_t& mask_11)
 	{
-		constexpr size_t bit_offset = (p - ((chunk * 256) % p)) % p; // cleaner way to do this?
+		// Todo: find a cleaner way to calculate this.
+		constexpr size_t bit_offset{ (p - ((chunk * 256) % p)) % p };
 
 		uint256_t mask{};
 
@@ -138,23 +156,24 @@ namespace mbp::prime_sieve
 	}
 
 	template<size_t p>
-	__forceinline void aligned_vectorized_sieve_pass(sieve_container& sieve,
-													 const sieve_prime_t*& prime_ptr,
-													 sieve_offset_t*& offset_cache_ptr)
+	__forceinline void aligned_vectorized_sieve_pass(
+		sieve_container& sieve,
+		const sieve_prime_t*& prime_ptr,
+		sieve_offset_t*& offset_cache_ptr)
 	{
-		constexpr static std::array masks = generate_aligned_sieve_masks<p>();
+		static constexpr std::array masks = generate_aligned_sieve_masks<p>();
 
-		size_t j = *offset_cache_ptr;
+		size_t j{ *offset_cache_ptr };
 		uint256_t* ptr = (uint256_t*)sieve.data();
 
 		// align j with a bit offset of 0
-	#pragma nounroll
+#pragma nounroll
 		while (j != 0)
 		{
 			*ptr = _mm256_and_si256(*(uint256_t*)masks[j].data(), *ptr);
 
 			j += p - (256 % p);
-			j = util::min(j, j - p);
+			j = std::min(j, j - p);
 			++ptr;
 		}
 
@@ -174,31 +193,32 @@ namespace mbp::prime_sieve
 		const uint256_t mask_11 = _mm256_loadu_si256((uint256_t*)masks[11].data());
 
 		// iterate until we reach the last p-1 chunks
-		constexpr size_t n_chunks = sieve_container::size() / 256ull;
-		const uint256_t* const aligned_end = ((uint256_t*)sieve.data()) + n_chunks;
-		const uint256_t* const extra_aligned_end = aligned_end - (p - 1);
+		constexpr size_t n_chunks{ sieve_container::size() / 256ull };
+		const uint256_t* const aligned_end{ ((uint256_t*)sieve.data()) + n_chunks };
+		const uint256_t* const extra_aligned_end{ aligned_end - (p - 1) };
 
 		do
 		{
-			generate_aligned_vector_writes<p>(ptr, masks,
-											  mask_0, mask_1, mask_2, mask_3, 
-											  mask_4, mask_5, mask_6, mask_7,
-											  mask_8, mask_9, mask_10, mask_11);
+			generate_aligned_vector_writes<p>(
+				ptr, masks,
+				mask_0, mask_1, mask_2, mask_3,
+				mask_4, mask_5, mask_6, mask_7,
+				mask_8, mask_9, mask_10, mask_11);
 			ptr += p; // advance by p*32 bytes
 		} while (ptr < extra_aligned_end);
 
-	#pragma nounroll
+#pragma nounroll
 		while (ptr < aligned_end)
 		{
 			*ptr = _mm256_and_si256(*(uint256_t*)masks[j].data(), *ptr);
 
 			j += p - (256 % p);
-			j = util::min(j, j - p);
+			j = std::min(j, j - p);
 			++ptr;
 		}
 
 		j += p - ((sieve_container::size() % 256) % p);
-		j = util::min(j, j - p);
+		j = std::min(j, j - p);
 
 		*offset_cache_ptr = sieve_offset_t(j);
 
@@ -208,34 +228,37 @@ namespace mbp::prime_sieve
 
 	// m_offset = the number of multiples of p past the sieve pointer
 	template<size_t p, size_t m_offset = 1>
-	__forceinline void generate_vector_writes(uint8_t* const ptr_to_p,
-											  const uint256_t& mask_0,
-											  const uint256_t& mask_1,
-											  const uint256_t& mask_2,
-											  const uint256_t& mask_3,
-											  const uint256_t& mask_4,
-											  const uint256_t& mask_5,
-											  const uint256_t& mask_6,
-											  const uint256_t& mask_7)
+	__forceinline void generate_vector_writes(
+		uint8_t* const ptr_to_p,
+		const uint256_t& mask_0,
+		const uint256_t& mask_1,
+		const uint256_t& mask_2,
+		const uint256_t& mask_3,
+		const uint256_t& mask_4,
+		const uint256_t& mask_5,
+		const uint256_t& mask_6,
+		const uint256_t& mask_7)
 	{
-		constexpr size_t stride_size = 8ull * 3 * 5;
+		constexpr size_t stride_size{ 8ull * 3 * 5 };
 
-		constexpr size_t element_offset = m_offset * p;
-		constexpr size_t bit_offset = element_offset % 8;
+		constexpr size_t element_offset{ m_offset * p };
+		constexpr size_t bit_offset{ element_offset % 8 };
 
-		constexpr size_t multiples_per_vector_write = 1 + (((256 - 1) - bit_offset) / p);
+		constexpr size_t multiples_per_vector_write{ 1 + (((256 - 1) - bit_offset) / p) };
 
 		if constexpr ((m_offset % 3 == 0 || m_offset % 5 == 0) &&
-					  (m_offset + 1) <= stride_size - multiples_per_vector_write + 1)
+			(m_offset + 1) <= stride_size - multiples_per_vector_write + 1)
 		{
 			// m_offset is divisible by 3 or 5, and we still have room for at least one more write.
 			// Increment the offset and continue generating writes.
-			generate_vector_writes<p, m_offset + 1>(ptr_to_p, mask_0, mask_1, mask_2, mask_3, mask_4, mask_5, mask_6, mask_7);
+			generate_vector_writes<p, m_offset + 1>(
+				ptr_to_p,
+				mask_0, mask_1, mask_2, mask_3, mask_4, mask_5, mask_6, mask_7);
 		}
 		else if constexpr (m_offset <= stride_size - multiples_per_vector_write + 1)
 		{
 			// Generate a vector write for this offset
-			constexpr size_t byte_offset = element_offset / 8;
+			constexpr size_t byte_offset{ element_offset / 8 };
 
 			uint256_t sieve_data = _mm256_loadu_si256((uint256_t*)(ptr_to_p + byte_offset));
 
@@ -252,28 +275,32 @@ namespace mbp::prime_sieve
 			_mm256_storeu_si256((uint256_t*)(ptr_to_p + byte_offset), sieve_data);
 
 			// Advance by the size of the write and continue generating writes.
-			generate_vector_writes<p, m_offset + multiples_per_vector_write>(ptr_to_p, mask_0, mask_1, mask_2, mask_3, mask_4, mask_5, mask_6, mask_7);
+			generate_vector_writes<p, m_offset + multiples_per_vector_write>(
+				ptr_to_p,
+				mask_0, mask_1, mask_2, mask_3, mask_4, mask_5, mask_6, mask_7);
 		}
 	}
 
 	template<size_t p>
-	__forceinline void vectorized_sieve_pass(sieve_container& sieve,
-											 const sieve_prime_t*& prime_ptr,
-											 sieve_offset_t*& offset_cache_ptr)
+	__forceinline void vectorized_sieve_pass(
+		sieve_container& sieve,
+		const sieve_prime_t*& prime_ptr,
+		sieve_offset_t*& offset_cache_ptr)
 	{
-		constexpr size_t sieve_end = sieve_container::size();
-		constexpr size_t padded_end = sieve_end - (8 * 15 * p);
+		constexpr size_t sieve_end{ sieve_container::size() };
+		constexpr size_t padded_end{ sieve_end - (8 * 15 * p) };
 
-		constexpr static std::array<bit_array<256>, 8> sieve_masks = generate_sieve_masks<p>();
+		static constexpr std::array<bit_array<256>, 8> sieve_masks =
+			generate_sieve_masks<p>();
 
 		// for every 15 multiples of a prime p:
 		//
-		// 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14   <-- offset
-		//    x  x     x        x  x        x     x  x   <-- values to mark composite/false
-		// x        x     x  x        x  x     x         <-- values to ignore
+		// 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14  <-- offset
+		//    x  x     x        x  x        x     x  x  <-- values to mark composite/false
+		// x        x     x  x        x  x     x        <-- values to ignore
 
 		// Get the position of the next odd multiple of 8*15*p
-		size_t j = *offset_cache_ptr;
+		size_t j{ *offset_cache_ptr };
 
 		const uint256_t mask_0 = _mm256_loadu_si256((const uint256_t*)sieve_masks[0].data());
 		const uint256_t mask_1 = _mm256_loadu_si256((const uint256_t*)sieve_masks[1].data());
@@ -286,7 +313,7 @@ namespace mbp::prime_sieve
 
 		{
 			// We've made sure j is evenly divisible by 8
-			uint8_t* sieve_ptr = sieve.data() + (j / 8);
+			uint8_t* sieve_ptr{ sieve.data() + (j / 8) };
 
 			do
 			{
@@ -295,8 +322,11 @@ namespace mbp::prime_sieve
 				static_assert(p < 89);
 
 				// Sieve by big strides of 8*15 * p.
-				// This is guaranteed to have a period of one (ie, the first bit offset is always the same)
-				generate_vector_writes<p>(sieve_ptr, mask_0, mask_1, mask_2, mask_3, mask_4, mask_5, mask_6, mask_7);
+				// This is guaranteed to have a period of one
+				// (ie, the first bit offset is always the same).
+				generate_vector_writes<p>(
+					sieve_ptr,
+					mask_0, mask_1, mask_2, mask_3, mask_4, mask_5, mask_6, mask_7);
 
 				j += 8 * 15 * p;
 				sieve_ptr += (8 * 15 * p) / 8;
@@ -307,10 +337,12 @@ namespace mbp::prime_sieve
 		// If we run the hot loop with a bit offset of 0, the size of the sieve will
 		// introduce the same new offset per iteration.
 		// For a given offset_increase, how many multiples of 15*p is it to the next bit offset of 0?
-		constexpr size_t step = []() consteval {
-			constexpr size_t new_offset_per_iter = 8ull - (sieve_container::size() % 8);
-			size_t n = new_offset_per_iter;
-			size_t multiples_of_15p = 0;
+		constexpr size_t step{ []() consteval {
+			constexpr size_t new_offset_per_iter { 8ull - (sieve_container::size() % 8)};
+
+			size_t n{ new_offset_per_iter };
+			size_t multiples_of_15p{ 0 };
+
 			while (n % 8 != 0)
 			{
 				n += 15 * p;
@@ -318,7 +350,7 @@ namespace mbp::prime_sieve
 			}
 
 			return multiples_of_15p;
-		}();
+		}() };
 
 		// Calculate and cache the offset for the next sieving.
 
@@ -330,7 +362,7 @@ namespace mbp::prime_sieve
 		j -= sieve_container::size();
 
 		// If we've ended up at the second multiple of 8*15*p, step back to the first.
-		j = util::min(j, j - 8ull * 15 * p);
+		j = std::min(j, j - 8ull * 15 * p);
 
 		*offset_cache_ptr = sieve_offset_t(j);
 
@@ -340,11 +372,11 @@ namespace mbp::prime_sieve
 
 
 
-	consteval size_t calculate_unaligned_pc_threshold()
+	consteval size_t unaligned_pc_threshold()
 	{
-		double scale = 1.0;
+		double scale{ 1.0 };
 		for (auto* ptr = small_primes_lookup.data() + static_sieve_primes.size() + 1;
-			 *ptr <= sieve_prime_t(largest_aligned_vector_sieve_prime); ++ptr)
+			*ptr <= sieve_prime_t(largest_aligned_vector_sieve_prime); ++ptr)
 		{
 			double prime = double(*ptr);
 			scale *= (prime - 1.0) / prime;
@@ -355,21 +387,25 @@ namespace mbp::prime_sieve
 
 
 
-	inline_toggle static void partial_sieve(sieve_container& sieve,
-											const size_t sieve_popcount)
+	inline_toggle inline void partial_sieve(
+		sieve_container& sieve,
+		const size_t sieve_popcount)
 	{
 		// Sieve primes by strides of 15*p:
 		//
-		// 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14   <-- offset
-		//    x  x     x        x  x        x     x  x   <-- values to mark composite/false
-		// x        x     x  x        x  x     x         <-- values to ignore
+		// 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14  <-- offset
+		//    x  x     x        x  x        x     x  x  <-- values to mark composite/false
+		// x        x     x  x        x  x     x        <-- values to ignore
 
-		// Start with the first prime not in the static sieve
-		const sieve_prime_t* prime_ptr = small_primes_lookup.data() + static_sieve_primes.size() + 1;
-		sieve_offset_t* offset_cache_ptr = sieve_offsets_cache.data();
+		// Start with the first prime not in the static sieve.
+		const sieve_prime_t* prime_ptr{
+			small_primes_lookup.data() + static_sieve_primes.size() + 1 };
+		sieve_offset_t* offset_cache_ptr{
+			sieve_offsets_cache.data() };
 
-		// don't do any sieving if our bitmasks + static sieve already cleared enough
-		constexpr size_t popcount_threshold = vector_density_threshold * sieve_container::size();
+		// Don't do any sieving if our bitmasks + static sieve already cleared enough.
+		constexpr size_t popcount_threshold =
+			size_t(vector_density_threshold * sieve_container::size());
 		if (sieve_popcount <= popcount_threshold)
 		{
 			update_sieve_offsets_cache(prime_ptr, offset_cache_ptr);
@@ -388,8 +424,7 @@ namespace mbp::prime_sieve
 		aligned_vectorized_sieve_pass<47>(sieve, prime_ptr, offset_cache_ptr);
 		static_assert(largest_aligned_vector_sieve_prime == 47);
 
-		constexpr size_t unaligned_pc_threshold = calculate_unaligned_pc_threshold();
-		if (sieve_popcount <= unaligned_pc_threshold)
+		if (sieve_popcount <= unaligned_pc_threshold())
 		{
 			update_sieve_offsets_cache(prime_ptr, offset_cache_ptr);
 			return;
@@ -409,64 +444,71 @@ namespace mbp::prime_sieve
 
 	namespace detail
 	{
-		constexpr uint64_t n_sieve_chunks = (sieve_container::size() / 64) + (sieve_container::size() % 64 != 0);
+		constexpr uint64_t n_sieve_chunks{
+			(sieve_container::size() / 64) +
+			(sieve_container::size() % 64 != 0) };
 
 		using chunk_count_t = util::narrowest_uint_for_val<n_sieve_chunks>;
 		using chunk_idx_t = chunk_count_t;
 
 		// [popcount] -> number of chunks with that popcount
-		static std::array<chunk_count_t, 8> n_chunks_with_pc;
+		static inline std::array<chunk_count_t, 8> n_chunks_with_pc;
 		// [popcount][chunks]
-		static std::array<std::array<uint64_t, n_sieve_chunks>, 8> sorted_chunks;
+		static inline std::array<std::array<uint64_t, n_sieve_chunks>, 8> sorted_chunks;
 		// [popcount][chunk indexes]
-		static std::array<std::array<chunk_idx_t, n_sieve_chunks>, 8> chunk_indexes;
+		static inline std::array<std::array<chunk_idx_t, n_sieve_chunks>, 8> chunk_indexes;
 
 		template<size_t n, size_t idx = 0>
-		__forceinline void chunks_to_mask(const uint64_t* const in,
-										  uint64_t& mask) requires (n <= 16)
+		__forceinline void chunks_to_mask(const uint64_t* const in, uint64_t& mask)
+			requires (n <= 16)
 		{
-			// load 4x chunks
+			// Load 4x chunks.
 			uint256_t data = _mm256_loadu_si256(((uint256_t*)in) + idx);
-			// create masks for zero chunks
+			// Create masks for zero chunks.
 			data = _mm256_cmpeq_epi64(data, _mm256_setzero_si256());
-			// get 4-bit mask
+			// Get 4-bit mask.
 			uint64_t new_mask = _mm256_movemask_pd(_mm256_castsi256_pd(data));
 
 			new_mask <<= idx * 4;
 			mask |= new_mask;
 
 			if constexpr (idx + 1 < n)
+			{
 				chunks_to_mask<n, idx + 1>(in, mask);
+			}
 		}
 
 		template<size_t strides>
-		__forceinline uint64_t chunks_to_mask(const uint64_t* const in) requires (strides <= 16)
+		__forceinline uint64_t chunks_to_mask(const uint64_t* const in)
+			requires (strides <= 16)
 		{
-			uint64_t mask = 0;
+			uint64_t mask{ 0 };
 			chunks_to_mask<strides>(in, mask);
 
-			// invert the mask bits we care about
+			// Invert the mask bits we care about.
 			if constexpr (strides == 16)
 			{
 				return ~mask;
 			}
 			else
 			{
-				constexpr uint64_t keep_bits = (1ull << (strides * 4)) - 1;
+				constexpr uint64_t keep_bits{ (1ull << (strides * 4)) - 1 };
 				return mask ^ keep_bits;
 			}
 		}
 
 		template<size_t strides>
-		__forceinline void pack_and_partially_extract(uint64_t* const sieve_data,
-									   const uint64_t* const in,
-									   const uint64_t chunk_idx,
-									   uint64_t& out_idx,
-									   uint64_t*& candidates) requires (strides <= 16)
+		__forceinline void pack_and_partially_extract(
+			uint64_t* const sieve_data,
+			const uint64_t* const in,
+			const uint64_t chunk_idx,
+			uint64_t& out_idx,
+			uint64_t*& candidates)
+			requires (strides <= 16)
 		{
-			uint64_t mask = chunks_to_mask<strides>(in);
+			uint64_t mask{ chunks_to_mask<strides>(in) };
 
-			size_t pc = pop_count(mask);
+			size_t pc{ (size_t)pop_count(mask) };
 
 			while (pc >= 2)
 			{
@@ -491,38 +533,40 @@ namespace mbp::prime_sieve
 				out_idx += (chunk != 0);
 			}
 
-			// 0-1 final steps - always run 1 to avoid a branch
-
+			// 0 or 1 final steps. Always run 1 to avoid a branch.
 			size_t idx = _tzcnt_u64(mask);
 			sieve_data[out_idx] = in[idx];
 			chunk_indexes[0][out_idx + 0] = chunk_idx + idx;
 
-			out_idx += pc; // advance by 0-1
+			out_idx += pc; // Advance by 0 or 1.
 		}
 
-		inline_toggle static size_t pack_and_partially_extract(uint64_t* const sieve_data,
-															   uint64_t*& candidates)
+		inline_toggle inline size_t pack_and_partially_extract(
+			uint64_t* const sieve_data,
+			uint64_t*& candidates)
 		{
-			constexpr size_t rounded_end_64 = (n_sieve_chunks / 64) * 64;
-			constexpr size_t rounded_end_4 = (n_sieve_chunks / 4) * 4;
+			constexpr size_t rounded_end_64{ (n_sieve_chunks / 64) * 64 };
+			constexpr size_t rounded_end_4{ (n_sieve_chunks / 4) * 4 };
 
-			const uint64_t* in = sieve_data;
-			uint64_t out_idx = 0;
+			const uint64_t* in{ sieve_data };
+			uint64_t out_idx{ 0 };
 
 			// pack using 16 strides of 4 chunks each
 			for (size_t chunk_idx = 0; chunk_idx != rounded_end_64; chunk_idx += 64, in += 64)
 			{
-				pack_and_partially_extract<16>(sieve_data, in, chunk_idx, out_idx, candidates);
+				pack_and_partially_extract<16>(
+					sieve_data, in, chunk_idx, out_idx, candidates);
 			}
 
 			// pack using 0-15 strides of 4 chunks each
-			constexpr size_t remaining_strides = (rounded_end_4 - rounded_end_64) / 4;
-			pack_and_partially_extract<remaining_strides>(sieve_data, in, rounded_end_64, out_idx, candidates);
+			constexpr size_t remaining_strides{ (rounded_end_4 - rounded_end_64) / 4 };
+			pack_and_partially_extract<remaining_strides>(
+				sieve_data, in, rounded_end_64, out_idx, candidates);
 
 			// pack 0-3 remaining chunks
 			for (size_t chunk_idx = rounded_end_4; chunk_idx < n_sieve_chunks; ++chunk_idx)
 			{
-				const uint64_t chunk = sieve_data[chunk_idx];
+				const uint64_t chunk{ sieve_data[chunk_idx] };
 				sieve_data[out_idx] = chunk;
 				chunk_indexes[0][out_idx] = chunk_idx_t(chunk_idx);
 				out_idx += (chunk != 0);
@@ -531,8 +575,9 @@ namespace mbp::prime_sieve
 			return out_idx; // the final index is the number of non-zero chunks
 		}
 
-		inline_toggle static void sort_chunks(const uint64_t* const sieve_data,
-											  const size_t n_nonzero_chunks)
+		inline_toggle inline void sort_chunks(
+			const uint64_t* const sieve_data,
+			const size_t n_nonzero_chunks)
 		{
 			using namespace detail;
 
@@ -540,7 +585,7 @@ namespace mbp::prime_sieve
 			constexpr static uint8_t static_pc_shuf_lookup[16] = {
 				0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4 };
 
-			const size_t n_chunks_rounded = n_nonzero_chunks - (n_nonzero_chunks % 4);
+			const size_t n_chunks_rounded{ n_nonzero_chunks - (n_nonzero_chunks % 4) };
 
 			if (n_chunks_rounded >= 4)
 			{
@@ -559,10 +604,12 @@ namespace mbp::prime_sieve
 
 					// sieve data -> nybbles
 					const uint256_t nybbles_lo = _mm256_and_si256(four_chunks, nybble_mask);
-					const uint256_t nybbles_hi = _mm256_and_si256(_mm256_srli_epi64(four_chunks, 4), nybble_mask);
+					const uint256_t nybbles_hi = _mm256_and_si256(
+						_mm256_srli_epi64(four_chunks, 4), nybble_mask);
 					// nybbles -> 8-bit pcs
-					uint256_t popcounts = _mm256_add_epi8(_mm256_shuffle_epi8(pc_shuf_lookup, nybbles_lo),
-														  _mm256_shuffle_epi8(pc_shuf_lookup, nybbles_hi));
+					uint256_t popcounts = _mm256_add_epi8(
+						_mm256_shuffle_epi8(pc_shuf_lookup, nybbles_lo),
+						_mm256_shuffle_epi8(pc_shuf_lookup, nybbles_hi));
 					// 8-bit pcs -> 64-bit pcs
 					popcounts = _mm256_sad_epu8(popcounts, _mm256_setzero_si256());
 
@@ -570,34 +617,42 @@ namespace mbp::prime_sieve
 					popcounts = _mm256_min_epu32(popcounts, seven_register); // using the 32-bit variant here is fine
 
 					// calculate each chunk's offset into the first dimension of the array (popcount * n_sieve_chunks);
-					uint256_t write_offsets = _mm256_mul_epu32(popcounts, ymm_n_sieve_chunks); // 32-bit multiply is okay here; half of the values are 0
+					uint256_t write_offsets = _mm256_mul_epu32(
+						popcounts, ymm_n_sieve_chunks); // 32-bit multiply is okay here; half of the values are 0
 
 					// duplicate each popcount so we can use four 4x64-bit permutes to produce eight copies of each popcount
-					popcounts = _mm256_castps_si256(_mm256_moveldup_ps(_mm256_castsi256_ps(popcounts)));
+					popcounts = _mm256_castps_si256(
+						_mm256_moveldup_ps(
+							_mm256_castsi256_ps(popcounts)));
 
 					// chunk 1
 					const uint256_t bcast_a = _mm256_permute4x64_epi64(popcounts, 0b00000000);
-					const uint256_t shuffled_a = _mm256_permutevar8x32_epi32(pc_counts, bcast_a); // extract the existing count
+					const uint256_t shuffled_a = _mm256_permutevar8x32_epi32(
+						pc_counts, bcast_a); // extract the existing count
 					uint256_t mask = _mm256_cmpeq_epi32(bcast_a, identity); // generate a ones-mask at index [pc]
 					pc_counts = _mm256_sub_epi32(pc_counts, mask); // subtract (-1) to increment the existing count
 
 					// chunk 2
 					const uint256_t bcast_b = _mm256_permute4x64_epi64(popcounts, 0b01010101);
-					const uint256_t shuffled_b = _mm256_permutevar8x32_epi32(pc_counts, bcast_b);
+					const uint256_t shuffled_b = _mm256_permutevar8x32_epi32(
+						pc_counts, bcast_b);
 					mask = _mm256_cmpeq_epi32(bcast_b, identity);
-					uint256_t minor_offsets = _mm256_blend_epi32(shuffled_a, shuffled_b, 0b00001100);
+					uint256_t minor_offsets = _mm256_blend_epi32(
+						shuffled_a, shuffled_b, 0b00001100);
 					pc_counts = _mm256_sub_epi32(pc_counts, mask);
 
 					// chunk 3
 					const uint256_t bcast_c = _mm256_permute4x64_epi64(popcounts, 0b10101010);
-					const uint256_t shuffled_c = _mm256_permutevar8x32_epi32(pc_counts, bcast_c);
+					const uint256_t shuffled_c = _mm256_permutevar8x32_epi32(
+						pc_counts, bcast_c);
 					mask = _mm256_cmpeq_epi32(bcast_c, identity);
 					minor_offsets = _mm256_blend_epi32(minor_offsets, shuffled_c, 0b00110000);
 					pc_counts = _mm256_sub_epi32(pc_counts, mask);
 
 					// chunk 4
 					const uint256_t bcast_d = _mm256_permute4x64_epi64(popcounts, 0b11111111);
-					const uint256_t shuffled_d = _mm256_permutevar8x32_epi32(pc_counts, bcast_d);
+					const uint256_t shuffled_d = _mm256_permutevar8x32_epi32(
+						pc_counts, bcast_d);
 					mask = _mm256_cmpeq_epi32(bcast_d, identity);
 					minor_offsets = _mm256_blend_epi32(minor_offsets, shuffled_d, 0b11000000);
 					pc_counts = _mm256_sub_epi32(pc_counts, mask);
@@ -618,36 +673,44 @@ namespace mbp::prime_sieve
 					// run vector instructions one iteration ahead
 
 					const uint256_t nybbles_lo = _mm256_and_si256(four_chunks, nybble_mask);
-					const uint256_t nybbles_hi = _mm256_and_si256(_mm256_srli_epi64(four_chunks, 4), nybble_mask);
-					uint256_t popcounts = _mm256_add_epi8(_mm256_shuffle_epi8(pc_shuf_lookup, nybbles_lo),
-														  _mm256_shuffle_epi8(pc_shuf_lookup, nybbles_hi));
+					const uint256_t nybbles_hi = _mm256_and_si256(
+						_mm256_srli_epi64(four_chunks, 4), nybble_mask);
+					uint256_t popcounts = _mm256_add_epi8(
+						_mm256_shuffle_epi8(pc_shuf_lookup, nybbles_lo),
+						_mm256_shuffle_epi8(pc_shuf_lookup, nybbles_hi));
 					popcounts = _mm256_sad_epu8(popcounts, _mm256_setzero_si256());
 
 					popcounts = _mm256_min_epu32(popcounts, seven_register);
 
 					uint256_t write_offsets = _mm256_mul_epu32(popcounts, ymm_n_sieve_chunks);
 
-					popcounts = _mm256_castps_si256(_mm256_moveldup_ps(_mm256_castsi256_ps(popcounts)));
+					popcounts = _mm256_castps_si256(
+						_mm256_moveldup_ps(
+							_mm256_castsi256_ps(popcounts)));
 
 					const uint256_t bcast_a = _mm256_permute4x64_epi64(popcounts, 0b00000000);
-					const uint256_t shuffled_a = _mm256_permutevar8x32_epi32(pc_counts, bcast_a);
+					const uint256_t shuffled_a = _mm256_permutevar8x32_epi32(
+						pc_counts, bcast_a);
 					uint256_t mask = _mm256_cmpeq_epi32(bcast_a, identity);
 					pc_counts = _mm256_sub_epi32(pc_counts, mask);
 
 					const uint256_t bcast_b = _mm256_permute4x64_epi64(popcounts, 0b01010101);
-					const uint256_t shuffled_b = _mm256_permutevar8x32_epi32(pc_counts, bcast_b);
+					const uint256_t shuffled_b = _mm256_permutevar8x32_epi32(
+						pc_counts, bcast_b);
 					mask = _mm256_cmpeq_epi32(bcast_b, identity);
 					uint256_t minor_offsets = _mm256_blend_epi32(shuffled_a, shuffled_b, 0b00001100);
 					pc_counts = _mm256_sub_epi32(pc_counts, mask);
 
 					const uint256_t bcast_c = _mm256_permute4x64_epi64(popcounts, 0b10101010);
-					const uint256_t shuffled_c = _mm256_permutevar8x32_epi32(pc_counts, bcast_c);
+					const uint256_t shuffled_c = _mm256_permutevar8x32_epi32(
+						pc_counts, bcast_c);
 					mask = _mm256_cmpeq_epi32(bcast_c, identity);
 					minor_offsets = _mm256_blend_epi32(minor_offsets, shuffled_c, 0b00110000);
 					pc_counts = _mm256_sub_epi32(pc_counts, mask);
 
 					const uint256_t bcast_d = _mm256_permute4x64_epi64(popcounts, 0b11111111);
-					const uint256_t shuffled_d = _mm256_permutevar8x32_epi32(pc_counts, bcast_d);
+					const uint256_t shuffled_d = _mm256_permutevar8x32_epi32(
+						pc_counts, bcast_d);
 					mask = _mm256_cmpeq_epi32(bcast_d, identity);
 					minor_offsets = _mm256_blend_epi32(minor_offsets, shuffled_d, 0b11000000);
 					pc_counts = _mm256_sub_epi32(pc_counts, mask);
@@ -659,19 +722,19 @@ namespace mbp::prime_sieve
 					four_chunks = _mm256_loadu_si256((const uint256_t*)(sieve_data + i + 8));
 
 
-					const uint32_t idx_0 = buffer[0];
+					const uint32_t idx_0{ buffer[0] };
 					sorted_chunks.data()->_Elems[idx_0] = sieve_data[i + 0];
 					chunk_indexes.data()->_Elems[idx_0] = chunk_indexes[0][i + 0];
 
-					const uint32_t idx_1 = buffer[2];
+					const uint32_t idx_1{ buffer[2] };
 					sorted_chunks.data()->_Elems[idx_1] = sieve_data[i + 1];
 					chunk_indexes.data()->_Elems[idx_1] = chunk_indexes[0][i + 1];
 
-					const uint32_t idx_2 = buffer[4];
+					const uint32_t idx_2{ buffer[4] };
 					sorted_chunks.data()->_Elems[idx_2] = sieve_data[i + 2];
 					chunk_indexes.data()->_Elems[idx_2] = chunk_indexes[0][i + 2];
 
-					const uint32_t idx_3 = buffer[6];
+					const uint32_t idx_3{ buffer[6] };
 					sorted_chunks.data()->_Elems[idx_3] = sieve_data[i + 3];
 					chunk_indexes.data()->_Elems[idx_3] = chunk_indexes[0][i + 3];
 
@@ -682,19 +745,19 @@ namespace mbp::prime_sieve
 
 				// cleanup step for the last unrolled iteration
 				{
-					const uint32_t idx_0 = buffer[0];
+					const uint32_t idx_0{ buffer[0] };
 					sorted_chunks.data()->_Elems[idx_0] = sieve_data[i + 0];
 					chunk_indexes.data()->_Elems[idx_0] = chunk_indexes[0][i + 0];
 
-					const uint32_t idx_1 = buffer[2];
+					const uint32_t idx_1{ buffer[2] };
 					sorted_chunks.data()->_Elems[idx_1] = sieve_data[i + 1];
 					chunk_indexes.data()->_Elems[idx_1] = chunk_indexes[0][i + 1];
 
-					const uint32_t idx_2 = buffer[4];
+					const uint32_t idx_2{ buffer[4] };
 					sorted_chunks.data()->_Elems[idx_2] = sieve_data[i + 2];
 					chunk_indexes.data()->_Elems[idx_2] = chunk_indexes[0][i + 2];
 
-					const uint32_t idx_3 = buffer[6];
+					const uint32_t idx_3{ buffer[6] };
 					sorted_chunks.data()->_Elems[idx_3] = sieve_data[i + 3];
 					chunk_indexes.data()->_Elems[idx_3] = chunk_indexes[0][i + 3];
 				}
@@ -702,18 +765,20 @@ namespace mbp::prime_sieve
 				// save pc counts so far
 				pc_counts = _mm256_packus_epi32(pc_counts, _mm256_setzero_si256()); // compress
 				pc_counts = _mm256_permute4x64_epi64(pc_counts, 0b10'00); // pack to low lane
-				_mm_storeu_si128((uint128_t*)(&n_chunks_with_pc[0]), _mm256_castsi256_si128(pc_counts));
+				_mm_storeu_si128(
+					(uint128_t*)(&n_chunks_with_pc[0]),
+					_mm256_castsi256_si128(pc_counts));
 			}
 
 			// handle 0-3 remaining elements
 			for (size_t i = n_chunks_rounded; i < n_nonzero_chunks; ++i)
 			{
-				const uint64_t chunk = sieve_data[i];
+				const uint64_t chunk{ sieve_data[i] };
 
-				size_t pc = (size_t)pop_count(chunk);
-				pc = util::min(pc, 7ull);
+				size_t pc{ (size_t)pop_count(chunk) };
+				pc = std::min(pc, 7ull);
 
-				const chunk_count_t idx = n_chunks_with_pc[pc]++;
+				const chunk_count_t idx{ n_chunks_with_pc[pc]++ };
 
 				sorted_chunks[pc][idx] = chunk;
 				chunk_indexes[pc][idx] = chunk_indexes[0][i];
@@ -721,9 +786,10 @@ namespace mbp::prime_sieve
 		}
 
 		template<size_t popcount>
-		__forceinline void extract_candidates(uint64_t& chunk,
-											  const uint64_t chunk_index,
-											  uint64_t*& candidates)
+		__forceinline void extract_candidates(
+			uint64_t& chunk,
+			const uint64_t chunk_index,
+			uint64_t*& candidates)
 		{
 			// read the next bit in the chunk
 			const size_t tzcnt = _tzcnt_u64(chunk);
@@ -736,23 +802,26 @@ namespace mbp::prime_sieve
 			*candidates++ = chunk_index + tzcnt;
 
 			if constexpr (popcount - 1 > 0)
+			{
 				extract_candidates<popcount - 1>(chunk, chunk_index, candidates);
+			}
 		}
 
 		template<size_t popcount>
-		inline_toggle void extract_candidates_with_popcount(uint64_t*& candidates)
+		inline_toggle inline void extract_candidates_with_popcount(
+			uint64_t*& candidates)
 		{
-			const size_t n_chunks = n_chunks_with_pc[popcount];
-			size_t i = 0;
+			const size_t n_chunks{ n_chunks_with_pc[popcount] };
+			size_t i{ 0 };
 
 			if constexpr (popcount <= 2)
 			{
-				const size_t n_chunks_rounded = n_chunks - (n_chunks % 4);
-			#pragma clang loop vectorize(disable)
+				const size_t n_chunks_rounded{ n_chunks - (n_chunks % 4) };
+#pragma clang loop vectorize(disable)
 				for (; i < n_chunks_rounded; i += 4)
 				{
-					uint64_t chunk = sorted_chunks[popcount][i];
-					uint64_t index = chunk_indexes[popcount][i] * 64ull;
+					uint64_t chunk{ sorted_chunks[popcount][i] };
+					uint64_t index{ chunk_indexes[popcount][i] * 64ull };
 					extract_candidates<popcount>(chunk, index, candidates);
 					chunk = sorted_chunks[popcount][i + 1];
 					index = chunk_indexes[popcount][i + 1] * 64ull;
@@ -766,18 +835,18 @@ namespace mbp::prime_sieve
 				}
 			}
 
-		#pragma clang loop unroll(disable) vectorize(disable)
+#pragma clang loop unroll(disable) vectorize(disable)
 			for (; i < n_chunks; ++i)
 			{
-				uint64_t chunk = sorted_chunks[popcount][i];
-				uint64_t index = chunk_indexes[popcount][i] * 64ull;
+				uint64_t chunk{ sorted_chunks[popcount][i] };
+				uint64_t index{ chunk_indexes[popcount][i] * 64ull };
 
 				// generate instructions to extract exactly n candidates
 				extract_candidates<popcount>(chunk, index, candidates);
 			}
 		}
 
-		inline_toggle static void extract_bit_indexes(uint64_t*& candidates)
+		inline_toggle inline void extract_bit_indexes(uint64_t*& candidates)
 		{
 			extract_candidates_with_popcount<1>(candidates);
 			extract_candidates_with_popcount<2>(candidates);
@@ -786,11 +855,11 @@ namespace mbp::prime_sieve
 			extract_candidates_with_popcount<5>(candidates);
 			extract_candidates_with_popcount<6>(candidates);
 
-			const size_t n_chunks_with_seven_or_more_bits = n_chunks_with_pc[7];
+			const size_t n_chunks_with_seven_or_more_bits{ n_chunks_with_pc[7] };
 			for (size_t j = 0; j < n_chunks_with_seven_or_more_bits; ++j)
 			{
-				uint64_t chunk = sorted_chunks[7][j];
-				const uint64_t index = chunk_indexes[7][j] * 64ull;
+				uint64_t chunk{ sorted_chunks[7][j] };
+				const uint64_t index{ chunk_indexes[7][j] * 64ull };
 
 				*candidates++ = index + _tzcnt_u64(chunk); // store the chunk's index plus the next bit's index
 				chunk = _blsr_u64(chunk); // reset the bit we just read
@@ -814,14 +883,15 @@ namespace mbp::prime_sieve
 			} // end for (each chunk with 7 or more bits)
 		}
 
-		inline_toggle static void convert_indexes_to_bitstrings(uint64_t* const candidates_start,
-																const uint64_t* const candidates_end,
-																const uint64_t number)
+		inline_toggle inline void convert_indexes_to_bitstrings(
+			uint64_t* const candidates_start,
+			const uint64_t* const candidates_end,
+			const uint64_t number)
 		{
 			// autovectorizes
 			for (uint64_t* ptr = candidates_start; ptr < candidates_end; ++ptr)
 			{
-				uint64_t candidate = *ptr;
+				uint64_t candidate{ *ptr };
 				candidate *= 2;
 				candidate += number;
 				*ptr = candidate;
@@ -830,9 +900,10 @@ namespace mbp::prime_sieve
 	}
 
 	// sort 64-bit chunks of the sieve by popcount, then use custom loops that perform the exact number of required reads
-	inline_toggle static uint64_t* gather_sieve_results(uint64_t* candidates,
-														sieve_container& sieve,
-														const uint64_t number)
+	inline_toggle inline uint64_t* gather_sieve_results(
+		uint64_t* candidates,
+		sieve_container& sieve,
+		const uint64_t number)
 	{
 		using namespace detail;
 
@@ -840,9 +911,10 @@ namespace mbp::prime_sieve
 		for (chunk_count_t& pc : n_chunks_with_pc)
 			pc = 0;
 
-		uint64_t* const candidates_start = candidates;
+		uint64_t* const candidates_start{ candidates };
 
-		const size_t n_nonzero_chunks = pack_and_partially_extract((uint64_t* const)sieve.data(), candidates);
+		const size_t n_nonzero_chunks{ pack_and_partially_extract(
+			(uint64_t* const)sieve.data(), candidates) };
 
 		// prepare arrays of 64-bit chunks, where the chunks in array n contain exactly n set bits (n candidates)
 		sort_chunks((const uint64_t* const)sieve.data(), n_nonzero_chunks);

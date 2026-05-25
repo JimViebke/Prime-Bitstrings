@@ -1,13 +1,18 @@
 
+#include <cstdint>
+#include <cstdlib>
+#include <vector>
+
 #include "math/math.hpp"
 #include "merge_bitmasks.hpp"
+#include "util/bit_array.hpp"
 #include "util/types.hpp"
 
 namespace mbp
 {
 	std::vector<bit_array<pow_2_16>> build_popcounts_lookup()
 	{
-		constexpr size_t tiny_primes_lookup = build_tiny_primes_lookup();
+		constexpr uint64_t tiny_primes_lookup{ build_tiny_primes_lookup() };
 
 		std::vector<bit_array<pow_2_16>> lookup;
 
@@ -17,8 +22,8 @@ namespace mbp
 		// for each outer popcount
 		for (size_t outer_pc = 2; outer_pc <= 48; ++outer_pc)
 		{
-			const size_t shifted_primes_lookup = tiny_primes_lookup >> outer_pc;
-			uint64_t* bit_array_ptr = (uint64_t*)lookup.emplace_back().data();
+			const uint64_t shifted_primes_lookup{ tiny_primes_lookup >> outer_pc };
+			uint64_t* bit_array_ptr{ (uint64_t*)lookup.emplace_back().data() };
 
 			// inner bits == bits 1 through 16 (not 0 through 15)
 
@@ -30,6 +35,7 @@ namespace mbp
 					const size_t bit = (shifted_primes_lookup >> pop_count(inner_bits)) & 1;
 					chunk |= (bit << j);
 				}
+
 				*bit_array_ptr = chunk;
 				++bit_array_ptr;
 			}
@@ -52,14 +58,14 @@ namespace mbp
 		*/
 
 		// contains a 1 bit at indexes that share a GCD of 1 with a product of primes
-		constexpr size_t tiny_gcd_lookup = []() consteval {
-			size_t val = 0;
+		constexpr uint64_t tiny_gcd_lookup{ []() consteval {
+			uint64_t val = 0;
 			for (size_t i = 0; i < 32; ++i)
 			{
-				val |= size_t(gcd(i, size_t(3 * 5 * 7 * 11 * 13)) == 1ull) << i;
+				val |= uint64_t(gcd(i, size_t(3 * 5 * 7 * 11 * 13)) == 1ull) << i;
 			}
 			return val;
-		}();
+			}() };
 
 		std::vector<bit_array<pow_2_16>> lookup;
 		lookup.reserve(48);
@@ -67,12 +73,12 @@ namespace mbp
 		// for each outer alternating bitsum
 		for (int outer_abs = -23; outer_abs <= 24; ++outer_abs)
 		{
-			uint64_t* bit_array_ptr = (uint64_t*)lookup.emplace_back().data();
+			uint64_t* bit_array_ptr{ (uint64_t*)lookup.emplace_back().data() };
 
 			for (size_t inner_bits = 0; inner_bits < pow_2_16; /* increment below */)
 			{
 				// combine the next 64 writes
-				uint64_t chunk = 0;
+				uint64_t chunk{ 0 };
 				for (size_t j = 0; j < 64; ++j, ++inner_bits)
 				{
 					// calculate the alternating bitsum of the inner bits, add outer_abs
@@ -80,7 +86,7 @@ namespace mbp
 					const auto odd_pc = pop_count(inner_bits & 0x5555555555555555); //  so the even/odd masks are swapped
 					const auto alternating_bitsum = (even_pc - odd_pc) + outer_abs;
 
-					const size_t bit = (tiny_gcd_lookup >> abs(alternating_bitsum)) & 1;
+					const uint64_t bit{ (tiny_gcd_lookup >> abs(alternating_bitsum)) & 1 };
 					chunk |= (bit << j);
 				}
 
@@ -91,5 +97,4 @@ namespace mbp
 
 		return lookup;
 	}
-
 }

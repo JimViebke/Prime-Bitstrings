@@ -1,6 +1,13 @@
 #pragma once
 
+#include <array>
+#include <avx2intrin.h>
+#include <avxintrin.h>
+#include <cstdint>
+#include <emmintrin.h>
+
 #include "config.hpp"
+#include "math/math.hpp"
 #include "trial_division/multibase_div_tests.hpp"
 #include "util/simd.hpp"
 
@@ -9,7 +16,7 @@ namespace mbp
 	namespace detail
 	{
 		template<size_t base, size_t place_value_start, size_t prime>
-		consteval std::array<uint8_t, 32> build_shuffle_lookup_impl()
+		consteval std::array<uint8_t, 32> build_shuffle_lookup()
 		{
 			std::array<uint8_t, 32> lookup{};
 			for (size_t i = 0; i < 16; ++i)
@@ -26,48 +33,58 @@ namespace mbp
 		template<size_t base, size_t prime>
 		consteval std::array<uint8_t, 32> build_4rem_shuffle_lookup()
 		{
-			return build_shuffle_lookup_impl<base, 0, prime>();
+			return build_shuffle_lookup<base, 0, prime>();
 		}
 
 		template<size_t base, size_t prime>
 		consteval std::array<uint8_t, 32> build_8rem_shuffle_lookup_lo_nybble()
 		{
-			return build_shuffle_lookup_impl<base, 0, prime>();
+			return build_shuffle_lookup<base, 0, prime>();
 		}
 
 		template<size_t base, size_t prime>
 		consteval std::array<uint8_t, 32> build_8rem_shuffle_lookup_hi_nybble()
 		{
-			return build_shuffle_lookup_impl<base, 4, prime>();
+			return build_shuffle_lookup<base, 4, prime>();
 		}
 	}
 
-	template<size_t base_a, size_t prime_a, size_t base_b, size_t prime_b, bool on_fast_path>
-	inline_toggle size_t* two_div_tests_with_four_rems(size_t* input,
-														   const size_t* const candidates_end)
+	template<
+		size_t base_a, size_t prime_a,
+		size_t base_b, size_t prime_b,
+		bool on_fast_path>
+	inline_toggle uint64_t* two_div_tests_with_four_rems(
+		uint64_t* input,
+		const uint64_t* const candidates_end)
 	{
 		using namespace div_test;
 		using namespace div_test::detail;
 
-		constexpr size_t bitmask = bitmask_for<base_a, prime_a>::val;
-		static_assert(bitmask == bitmask_for<base_b, prime_b>::val);
-		static_assert(period_of<bitmask>() == 4);
+		constexpr uint64_t bitmask{ bitmask_for<base_a, prime_a> };
+		static_assert(bitmask == bitmask_for<base_b, prime_b>);
+		static_assert(period_of<bitmask> == 4);
 
-		size_t* output = input;
+		uint64_t* output{ input };
 
 		if constexpr (on_fast_path)
 		{
-			constexpr static std::array<uint8_t, 32> static_nybble_lookup_a = mbp::detail::build_4rem_shuffle_lookup<base_a, prime_a>();
-			constexpr static std::array<uint8_t, 32> static_nybble_lookup_b = mbp::detail::build_4rem_shuffle_lookup<base_b, prime_b>();
+			static constexpr std::array<uint8_t, 32> static_nybble_lookup_a{
+				mbp::detail::build_4rem_shuffle_lookup<base_a, prime_a>() };
+			static constexpr std::array<uint8_t, 32> static_nybble_lookup_b{
+				mbp::detail::build_4rem_shuffle_lookup<base_b, prime_b>() };
 
-			const uint256_t nybble_mask = _mm256_set1_epi8(0b0000'1111);
-			const uint256_t nybble_lookup_a = _mm256_loadu_si256((uint256_t*)&static_nybble_lookup_a);
-			const uint256_t nybble_lookup_b = _mm256_loadu_si256((uint256_t*)&static_nybble_lookup_b);
+			const uint256_t nybble_mask{ _mm256_set1_epi8(0b0000'1111) };
+			const uint256_t nybble_lookup_a{
+				_mm256_loadu_si256((uint256_t*)&static_nybble_lookup_a) };
+			const uint256_t nybble_lookup_b{
+				_mm256_loadu_si256((uint256_t*)&static_nybble_lookup_b) };
 
-			const size_t* const candidates_end_rounded = candidates_end - (size_t(candidates_end - input) % 8);
+			const uint64_t* const candidates_end_rounded{
+				candidates_end - ((candidates_end - input) % 8) };
 
 			// the upper 32 bits don't change, calculate their sum of remainders
-			const size_t number_upper = (*input) & (size_t(-1) << 32);
+			constexpr uint64_t upper_bits_mask{ uint64_t(-1) << 32 };
+			const uint64_t number_upper{ (*input) & upper_bits_mask };
 			const size_t pc_0 = pop_count(number_upper & (bitmask << 0));
 			size_t sum_a = pc_0;
 			size_t sum_b = pc_0;
@@ -80,8 +97,11 @@ namespace mbp
 			const size_t pc_3 = pop_count(number_upper & (bitmask << 3));
 			sum_a += pc_3 * pow_mod(base_a, 3, prime_a);
 			sum_b += pc_3 * pow_mod(base_b, 3, prime_b);
-			const uint8_t* const indivisible_base_a = indivisible_by[get_prime_index<prime_a>::idx].data() + sum_a;
-			const uint8_t* const indivisible_base_b = indivisible_by[get_prime_index<prime_b>::idx].data() + sum_b;
+
+			const uint8_t* const indivisible_base_a{
+				indivisible_by[prime_index_of<prime_a>].data() + sum_a };
+			const uint8_t* const indivisible_base_b{
+				indivisible_by[prime_index_of<prime_b>].data() + sum_b };
 
 			alignas(32) volatile uint32_t sums[16]{};
 
@@ -89,7 +109,7 @@ namespace mbp
 			{
 				// load 8 candidates into two registers
 				uint256_t ymm0 = _mm256_loadu_si256((uint256_t*)(input + 0));
-				uint256_t ymm1 = _mm256_loadu_si256((uint256_t*)(input + 4));
+				const uint256_t ymm1 = _mm256_loadu_si256((uint256_t*)(input + 4));
 
 				// we only want the bottom 32 bits of our 8 candidates
 				ymm0 = _mm256_blend_epi32(ymm0, _mm256_slli_epi64(ymm1, 32), 0b10'10'10'10);
@@ -99,10 +119,14 @@ namespace mbp
 				const uint256_t hi_nybbles = _mm256_and_si256(_mm256_srli_epi64(ymm0, 4), nybble_mask);
 
 				// replace the bits of each nybble with their remainder
-				const uint256_t lo_nybbles_a = _mm256_shuffle_epi8(nybble_lookup_a, lo_nybbles);
-				const uint256_t hi_nybbles_a = _mm256_shuffle_epi8(nybble_lookup_a, hi_nybbles);
-				const uint256_t lo_nybbles_b = _mm256_shuffle_epi8(nybble_lookup_b, lo_nybbles);
-				const uint256_t hi_nybbles_b = _mm256_shuffle_epi8(nybble_lookup_b, hi_nybbles);
+				const uint256_t lo_nybbles_a =
+					_mm256_shuffle_epi8(nybble_lookup_a, lo_nybbles);
+				const uint256_t hi_nybbles_a =
+					_mm256_shuffle_epi8(nybble_lookup_a, hi_nybbles);
+				const uint256_t lo_nybbles_b =
+					_mm256_shuffle_epi8(nybble_lookup_b, lo_nybbles);
+				const uint256_t hi_nybbles_b =
+					_mm256_shuffle_epi8(nybble_lookup_b, hi_nybbles);
 				// repack
 				uint256_t sums_0426_a = _mm256_unpacklo_epi32(lo_nybbles_a, hi_nybbles_a);
 				uint256_t sums_1537_a = _mm256_unpackhi_epi32(lo_nybbles_a, hi_nybbles_a);
@@ -114,8 +138,10 @@ namespace mbp
 				sums_0426_b = _mm256_sad_epu8(sums_0426_b, _mm256_setzero_si256());
 				sums_1537_b = _mm256_sad_epu8(sums_1537_b, _mm256_setzero_si256());
 
-				const uint256_t sums_0404_2626 = _mm256_packus_epi32(sums_0426_a, sums_0426_b);
-				const uint256_t sums_1515_3737 = _mm256_packus_epi32(sums_1537_a, sums_1537_b);
+				const uint256_t sums_0404_2626 =
+					_mm256_packus_epi32(sums_0426_a, sums_0426_b);
+				const uint256_t sums_1515_3737 =
+					_mm256_packus_epi32(sums_1537_a, sums_1537_b);
 
 				// store results on the stack
 				_mm256_storeu_si256((uint256_t*)&sums[0], sums_0404_2626);
@@ -132,17 +158,23 @@ namespace mbp
 
 				ymm0 = _mm256_blend_epi32(ymm0, _mm256_slli_epi64(ymm1, 32), 0b10'10'10'10);
 
-				const uint256_t lo_nybbles = _mm256_and_si256(ymm0, nybble_mask);
-				const uint256_t hi_nybbles = _mm256_and_si256(_mm256_srli_epi64(ymm0, 4), nybble_mask);
+				const uint256_t lo_nybbles = _mm256_and_si256(
+					ymm0, nybble_mask);
+				const uint256_t hi_nybbles = _mm256_and_si256(
+					_mm256_srli_epi64(ymm0, 4), nybble_mask);
 
 				// load two iterations ahead
 				ymm0 = _mm256_loadu_si256((uint256_t*)(input + 16));
 				ymm1 = _mm256_loadu_si256((uint256_t*)(input + 20));
 
-				const uint256_t lo_nybbles_a = _mm256_shuffle_epi8(nybble_lookup_a, lo_nybbles);
-				const uint256_t hi_nybbles_a = _mm256_shuffle_epi8(nybble_lookup_a, hi_nybbles);
-				const uint256_t lo_nybbles_b = _mm256_shuffle_epi8(nybble_lookup_b, lo_nybbles);
-				const uint256_t hi_nybbles_b = _mm256_shuffle_epi8(nybble_lookup_b, hi_nybbles);
+				const uint256_t lo_nybbles_a =
+					_mm256_shuffle_epi8(nybble_lookup_a, lo_nybbles);
+				const uint256_t hi_nybbles_a =
+					_mm256_shuffle_epi8(nybble_lookup_a, hi_nybbles);
+				const uint256_t lo_nybbles_b =
+					_mm256_shuffle_epi8(nybble_lookup_b, lo_nybbles);
+				const uint256_t hi_nybbles_b =
+					_mm256_shuffle_epi8(nybble_lookup_b, hi_nybbles);
 				uint256_t sums_0426_a = _mm256_unpacklo_epi32(lo_nybbles_a, hi_nybbles_a);
 				uint256_t sums_1537_a = _mm256_unpackhi_epi32(lo_nybbles_a, hi_nybbles_a);
 				uint256_t sums_0426_b = _mm256_unpacklo_epi32(lo_nybbles_b, hi_nybbles_b);
@@ -152,8 +184,10 @@ namespace mbp
 				sums_0426_b = _mm256_sad_epu8(sums_0426_b, _mm256_setzero_si256());
 				sums_1537_b = _mm256_sad_epu8(sums_1537_b, _mm256_setzero_si256());
 
-				const uint256_t sums_0404_2626 = _mm256_packus_epi32(sums_0426_a, sums_0426_b);
-				const uint256_t sums_1515_3737 = _mm256_packus_epi32(sums_1537_a, sums_1537_b);
+				const uint256_t sums_0404_2626 =
+					_mm256_packus_epi32(sums_0426_a, sums_0426_b);
+				const uint256_t sums_1515_3737 =
+					_mm256_packus_epi32(sums_1537_a, sums_1537_b);
 
 				*output = *input++; // always copy
 				const size_t inc_a =
@@ -211,10 +245,12 @@ namespace mbp
 
 		// handle any elements not handled by the fast loop
 
-		const uint8_t* const indivisible_base_a = indivisible_by[get_prime_index<prime_a>::idx].data();
-		const uint8_t* const indivisible_base_b = indivisible_by[get_prime_index<prime_b>::idx].data();
+		const uint8_t* const indivisible_base_a{
+			indivisible_by[prime_index_of<prime_a>].data() };
+		const uint8_t* const indivisible_base_b{
+			indivisible_by[prime_index_of<prime_b>].data() };
 
-		size_t candidate = *input;
+		uint64_t candidate{ *input };
 		for (; input < candidates_end; )
 		{
 			*output = candidate; // always write
@@ -246,32 +282,39 @@ namespace mbp
 	}
 
 	template<bool on_fast_path>
-	inline_toggle size_t* div_tests_with_12_rems(size_t* input,
-													 const size_t* const candidates_end)
+	inline_toggle uint64_t* div_tests_with_12_rems(
+		uint64_t* input,
+		const uint64_t* const candidates_end)
 	{
 		using namespace div_test;
 		using namespace div_test::detail;
 
 		// bases 6, 7, and 11 mod 13 (12 remainders)
-		constexpr size_t bitmask = bitmask_for<6, 13>::val;
-		static_assert(bitmask == bitmask_for<7, 13>::val);
-		static_assert(bitmask == bitmask_for<11, 13>::val);
-		static_assert(period_of<bitmask>() == 12);
+		constexpr uint64_t bitmask{ bitmask_for<6, 13> };
+		static_assert(bitmask == bitmask_for<7, 13>);
+		static_assert(bitmask == bitmask_for<11, 13>);
+		static_assert(period_of<bitmask> == 12);
 
-		size_t* output = input;
+		uint64_t* output{ input };
 
 		if constexpr (on_fast_path)
 		{
-			constexpr size_t upper_bits_mask = size_t(-1) << 32;
+			constexpr uint64_t upper_bits_mask{ uint64_t(-1) << 32 };
 
-			constexpr static std::array<uint8_t, 16> static_b6_rems_lo = { 1, 6, 10, 8, 9, 2, 12, 7, 3, 5, 4, 11, 1, 6, 10, 8 };
-			constexpr static std::array<uint8_t, 16> static_b6_rems_hi = { 9, 2, 12, 7, 3, 5, 4, 11, 1, 6, 10, 8, 9, 2, 12, 7 };
-			constexpr static std::array<uint8_t, 16> static_b7_rems_lo = { 1, 7, 10, 5, 9, 11, 12, 6, 3, 8, 4, 2, 1, 7, 10, 5 };
-			constexpr static std::array<uint8_t, 16> static_b7_rems_hi = { 9, 11, 12, 6, 3, 8, 4, 2, 1, 7, 10, 5, 9, 11, 12, 6 };
-			constexpr static std::array<uint8_t, 16> static_b11_rems_lo = { 1, 11, 4, 5, 3, 7, 12, 2, 9, 8, 10, 6, 1, 11, 4, 5 };
-			constexpr static std::array<uint8_t, 16> static_b11_rems_hi = { 3, 7, 12, 2, 9, 8, 10, 6, 1, 11, 4, 5, 3, 7, 12, 2 };
+			static constexpr std::array<uint8_t, 16> static_b6_rems_lo{
+				1, 6, 10, 8, 9, 2, 12, 7, 3, 5, 4, 11, 1, 6, 10, 8 };
+			static constexpr std::array<uint8_t, 16> static_b6_rems_hi{
+				9, 2, 12, 7, 3, 5, 4, 11, 1, 6, 10, 8, 9, 2, 12, 7 };
+			static constexpr std::array<uint8_t, 16> static_b7_rems_lo{
+				1, 7, 10, 5, 9, 11, 12, 6, 3, 8, 4, 2, 1, 7, 10, 5 };
+			static constexpr std::array<uint8_t, 16> static_b7_rems_hi{
+				9, 11, 12, 6, 3, 8, 4, 2, 1, 7, 10, 5, 9, 11, 12, 6 };
+			static constexpr std::array<uint8_t, 16> static_b11_rems_lo{
+				1, 11, 4, 5, 3, 7, 12, 2, 9, 8, 10, 6, 1, 11, 4, 5 };
+			static constexpr std::array<uint8_t, 16> static_b11_rems_hi{
+				3, 7, 12, 2, 9, 8, 10, 6, 1, 11, 4, 5, 3, 7, 12, 2 };
 
-			const size_t upper_bits = (*input) & upper_bits_mask;
+			const uint64_t upper_bits{ (*input) & upper_bits_mask };
 			const size_t pc_0 = pop_count(upper_bits & (bitmask << 0));
 			size_t b6_sum = pc_0;
 			size_t b7_sum = pc_0;
@@ -321,29 +364,51 @@ namespace mbp
 			b7_sum += pc_11 * pow_mod(7, 11, 13);
 			b11_sum += pc_11 * pow_mod(11, 11, 13);
 
-			const uint8_t* const indivisible_b6 = indivisible_by[get_prime_index<13>::idx].data() + b6_sum;
-			const uint8_t* const indivisible_b7 = indivisible_by[get_prime_index<13>::idx].data() + b7_sum;
-			const uint8_t* const indivisible_b11 = indivisible_by[get_prime_index<13>::idx].data() + b11_sum;
+			const uint8_t* const indivisible_b6{
+				indivisible_by[prime_index_of<13>].data() + b6_sum };
+			const uint8_t* const indivisible_b7{
+				indivisible_by[prime_index_of<13>].data() + b7_sum };
+			const uint8_t* const indivisible_b11{
+				indivisible_by[prime_index_of<13>].data() + b11_sum };
 
-			const size_t n_of_candidates = candidates_end - input;
-			const size_t* const rounded_end = input + (n_of_candidates - (n_of_candidates % 2));
+			const uint64_t n_of_candidates{ uint64_t(candidates_end - input) };
+			const uint64_t* const rounded_end{
+				input + (n_of_candidates - (n_of_candidates % 2)) };
 
-			const uint256_t shuffle_mask_lo = _mm256_set_epi64x(0x0909090909090909, 0x0808080808080808, 0x0101010101010101, 0x0000000000000000);
-			const uint256_t shuffle_mask_hi = _mm256_set_epi64x(0x0B0B0B0B0B0B0B0B, 0x0A0A0A0A0A0A0A0A, 0x0303030303030303, 0x0202020202020202);
+			const uint256_t shuffle_mask_lo = _mm256_set_epi64x(
+				0x0909090909090909, 0x0808080808080808,
+				0x0101010101010101, 0x0000000000000000);
+			const uint256_t shuffle_mask_hi = _mm256_set_epi64x(
+				0x0B0B0B0B0B0B0B0B, 0x0A0A0A0A0A0A0A0A,
+				0x0303030303030303, 0x0202020202020202);
 			const uint256_t and_mask = _mm256_set1_epi64x(0x80'40'20'10'08'04'02'01);
 
-			const uint128_t xmm_b6_rems_lo = _mm_loadu_si128((uint128_t*)&static_b6_rems_lo);
-			const uint256_t b6_rems_lo = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_b6_rems_lo), xmm_b6_rems_lo, 1);
-			const uint128_t xmm_b6_rems_hi = _mm_loadu_si128((uint128_t*)&static_b6_rems_hi);
-			const uint256_t b6_rems_hi = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_b6_rems_hi), xmm_b6_rems_hi, 1);
-			const uint128_t xmm_b7_rems_lo = _mm_loadu_si128((uint128_t*)&static_b7_rems_lo);
-			const uint256_t b7_rems_lo = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_b7_rems_lo), xmm_b7_rems_lo, 1);
-			const uint128_t xmm_b7_rems_hi = _mm_loadu_si128((uint128_t*)&static_b7_rems_hi);
-			const uint256_t b7_rems_hi = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_b7_rems_hi), xmm_b7_rems_hi, 1);
-			const uint128_t xmm_b11_rems_lo = _mm_loadu_si128((uint128_t*)&static_b11_rems_lo);
-			const uint256_t b11_rems_lo = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_b11_rems_lo), xmm_b11_rems_lo, 1);
-			const uint128_t xmm_b11_rems_hi = _mm_loadu_si128((uint128_t*)&static_b11_rems_hi);
-			const uint256_t b11_rems_hi = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_b11_rems_hi), xmm_b11_rems_hi, 1);
+			const uint128_t xmm_b6_rems_lo =
+				_mm_loadu_si128((uint128_t*)&static_b6_rems_lo);
+			const uint256_t b6_rems_lo = _mm256_inserti128_si256(
+				_mm256_castsi128_si256(xmm_b6_rems_lo), xmm_b6_rems_lo, 1);
+			const uint128_t xmm_b6_rems_hi =
+				_mm_loadu_si128((uint128_t*)&static_b6_rems_hi);
+			const uint256_t b6_rems_hi = _mm256_inserti128_si256(
+				_mm256_castsi128_si256(xmm_b6_rems_hi), xmm_b6_rems_hi, 1);
+
+			const uint128_t xmm_b7_rems_lo =
+				_mm_loadu_si128((uint128_t*)&static_b7_rems_lo);
+			const uint256_t b7_rems_lo = _mm256_inserti128_si256(
+				_mm256_castsi128_si256(xmm_b7_rems_lo), xmm_b7_rems_lo, 1);
+			const uint128_t xmm_b7_rems_hi =
+				_mm_loadu_si128((uint128_t*)&static_b7_rems_hi);
+			const uint256_t b7_rems_hi = _mm256_inserti128_si256(
+				_mm256_castsi128_si256(xmm_b7_rems_hi), xmm_b7_rems_hi, 1);
+
+			const uint128_t xmm_b11_rems_lo =
+				_mm_loadu_si128((uint128_t*)&static_b11_rems_lo);
+			const uint256_t b11_rems_lo = _mm256_inserti128_si256(
+				_mm256_castsi128_si256(xmm_b11_rems_lo), xmm_b11_rems_lo, 1);
+			const uint128_t xmm_b11_rems_hi =
+				_mm_loadu_si128((uint128_t*)&static_b11_rems_hi);
+			const uint256_t b11_rems_hi = _mm256_inserti128_si256(
+				_mm256_castsi128_si256(xmm_b11_rems_hi), xmm_b11_rems_hi, 1);
 
 			alignas(32) volatile uint32_t sums[8]{};
 
@@ -351,7 +416,8 @@ namespace mbp
 			{
 				// load two candidates
 				const uint128_t xmm_candidates = _mm_loadu_si128((uint128_t*)input);
-				const uint256_t candidates = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_candidates), xmm_candidates, 1);
+				const uint256_t candidates = _mm256_inserti128_si256(
+					_mm256_castsi128_si256(xmm_candidates), xmm_candidates, 1);
 
 				// convert bits to bytes
 				uint256_t candidates_lo = _mm256_shuffle_epi8(candidates, shuffle_mask_lo);
@@ -380,14 +446,17 @@ namespace mbp
 
 				// pack three vectors down to one
 				const uint256_t b67_sums = _mm256_packus_epi32(b6_sums, b7_sums);
-				const uint256_t b11x_sums = _mm256_packus_epi32(b11_sums, _mm256_setzero_si256());
+				const uint256_t b11x_sums = _mm256_packus_epi32(
+					b11_sums, _mm256_setzero_si256());
 				uint256_t b6_7_11_x_sums = _mm256_packus_epi32(b67_sums, b11x_sums);
 				// sums are now stored as [0, 0, 1, 1, 2, 2, x, x][0, 0, 1, 1, 2, 2, x, x]
-				b6_7_11_x_sums = _mm256_add_epi16(b6_7_11_x_sums, _mm256_srli_si256(b6_7_11_x_sums, 2));
+				b6_7_11_x_sums = _mm256_add_epi16(
+					b6_7_11_x_sums, _mm256_srli_si256(b6_7_11_x_sums, 2));
 				// sums are now stored as [0, x, 1, x, 2, x, x, x][0, x, 1, x, 2, x, x, x]
 
 				// zero out garbage values so we can read results as u32s
-				b6_7_11_x_sums = _mm256_blend_epi16(b6_7_11_x_sums, _mm256_setzero_si256(), 0b11101010);
+				b6_7_11_x_sums = _mm256_blend_epi16(
+					b6_7_11_x_sums, _mm256_setzero_si256(), 0b11101010);
 				// sums are now stored as [0, 1, 2, x][0, 1, 2, x]
 
 				// store on the stack
@@ -397,7 +466,8 @@ namespace mbp
 			for (; input < rounded_end; )
 			{
 				const uint128_t xmm_candidates = _mm_loadu_si128((uint128_t*)(input + 2));
-				const uint256_t candidates = _mm256_inserti128_si256(_mm256_castsi128_si256(xmm_candidates), xmm_candidates, 1);
+				const uint256_t candidates = _mm256_inserti128_si256(
+					_mm256_castsi128_si256(xmm_candidates), xmm_candidates, 1);
 
 				uint256_t candidates_lo = _mm256_shuffle_epi8(candidates, shuffle_mask_lo);
 				uint256_t candidates_hi = _mm256_shuffle_epi8(candidates, shuffle_mask_hi);
@@ -421,23 +491,28 @@ namespace mbp
 				b11_sums = _mm256_sad_epu8(b11_sums, _mm256_setzero_si256());
 
 				const uint256_t b67_sums = _mm256_packus_epi32(b6_sums, b7_sums);
-				const uint256_t b11x_sums = _mm256_packus_epi32(b11_sums, _mm256_setzero_si256());
+				const uint256_t b11x_sums = _mm256_packus_epi32(
+					b11_sums, _mm256_setzero_si256());
 				uint256_t b6_7_11_x_sums = _mm256_packus_epi32(b67_sums, b11x_sums);
-				b6_7_11_x_sums = _mm256_add_epi16(b6_7_11_x_sums, _mm256_srli_si256(b6_7_11_x_sums, 2));
+				b6_7_11_x_sums = _mm256_add_epi16(
+					b6_7_11_x_sums, _mm256_srli_si256(b6_7_11_x_sums, 2));
 
-				b6_7_11_x_sums = _mm256_blend_epi16(b6_7_11_x_sums, _mm256_setzero_si256(), 0b11101010);
+				b6_7_11_x_sums = _mm256_blend_epi16(
+					b6_7_11_x_sums, _mm256_setzero_si256(), 0b11101010);
 
 				// Only advance the pointer if the number is still a candidate
 
-				const size_t inc_0 = indivisible_b6[sums[0]]
-					& indivisible_b7[sums[1]]
-					& indivisible_b11[sums[2]];
+				const size_t inc_0 =
+					indivisible_b6[sums[0]] &
+					indivisible_b7[sums[1]] &
+					indivisible_b11[sums[2]];
 				*output = *input++;
 				output = (uint64_t*)(((uint8_t*)output) + inc_0);
 
-				const size_t inc_1 = indivisible_b6[sums[0 + 4]]
-					& indivisible_b7[sums[1 + 4]]
-					& indivisible_b11[sums[2 + 4]];
+				const size_t inc_1 =
+					indivisible_b6[sums[0 + 4]] &
+					indivisible_b7[sums[1 + 4]] &
+					indivisible_b11[sums[2 + 4]];
 				*output = *input++;
 				output = (uint64_t*)(((uint8_t*)output) + inc_1);
 
@@ -449,11 +524,12 @@ namespace mbp
 
 		} // end if on fast path
 
-		const uint8_t* const indivisible_by_13 = indivisible_by[get_prime_index<13>::idx].data();
+		const uint8_t* const indivisible_by_13{
+			indivisible_by[prime_index_of<13>].data() };
 
 		for (; input < candidates_end; ++input)
 		{
-			const size_t number = *input;
+			const uint64_t number{ *input };
 			*output = number; // always write
 
 			const size_t pc_0 = pop_count(number & (bitmask << 0));
@@ -506,9 +582,10 @@ namespace mbp
 			b11_sum += pc_11 * pow_mod(11, 11, 13);
 
 			// Only advance the pointer if the number is still a candidate
-			const size_t inc = indivisible_by_13[b6_sum]
-				& indivisible_by_13[b7_sum]
-				& indivisible_by_13[b11_sum];
+			const size_t inc =
+				indivisible_by_13[b6_sum] &
+				indivisible_by_13[b7_sum] &
+				indivisible_by_13[b11_sum];
 			output = (uint64_t*)(((uint8_t*)output) + inc);
 		}
 
@@ -516,13 +593,14 @@ namespace mbp
 	}
 
 	template<bool on_fast_path>
-	inline_toggle size_t* div_tests_with_16_rems(size_t* input,
-													 const size_t* const candidates_end)
+	inline_toggle uint64_t* div_tests_with_16_rems(
+		uint64_t* input,
+		const uint64_t* const candidates_end)
 	{
 		using namespace div_test;
 		using namespace div_test::detail;
 
-		constexpr size_t upper_bits_mask = size_t(-1) << 32;
+		constexpr uint64_t upper_bits_mask{ uint64_t(-1) << 32 };
 
 		constexpr static std::array<uint8_t, 32> static_rems_01{
 			1, 3, 9, 10, 13, 5, 15, 11, 16, 14, 8, 7, 4, 12, 2, 6,     // base 3 % 17
@@ -537,23 +615,28 @@ namespace mbp
 			1, 12, 8, 11, 13, 3, 2, 7, 16, 5, 9, 6, 4, 14, 15, 10,     // base 12 % 17
 			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }; // padding
 
-		const uint8_t* const indivisible_by_17 = indivisible_by[get_prime_index<17>::idx].data();
+		const uint8_t* const indivisible_by_17 =
+			indivisible_by[prime_index_of<17>].data();
 
-		size_t* output = input;
-		size_t number = *input;
+		uint64_t* output{ input };
+		uint64_t number{ *input };
 
-		size_t upper_bits = number & upper_bits_mask;
+		uint64_t upper_bits{ number & upper_bits_mask };
 		// get popcounts of upper 32 bits, in both lanes, in range 0-2
 		uint256_t upper_bytes = util::expand_bits_to_bytes(number >> 32);
-		upper_bytes = _mm256_and_si256(upper_bytes, _mm256_set1_epi8(0x01)); // convert 0xFF -> 0x01
-		upper_bytes = _mm256_add_epi8(upper_bytes, _mm256_permute2x128_si256(upper_bytes, upper_bytes, 1));
+		upper_bytes = _mm256_and_si256(
+			upper_bytes, _mm256_set1_epi8(0x01)); // convert 0xFF -> 0x01
+		upper_bytes = _mm256_add_epi8(
+			upper_bytes, _mm256_permute2x128_si256(upper_bytes, upper_bytes, 1));
 
 		const uint256_t rems_01 = _mm256_loadu_si256((uint256_t*)&static_rems_01);
 		const uint256_t rems_23 = _mm256_loadu_si256((uint256_t*)&static_rems_23);
 		const uint256_t rems_45 = _mm256_loadu_si256((uint256_t*)&static_rems_45);
 		const uint256_t rems_6x = _mm256_loadu_si256((uint256_t*)&static_rems_6x);
 
-		const uint256_t shuffle_mask = _mm256_set_epi64x(0x0303030303030303, 0x0202020202020202, 0x0101010101010101, 0x0000000000000000);
+		const uint256_t shuffle_mask = _mm256_set_epi64x(
+			0x0303030303030303, 0x0202020202020202,
+			0x0101010101010101, 0x0000000000000000);
 		const uint256_t and_mask = _mm256_set1_epi64x(0x80'40'20'10'08'04'02'01);
 
 		alignas(32) volatile uint32_t sums[8]{};
@@ -600,7 +683,7 @@ namespace mbp
 			if constexpr (!on_fast_path)
 			{
 				// Upper 32 bits only change every 4B integers - re-calculate when stale
-				const size_t next_n = *(input + 1);
+				const uint64_t next_n{ *(input + 1) };
 				if ((next_n & upper_bits_mask) != upper_bits)
 				{
 					upper_bits = next_n & upper_bits_mask;
@@ -637,13 +720,14 @@ namespace mbp
 			*output = *input++; // always write
 
 			// Only advance the pointer if the number is still a candidate
-			const size_t inc = indivisible_by_17[sums[0]]
-				& indivisible_by_17[sums[1]]
-				& indivisible_by_17[sums[2]]
-				& indivisible_by_17[sums[3]]
-				& indivisible_by_17[sums[4]]
-				& indivisible_by_17[sums[5]]
-				& indivisible_by_17[sums[6]];
+			const size_t inc =
+				indivisible_by_17[sums[0]] &
+				indivisible_by_17[sums[1]] &
+				indivisible_by_17[sums[2]] &
+				indivisible_by_17[sums[3]] &
+				indivisible_by_17[sums[4]] &
+				indivisible_by_17[sums[5]] &
+				indivisible_by_17[sums[6]];
 			output = (uint64_t*)(((uint8_t*)output) + inc);
 
 			// store the above results for the next iteration
@@ -654,24 +738,31 @@ namespace mbp
 	}
 
 	template<bool on_fast_path>
-	inline_toggle size_t* div_tests_with_8_rems(size_t* input,
-													const size_t* const candidates_end)
+	inline_toggle uint64_t* div_tests_with_8_rems(
+		uint64_t* input,
+		const uint64_t* const candidates_end)
 	{
 		using namespace div_test;
 		using namespace div_test::detail;
 
-		constexpr size_t bitmask = bitmask_for<8, 17>::val;
-		static_assert(bitmask == bitmask_for<9, 17>::val);
-		static_assert(period_of<bitmask>() == 8);
+		constexpr uint64_t upper_bits_mask{ uint64_t(-1) << 32 };
 
-		size_t* output = input;
+		constexpr uint64_t bitmask{ bitmask_for<8, 17> };
+		static_assert(bitmask == bitmask_for<9, 17>);
+		static_assert(period_of<bitmask> == 8);
+
+		uint64_t* output{ input };
 
 		if constexpr (on_fast_path)
 		{
-			constexpr static std::array<uint8_t, 32> static_nybble_lookup_8m17_lo = mbp::detail::build_8rem_shuffle_lookup_lo_nybble<8, 17>();
-			constexpr static std::array<uint8_t, 32> static_nybble_lookup_8m17_hi = mbp::detail::build_8rem_shuffle_lookup_hi_nybble<8, 17>();
-			constexpr static std::array<uint8_t, 32> static_nybble_lookup_9m17_lo = mbp::detail::build_8rem_shuffle_lookup_lo_nybble<9, 17>();
-			constexpr static std::array<uint8_t, 32> static_nybble_lookup_9m17_hi = mbp::detail::build_8rem_shuffle_lookup_hi_nybble<9, 17>();
+			static constexpr std::array<uint8_t, 32> static_nybble_lookup_8m17_lo{
+				mbp::detail::build_8rem_shuffle_lookup_lo_nybble<8, 17>() };
+			static constexpr std::array<uint8_t, 32> static_nybble_lookup_8m17_hi{
+				mbp::detail::build_8rem_shuffle_lookup_hi_nybble<8, 17>() };
+			static constexpr std::array<uint8_t, 32> static_nybble_lookup_9m17_lo{
+				mbp::detail::build_8rem_shuffle_lookup_lo_nybble<9, 17>() };
+			static constexpr std::array<uint8_t, 32> static_nybble_lookup_9m17_hi{
+				mbp::detail::build_8rem_shuffle_lookup_hi_nybble<9, 17>() };
 
 			const uint256_t nybble_mask = _mm256_set1_epi8(0b0000'1111);
 			const uint256_t nybble_lookup_8m17_lo = _mm256_loadu_si256((uint256_t*)&static_nybble_lookup_8m17_lo);
@@ -679,10 +770,11 @@ namespace mbp
 			const uint256_t nybble_lookup_9m17_lo = _mm256_loadu_si256((uint256_t*)&static_nybble_lookup_9m17_lo);
 			const uint256_t nybble_lookup_9m17_hi = _mm256_loadu_si256((uint256_t*)&static_nybble_lookup_9m17_hi);
 
-			const size_t* const candidates_end_rounded = candidates_end - (size_t(candidates_end - input) % 8);
+			const uint64_t* const candidates_end_rounded{
+				candidates_end - (size_t(candidates_end - input) % 8) };
 
 			// the upper 32 bits don't change, calculate their sum of remainders
-			const size_t number_upper = (*input) & (size_t(-1) << 32);
+			const uint64_t number_upper = *input & upper_bits_mask;
 			const size_t pc_0 = pop_count(number_upper & (bitmask << 0));
 			size_t b8m17_rem = pc_0;
 			size_t b9m17_rem = pc_0;
@@ -707,8 +799,11 @@ namespace mbp
 			const size_t pc_7 = pop_count(number_upper & (bitmask << 7));
 			b8m17_rem += pc_7 * pow_mod(8, 7, 17);
 			b9m17_rem += pc_7 * pow_mod(9, 7, 17);
-			const uint8_t* const indivisible_b8 = indivisible_by[get_prime_index<17>::idx].data() + b8m17_rem;
-			const uint8_t* const indivisible_b9 = indivisible_by[get_prime_index<17>::idx].data() + b9m17_rem;
+
+			const uint8_t* const indivisible_b8{
+				indivisible_by[prime_index_of<17>].data() + b8m17_rem };
+			const uint8_t* const indivisible_b9{
+				indivisible_by[prime_index_of<17>].data() + b9m17_rem };
 
 			alignas(32) volatile uint32_t sums[16]{};
 
@@ -726,28 +821,42 @@ namespace mbp
 
 				// load two iterations ahead
 				ymm0 = _mm256_loadu_si256((uint256_t*)(input + 8));
-				uint256_t ymm1 = _mm256_loadu_si256((uint256_t*)(input + 12));
+				ymm1 = _mm256_loadu_si256((uint256_t*)(input + 12));
 				ymm0 = _mm256_blend_epi32(ymm0, _mm256_slli_epi64(ymm1, 32), 0b10'10'10'10);
 
 				// replace the bits of each nybble with their remainder
-				uint256_t lo_nybbles_b8m17 = _mm256_shuffle_epi8(nybble_lookup_8m17_lo, lo_nybbles);
-				uint256_t hi_nybbles_b8m17 = _mm256_shuffle_epi8(nybble_lookup_8m17_hi, hi_nybbles);
-				uint256_t lo_nybbles_b9m17 = _mm256_shuffle_epi8(nybble_lookup_9m17_lo, lo_nybbles);
-				uint256_t hi_nybbles_b9m17 = _mm256_shuffle_epi8(nybble_lookup_9m17_hi, hi_nybbles);
+				const uint256_t lo_nybbles_b8m17 =
+					_mm256_shuffle_epi8(nybble_lookup_8m17_lo, lo_nybbles);
+				const uint256_t hi_nybbles_b8m17 =
+					_mm256_shuffle_epi8(nybble_lookup_8m17_hi, hi_nybbles);
+				const uint256_t lo_nybbles_b9m17 =
+					_mm256_shuffle_epi8(nybble_lookup_9m17_lo, lo_nybbles);
+				const uint256_t hi_nybbles_b9m17 =
+					_mm256_shuffle_epi8(nybble_lookup_9m17_hi, hi_nybbles);
 				// repack
-				uint256_t candidates_0426_b8m17 = _mm256_unpacklo_epi32(lo_nybbles_b8m17, hi_nybbles_b8m17);
-				uint256_t candidates_1537_b8m17 = _mm256_unpackhi_epi32(lo_nybbles_b8m17, hi_nybbles_b8m17);
-				uint256_t candidates_0426_b9m17 = _mm256_unpacklo_epi32(lo_nybbles_b9m17, hi_nybbles_b9m17);
-				uint256_t candidates_1537_b9m17 = _mm256_unpackhi_epi32(lo_nybbles_b9m17, hi_nybbles_b9m17);
+				const uint256_t candidates_0426_b8m17 =
+					_mm256_unpacklo_epi32(lo_nybbles_b8m17, hi_nybbles_b8m17);
+				const uint256_t candidates_1537_b8m17 =
+					_mm256_unpackhi_epi32(lo_nybbles_b8m17, hi_nybbles_b8m17);
+				const uint256_t candidates_0426_b9m17 =
+					_mm256_unpacklo_epi32(lo_nybbles_b9m17, hi_nybbles_b9m17);
+				const uint256_t candidates_1537_b9m17 =
+					_mm256_unpackhi_epi32(lo_nybbles_b9m17, hi_nybbles_b9m17);
 				// h-sum each 8 remainders -> 1 sum
-				uint256_t sums_0426_b8m17 = _mm256_sad_epu8(candidates_0426_b8m17, _mm256_setzero_si256());
-				uint256_t sums_1537_b8m17 = _mm256_sad_epu8(candidates_1537_b8m17, _mm256_setzero_si256());
-				uint256_t sums_0426_b9m17 = _mm256_sad_epu8(candidates_0426_b9m17, _mm256_setzero_si256());
-				uint256_t sums_1537_b9m17 = _mm256_sad_epu8(candidates_1537_b9m17, _mm256_setzero_si256());
+				const uint256_t sums_0426_b8m17 =
+					_mm256_sad_epu8(candidates_0426_b8m17, _mm256_setzero_si256());
+				const uint256_t sums_1537_b8m17 =
+					_mm256_sad_epu8(candidates_1537_b8m17, _mm256_setzero_si256());
+				const uint256_t sums_0426_b9m17 =
+					_mm256_sad_epu8(candidates_0426_b9m17, _mm256_setzero_si256());
+				const uint256_t sums_1537_b9m17 =
+					_mm256_sad_epu8(candidates_1537_b9m17, _mm256_setzero_si256());
 
 				// pack u64 results -> u32s
-				const uint256_t sums_04152637_b8m17 = _mm256_packus_epi32(sums_0426_b8m17, sums_1537_b8m17);
-				const uint256_t sums_04152637_b9m17 = _mm256_packus_epi32(sums_0426_b9m17, sums_1537_b9m17);
+				const uint256_t sums_04152637_b8m17 =
+					_mm256_packus_epi32(sums_0426_b8m17, sums_1537_b8m17);
+				const uint256_t sums_04152637_b9m17 =
+					_mm256_packus_epi32(sums_0426_b9m17, sums_1537_b9m17);
 
 				// store results on the stack
 				_mm256_storeu_si256((uint256_t*)(sums + 0), sums_04152637_b8m17);
@@ -757,29 +866,44 @@ namespace mbp
 			for (; input < candidates_end_rounded; )
 			{
 				// run vector instructions one iteration ahead
-				uint256_t lo_nybbles = _mm256_and_si256(ymm0, nybble_mask);
-				uint256_t hi_nybbles = _mm256_and_si256(_mm256_srli_epi64(ymm0, 4), nybble_mask);
+				const uint256_t lo_nybbles = _mm256_and_si256(ymm0, nybble_mask);
+				const uint256_t hi_nybbles =
+					_mm256_and_si256(_mm256_srli_epi64(ymm0, 4), nybble_mask);
 
 				// load two iterations ahead
 				ymm0 = _mm256_loadu_si256((uint256_t*)(input + 16));
-				uint256_t ymm1 = _mm256_loadu_si256((uint256_t*)(input + 20));
+				ymm1 = _mm256_loadu_si256((uint256_t*)(input + 20));
 				ymm0 = _mm256_blend_epi32(ymm0, _mm256_slli_epi64(ymm1, 32), 0b10'10'10'10);
 
-				uint256_t lo_nybbles_b8m17 = _mm256_shuffle_epi8(nybble_lookup_8m17_lo, lo_nybbles);
-				uint256_t hi_nybbles_b8m17 = _mm256_shuffle_epi8(nybble_lookup_8m17_hi, hi_nybbles);
-				uint256_t lo_nybbles_b9m17 = _mm256_shuffle_epi8(nybble_lookup_9m17_lo, lo_nybbles);
-				uint256_t hi_nybbles_b9m17 = _mm256_shuffle_epi8(nybble_lookup_9m17_hi, hi_nybbles);
-				uint256_t candidates_0426_b8m17 = _mm256_unpacklo_epi32(lo_nybbles_b8m17, hi_nybbles_b8m17);
-				uint256_t candidates_1537_b8m17 = _mm256_unpackhi_epi32(lo_nybbles_b8m17, hi_nybbles_b8m17);
-				uint256_t candidates_0426_b9m17 = _mm256_unpacklo_epi32(lo_nybbles_b9m17, hi_nybbles_b9m17);
-				uint256_t candidates_1537_b9m17 = _mm256_unpackhi_epi32(lo_nybbles_b9m17, hi_nybbles_b9m17);
-				uint256_t sums_0426_b8m17 = _mm256_sad_epu8(candidates_0426_b8m17, _mm256_setzero_si256());
-				uint256_t sums_1537_b8m17 = _mm256_sad_epu8(candidates_1537_b8m17, _mm256_setzero_si256());
-				uint256_t sums_0426_b9m17 = _mm256_sad_epu8(candidates_0426_b9m17, _mm256_setzero_si256());
-				uint256_t sums_1537_b9m17 = _mm256_sad_epu8(candidates_1537_b9m17, _mm256_setzero_si256());
+				const uint256_t lo_nybbles_b8m17 =
+					_mm256_shuffle_epi8(nybble_lookup_8m17_lo, lo_nybbles);
+				const uint256_t hi_nybbles_b8m17 =
+					_mm256_shuffle_epi8(nybble_lookup_8m17_hi, hi_nybbles);
+				const uint256_t lo_nybbles_b9m17 =
+					_mm256_shuffle_epi8(nybble_lookup_9m17_lo, lo_nybbles);
+				const uint256_t hi_nybbles_b9m17 =
+					_mm256_shuffle_epi8(nybble_lookup_9m17_hi, hi_nybbles);
+				const uint256_t candidates_0426_b8m17 =
+					_mm256_unpacklo_epi32(lo_nybbles_b8m17, hi_nybbles_b8m17);
+				const uint256_t candidates_1537_b8m17 =
+					_mm256_unpackhi_epi32(lo_nybbles_b8m17, hi_nybbles_b8m17);
+				const uint256_t candidates_0426_b9m17 =
+					_mm256_unpacklo_epi32(lo_nybbles_b9m17, hi_nybbles_b9m17);
+				const uint256_t candidates_1537_b9m17 =
+					_mm256_unpackhi_epi32(lo_nybbles_b9m17, hi_nybbles_b9m17);
+				const uint256_t sums_0426_b8m17 =
+					_mm256_sad_epu8(candidates_0426_b8m17, _mm256_setzero_si256());
+				const uint256_t sums_1537_b8m17 =
+					_mm256_sad_epu8(candidates_1537_b8m17, _mm256_setzero_si256());
+				const uint256_t sums_0426_b9m17 =
+					_mm256_sad_epu8(candidates_0426_b9m17, _mm256_setzero_si256());
+				const uint256_t sums_1537_b9m17 =
+					_mm256_sad_epu8(candidates_1537_b9m17, _mm256_setzero_si256());
 
-				const uint256_t sums_04152637_b8m17 = _mm256_packus_epi32(sums_0426_b8m17, sums_1537_b8m17);
-				const uint256_t sums_04152637_b9m17 = _mm256_packus_epi32(sums_0426_b9m17, sums_1537_b9m17);
+				const uint256_t sums_04152637_b8m17 =
+					_mm256_packus_epi32(sums_0426_b8m17, sums_1537_b8m17);
+				const uint256_t sums_04152637_b9m17 =
+					_mm256_packus_epi32(sums_0426_b9m17, sums_1537_b9m17);
 
 				*output = *input++; // always copy
 				const size_t inc_a = indivisible_b8[sums[0]] & indivisible_b9[sums[0 + 8]];
@@ -819,13 +943,14 @@ namespace mbp
 			} // end for
 		} // end if on_fast_path
 
-		const uint8_t* const indivisible_by_17 = indivisible_by[get_prime_index<17>::idx].data();
+		const uint8_t* const indivisible_by_17{
+			indivisible_by[prime_index_of<17>].data() };
 
 		// handle any elements not handled by the fast loop
 		for (; input < candidates_end; ++input)
 		{
 			// read, then always write
-			const size_t candidate = *input;
+			const uint64_t candidate{ *input };
 			*output = candidate;
 
 			const size_t pc_0 = pop_count(candidate & (bitmask << 0));
@@ -854,7 +979,9 @@ namespace mbp
 			b9m17_rem += pc_7 * pow_mod(9, 7, 17);
 
 			// conditionally increment
-			const auto inc = indivisible_by_17[b8m17_rem] & indivisible_by_17[b9m17_rem];
+			const auto inc =
+				indivisible_by_17[b8m17_rem] &
+				indivisible_by_17[b9m17_rem];
 			output = (uint64_t*)(((uint8_t*)output) + inc);
 		}
 

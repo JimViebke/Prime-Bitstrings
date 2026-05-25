@@ -1,8 +1,8 @@
 #pragma once
 
 #include "../config.hpp"
-#include "utility.hpp"
 #include "bit_array.hpp"
+#include "utility.hpp"
 
 namespace mbp
 {

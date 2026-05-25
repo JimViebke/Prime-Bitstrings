@@ -1,9 +1,9 @@
 #pragma once
 
 #include <array>
+#include <functional>
 #include <numeric>
-
-#include "util/utility.hpp"
+#include <string_view>
 
 namespace mbp
 {
@@ -21,50 +21,51 @@ namespace mbp
 	p12		10100001011000101000110101011011011101111110100101011
 	*/
 
-	const size_t p11 = 0b1000000010000011110100010001000101001010110111001;
-	const size_t p12 = 0b10100001011000101000110101011011011101111110100101011;
+	inline constexpr size_t p11{ 0b1000000010000011110100010001000101001010110111001 };
+	inline constexpr size_t p12{ 0b10100001011000101000110101011011011101111110100101011 };
 
-	const size_t bm_start = p11; // default: p11
-	const size_t bm_size = 500'000'000'000; // default 500'000'000'000
-	const size_t bm_stop = bm_start + bm_size;
+	inline constexpr size_t bm_start{ p11 };
+	inline constexpr size_t bm_size{ 500'000'000'000 };
+	inline constexpr size_t bm_stop{ bm_start + bm_size };
 
 	namespace prime_sieve
 	{
-		constexpr std::array static_sieve_primes{ 3ull, 5ull, 7ull, 11ull, 13ull };
-		constexpr size_t product_of_static_sieve_primes = std::accumulate(static_sieve_primes.begin(),
-																		  static_sieve_primes.end(),
-																		  1ull, std::multiplies());
-		constexpr size_t static_sieve_size = 2 * 8 * product_of_static_sieve_primes;
+		inline constexpr std::array static_sieve_primes{ 3ull, 5ull, 7ull, 11ull, 13ull };
+		inline constexpr size_t product_of_static_sieve_primes{ std::accumulate(
+				static_sieve_primes.begin(),
+				static_sieve_primes.end(),
+				1ull, std::multiplies()) };
+		inline constexpr size_t static_sieve_size{ 2 * 8 * product_of_static_sieve_primes };
 
-		constexpr size_t steps = 16; // default 16
-		constexpr size_t largest_aligned_vector_sieve_prime = 47; // default 47
-		constexpr size_t largest_vector_sieve_prime = 79; // default 79
-		constexpr size_t largest_sieve_prime = 263; // default 263
+		inline constexpr size_t steps{ 16 };
+		inline constexpr size_t largest_aligned_vector_sieve_prime{ 47 };
+		inline constexpr size_t largest_vector_sieve_prime{ 79 };
+		inline constexpr size_t largest_sieve_prime{ 263 };
 
-		constexpr double vector_density_threshold = 0.0035; // default .0035 (.35%)
-		constexpr double unaligned_vector_density_threshold = 0.006; // default .006 (.6%)
-		constexpr double scalar_density_threshold = 0.030; // default 0.030 (3%)
+		inline constexpr double vector_density_threshold{ 0.0035 };
+		inline constexpr double unaligned_vector_density_threshold{ 0.006 };
+		inline constexpr double scalar_density_threshold{ 0.030 };
 	}
 
 	// trial division tests in bases 2..n
 	namespace div_test
 	{
-		constexpr size_t n_of_primes = 54; // default: 54
-		constexpr size_t up_to_base = 13; // default: 13
+		inline constexpr size_t n_of_primes{ 54 };
+		inline constexpr size_t up_to_base{ 13 };
 
-		constexpr size_t n_of_branchless_tests = 75;
+		inline constexpr size_t n_of_branchless_tests{ 75 };
 
-		constexpr size_t reorder_interval = 10'000'000'000; // default: 10 B
+		inline constexpr size_t reorder_interval{ 10'000'000'000 };
 	}
 
 	// full primality testing in bases 3..n
 	namespace prime_test
 	{
-		constexpr size_t mpir_trial_div_cap = 937;
-		constexpr size_t n_random_bases = 1;
+		inline constexpr size_t mpir_trial_div_cap{ 937 };
+		inline constexpr size_t n_random_bases{ 1 };
 	}
 
-	const char results_filename[] = "results.txt";
+	inline constexpr std::string_view results_filename{ "results.txt" };
 }
 
 #define analyze_div_tests 0
@@ -73,7 +74,9 @@ namespace mbp
 
 
 #if 0
-// accumulate and print pass counts
+// Accumulate and print pass counts.
+#include <iomanip>
+#include <iostream>
 #define count_passes(...) __VA_ARGS__
 #define log_pass_counts(str, count, count_before) { \
 	auto w = std::setw; \

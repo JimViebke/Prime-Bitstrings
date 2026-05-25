@@ -7,13 +7,14 @@
 #include "io/io.hpp"
 #include "math/franken_mpir.hpp"
 
-void mbp::find_multibase_primes::full_primality_tests(const uint64_t* candidates,
-													  const uint64_t* const candidates_end,
-													  const bool benchmark)
+void mbp::find_multibase_primes::full_primality_tests(
+	const uint64_t* candidates,
+	const uint64_t* const candidates_end,
+	const bool benchmark)
 {
 	for (; candidates < candidates_end; ++candidates)
 	{
-		const size_t candidate = *candidates;
+		const uint64_t candidate{ *candidates };
 
 		if (!franken::mpir_is_likely_prime_BPSW(candidate)) continue;
 		count_passes(++b2);

@@ -1,14 +1,24 @@
-#include "io.hpp"
 
+#include <bit>
 #include <bitset>
+#include <charconv>
+#include <corecrt.h>
+#include <cstdint>
+#include <cstdlib>
+#include <ctime>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <mutex>
 #include <set>
+#include <sstream>
+#include <string>
+#include <system_error>
 
 #include "../config.hpp"
-#include "../math/math.hpp"
+#include "../util/utility.hpp"
+#include "io.hpp"
 
 void mbp::print_preamble(const bool benchmark)
 {
@@ -140,7 +150,7 @@ namespace mpb::io
 {
 	using namespace mbp::io;
 
-	namespace detail
+	namespace
 	{
 		struct
 		{
@@ -157,7 +167,9 @@ namespace mpb::io
 		block get_next_block()
 		{
 			// Construct an object representing the next block of work
-			block next{ .start = state.next_block_to_assign };
+			block next{
+				.start = state.next_block_to_assign,
+				.multibase_primes{} };
 
 			// Increment the next block to start
 			state.next_block_to_assign += block_size;
@@ -171,15 +183,13 @@ namespace mpb::io
 
 	block get_block()
 	{
-		std::lock_guard<std::mutex> lock(detail::state.mutex);
-		return detail::get_next_block();
+		std::lock_guard<std::mutex> lock{ state.mutex };
+		return get_next_block();
 	}
 
 	block log_block_and_get_next_block(const block& completed)
 	{
-		std::lock_guard<std::mutex> lock(detail::state.mutex);
-
-		using namespace detail;
+		std::lock_guard<std::mutex> lock{ state.mutex };
 
 		{
 			auto it = state.assigned_blocks.find(completed.start);
@@ -196,8 +206,8 @@ namespace mpb::io
 
 		// Log as many completed blocks as we can
 		for (auto it = state.completed_blocks.begin();
-			 it != state.completed_blocks.end() && it->start == state.next_block_to_log;
-			 it = state.completed_blocks.begin())
+			it != state.completed_blocks.end() && it->start == state.next_block_to_log;
+			it = state.completed_blocks.begin())
 		{
 			for (const auto& mbp : it->multibase_primes)
 				mbp::log_result(mbp.bitstring, mbp.up_to_base);
@@ -208,8 +218,6 @@ namespace mpb::io
 		}
 
 		// Return the next block
-		return detail::get_next_block();
+		return get_next_block();
 	}
-
 }
-

@@ -1,12 +1,17 @@
 #pragma once
 
-#pragma warning(push, 0)
-#include "mpirxx.h"
-#pragma warning(pop)
-
+#include <algorithm>
+#include <array>
 #include <bit>
-#include <stdint.h>
+#include <cstdint>
+#include <popcntintrin.h>
+#include <type_traits>
 #include <vector>
+
+#pragma warning(push, 0)
+#include <mpir.h>
+#include <mpirxx.h>
+#pragma warning(pop)
 
 #include "../config.hpp"
 #include "../util/types.hpp"
@@ -22,8 +27,10 @@ namespace mbp
 			primes.push_back(2);
 
 			// capture requirements for the small primes lookup here
-			constexpr size_t largest_prime = std::max({ prime_sieve::largest_sieve_prime,
-													  prime_test::mpir_trial_div_cap });
+			constexpr size_t largest_prime{ std::max(
+				prime_sieve::largest_sieve_prime,
+				prime_test::mpir_trial_div_cap) };
+
 			std::vector<uint8_t> sieve(largest_prime + 1, true);
 
 			for (size_t i = 3; i < sieve.size(); i += 2)
@@ -77,7 +84,7 @@ namespace mbp
 		// Generate a 64 bit lookup, where the prime-numbered bits are set high
 		// 2 | 3 | 5 | 7 | 11 | 13 | 17 | 19 | 23 | 29 | 31 | 37 | 41 | 43 | 47 | 53 | 59 | 61
 
-		uint64_t lookup = 0;
+		uint64_t lookup{ 0 };
 
 		// The popcount of a p13 can't be divisible by 2, 3, 5, 7 or 11
 		//lookup |= (1ull << 2);
@@ -109,7 +116,6 @@ namespace mbp
 		return gcd(b, a % b);
 	}
 
-	// consteval wrapper for PK's impl
 	consteval size_t pow_mod(size_t a, size_t b, size_t m)
 	{
 		return pk::powMod(a, b, m);
